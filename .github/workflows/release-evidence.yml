@@ -47,7 +47,7 @@ jobs:
           SYFT_CHECK_FOR_APP_UPDATE: 'false'
       - run: python tools/evidence.py freeze --report output/backend.xml --inputs output/source-inputs.json --sbom output/sbom.cdx.json --origin ci --output output/release
       - run: cp output/sbom.cdx.json output/release/sbom.cdx.json
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: frozen-evidence
           path: output/release/
@@ -88,7 +88,7 @@ jobs:
         run: |
           cp -- "$PROVENANCE_BUNDLE" release/provenance.sigstore.json
           cp -- "$SBOM_BUNDLE" release/sbom.sigstore.json
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-evidence
           path: release/
