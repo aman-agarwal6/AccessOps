@@ -68,6 +68,7 @@ SOURCE_SUFFIXES = {
     ".sh",
     ".svg",
     ".png",
+    ".mjs",
 }
 
 

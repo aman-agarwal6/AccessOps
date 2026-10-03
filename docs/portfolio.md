@@ -12,8 +12,10 @@ lets recruiters explore the same lifecycle workflows without creating an account
 Skills: IAM lifecycle, Python APIs, React/TypeScript, authorization policy,
 security automation, reproducible testing, evidence integrity.
 
-Use the actual published demo and source URLs after publication. Do not link to
-an uncreated repository or claim a deployment has completed before verification.
+Source: [aman-agarwal6/AccessOps](https://github.com/aman-agarwal6/AccessOps).
+Demo: [AccessOps operations console](https://aman-agarwal6.github.io/AccessOps/).
+The verification ledger links actual completed checks. The demo is a synthetic
+browser simulation; the documented local lab exercises the real integrations.
 
 ## Ninety-second walkthrough
 

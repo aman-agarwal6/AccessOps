@@ -17,6 +17,10 @@ source services. Recorded verification is labeled separately from simulation.
 
 ## Try the browser simulation
 
+[Open the live demo](https://aman-agarwal6.github.io/AccessOps/) ·
+[Inspect the source](https://github.com/aman-agarwal6/AccessOps) ·
+[Verification results](docs/verification.md)
+
 Node.js 24 is the tested runtime family. From the project directory:
 
 ```powershell
@@ -127,6 +131,9 @@ always-on cloud services just to keep a portfolio link alive.
 [Docker Desktop permits free personal/educational use](https://docs.docker.com/subscription-billing/desktop-license/);
 Docker Engine with Compose is the portable local alternative. Hosting terms and
 organization licensing are reviewed separately from application dependencies.
+
+The [maintenance guide](docs/maintenance.md) covers monthly dependency review,
+lock consistency, deployment, storage limits and recovery.
 
 ## Portfolio use
 

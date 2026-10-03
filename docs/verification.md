@@ -19,15 +19,18 @@ identity provider was contacted. Publication is separate from local verification
 | Host HTTPS | 5 passed | Loopback, preserved SNI, CA/hostname verification, exact issuer, hidden administration route and invalid-SNI denial |
 | Actual dependency outage | 2 passed | OPA denies policy and Keycloak denies new token acquisition; both restored and strict host TLS rechecked |
 | Evidence tooling | 6 passed | Failed/skipped counts, empty-report rejection, tamper/traversal checks, source coverage and runtime exclusion |
+| Dependency lock consistency | 4 regression tests passed; actual locks match | Direct pins, development/runtime parity, include cycles/traversal and malformed/unhashed input |
 | Build/type/format and workflow syntax | Passed | Production build, TypeScript, Prettier, Ruff, actionlint; not a GitHub workflow execution |
 | Known dependency advisories | No known vulnerabilities found | npm and Python runtime locks at check time; no image-layer/model inventory claim |
 | Staged source scan | Passed | Gitleaks; generated runtime credentials excluded from Git; narrowly scoped reviewed source-digest exclusions |
 | CycloneDX 1.6 | Generated: 59 components | Locked Python runtime and npm inventory; OS layers separate |
 | Connected offboarding/drift | 11 passed after fix; initial failure retained | SCIM bindings, direct membership drift without adoption, approved grant, local containment and remote active:false; seeded users preserved |
 | Public recorded index | 12 actual records assembled | Sanitized JSON/JUnit reports, explicit limits and retained failed attempts; local hashes are not provenance |
-| Source-bound frozen receipt | Pending first source commit | Check inputs must be captured before execution; hashes alone are not signatures |
+| Source-bound frozen receipt | Passed: 54 PostgreSQL cases, content hashes verified | Clean source revision `0c81aa4b5978`; inputs captured before execution; local receipt remains unsigned |
 | Repeatable lab startup | Passed | Reused local configuration, migrations, idempotent seed, protected credential files and strict service health |
-| GitHub CI / signed release / Pages | Not yet run | Authenticated user-created repository is private; public visibility decision required for free public Pages |
+| GitHub CI | All four jobs passed | [Run 37097744436](https://github.com/aman-agarwal6/AccessOps/actions/runs/37097744436), revision `0c81aa4b5978`; 85 backend/integration cases, frontend, policy and source-history scanning |
+| Published simulation | 12 live-site checks passed | [Pages run 37097964717](https://github.com/aman-agarwal6/AccessOps/actions/runs/37097964717); six routes, guided containment, recorded results, source link, mobile layout, no protected/third-party calls or browser errors |
+| Signed release | Pending final maintenance commit | Successful signing and expected-signer verification must be recorded separately |
 
 [Lab instructions](../infra/README.md) describe report paths and exact-fixture
 containment. Browser simulation never proves remote effects. Negative tests can
