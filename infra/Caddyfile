@@ -1,0 +1,58 @@
+{
+	admin off
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://accessops.test:8443 {
+	tls internal
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; form-action 'self' https://id.accessops.test:8443; base-uri 'self'"
+		-Server
+	}
+	request_body {
+		max_size 128KB
+	}
+	@backend path /api/* /auth/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+https://id.accessops.test:8443 {
+	tls internal
+	# Admin console and management endpoints are never proxied to the host.
+	@public path /realms/* /resources/*
+	handle @public {
+		reverse_proxy keycloak:8080
+	}
+	handle {
+		respond "Not found" 404
+	}
+}
+
+# Container-only TLS endpoint. Port 8183 has no host publication.
+https://policy.accessops.internal:8183 {
+	tls internal
+	request_body {
+		max_size 64KB
+	}
+	@evaluation path /access/v1/evaluation
+	handle @evaluation {
+		reverse_proxy policy:8182
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

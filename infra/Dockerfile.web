@@ -1,0 +1,15 @@
+FROM node:24-bookworm-slim@sha256:5cbc7caba8c2c0f0bca675d1b61b9f2857e1cf1853c6164ee9dd409501a936e7 AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY frontend/src ./src
+COPY frontend/public ./public
+COPY frontend/index.html frontend/tsconfig.json frontend/vite.config.ts ./
+ENV VITE_ACCESSOPS_MODE=connected
+RUN npm run build
+FROM caddy:2-alpine@sha256:86d4376ad067063d998533bf06e0c78b97cc8d99cd7cc66f84393165a95a65ed
+# We only bind high ports; remove the upstream binary's low-port file capability
+# so it can execute with all container capabilities dropped.
+RUN setcap -r /usr/bin/caddy
+COPY --from=frontend /build/dist /srv
+COPY infra/Caddyfile /etc/caddy/Caddyfile

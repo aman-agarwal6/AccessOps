@@ -1,0 +1,1324 @@
+{
+  "runs": [
+    {
+      "id": "host-health-23847527d7c0ed71",
+      "name": "Verified host HTTPS boundary",
+      "scenario": "host-health",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:38:15.442243+00:00",
+      "finishedAt": "2026-10-03T04:38:15.492455+00:00",
+      "summary": "5 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "application front door serves connected UI over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "application health route reachable over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "operator discovery has exact issuer over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "Keycloak administration is not exposed through the host front door",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "unconfigured TLS server name is rejected",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "23847527d7c0ed71b7ee97fed1f52cf6481d10dbb1ad7e537dafb175810b7af1",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "host Python/OpenSSL with fixed loopback routing and verified SNI",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "unrecorded",
+          "files_sha256": {
+            "scripts/host_health.py": "7df9472eecce0035436bdec48490b75664c9e682447a9a2d771d64b8fee89b37",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "infra/Caddyfile": "d4c1d1fe934c550e4aef59507b54f47d6ea38246dbafb4df0e6b80a2817f4306"
+          }
+        },
+        "limitations": [
+          "Public CA certificate is supplied per process; OS trust and hosts configuration are not changed.",
+          "The application health route measures reachability, not every dependency or browser interaction.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "frontend-unit-9412a8aff587a819",
+      "name": "Console domain and contract tests",
+      "scenario": "frontend-unit",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:35:51.335000+00:00",
+      "finishedAt": "2026-10-03T04:35:51.407248+00:00",
+      "summary": "24 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "recorded evidence contract > validates every currently published record against the read-only contract",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "recorded evidence contract > accepts empty indexes and complete recorded runs with limitations",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "recorded evidence contract > rejects browser and connected results from the recorded collection",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "recorded evidence contract > rejects incomplete or malformed run records",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "recorded evidence contract > rejects duplicate identifiers and excessive record sizes",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > contains employee and agent immediately without fabricating approval",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > rejects self approval and agent approval without changing original state",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > applies exactly approved human access until explicitly revoked",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > limits newly approved agent grants to ten minutes and six resource effects",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > rejects changed approved scope before effects",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > expires unexecuted approvals and denies execution",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > fails closed on policy outage before reads or changes",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > denies orphaned agents, expired grants and exhausted budgets",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "authorization and containment > rejects agents on restricted resources at request time",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > does not adopt an unapproved provider membership as a grant",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > keeps instruction-bearing text out of approval and execution",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > creates a review proposal without applying it",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > registers an agent suspended without granting or minting credentials",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > requires successor acceptance and independent approval for sponsorship",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > removes old-department access without adding new grants on transfer",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "reviews, drift and identity lifecycle > returns a fresh reset with no fabricated connected runs",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "readable audit summaries > summarizes structured events without including internal identifiers",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "readable audit summaries > shows explicit provider uncertainty and credential binding state",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        },
+        {
+          "name": "readable audit summaries > bounds text and ignores malformed or unknown fields",
+          "status": "passed",
+          "detail": "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "9412a8aff587a819739240b936ea7f887885bb590f724086fbee153ffd413a50",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "local",
+        "sourceRevision": "unrecorded",
+        "limitations": [
+          "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects.",
+          "No signed provenance. JUnit identifies actual test outcomes; it does not establish a source revision."
+        ]
+      }
+    },
+    {
+      "id": "browser-tests-959899a3907c3b61",
+      "name": "Console browser and accessibility checks",
+      "scenario": "browser-tests",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:35:49.742000+00:00",
+      "finishedAt": "2026-10-03T04:36:21.699000+00:00",
+      "summary": "15 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "public simulation completes the employee and agent containment walkthrough",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "request path blocks self approval then applies an independently approved grant",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "review drafts do not approve untrusted text; drift does not create access",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "identity registration clearly preserves pending credential binding",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "sponsor acceptance survives the reviewed transfer and leaves the agent suspended",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "recorded evidence viewer preserves the supplied record scope",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "published evidence retains limitations and readable raw records",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "overview has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "requests has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "identities has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "reviews has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "policies has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "runs has no serious accessibility violations",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "keyboard opens and closes a focus-managed dialog",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        },
+        {
+          "name": "desktop and mobile layouts are readable without page overflow",
+          "status": "passed",
+          "detail": "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "959899a3907c3b611f729fbb4b715fbf5c213271442d45abac809bc1cbb3bc36",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "local",
+        "sourceRevision": "unrecorded",
+        "limitations": [
+          "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence.",
+          "No signed provenance. JUnit identifies actual test outcomes; it does not establish a source revision."
+        ]
+      }
+    },
+    {
+      "id": "postgresql-tests-d7dc738f87ee1343",
+      "name": "PostgreSQL lifecycle and security tests",
+      "scenario": "postgresql-tests",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:34:42.277171+00:00",
+      "finishedAt": "2026-10-03T04:34:50.183171+00:00",
+      "summary": "54 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "test_registration_has_no_access_and_is_idempotent",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_registration_rejects_role_injection",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_registration_requires_operator_role",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_registration_denies_cross_project",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_reference_lab_rejects_nonsynthetic_email",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_agent_registration_does_not_mint_credentials",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_inactive_sponsor_cannot_register_agent",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_department_request_is_not_automatic_new_access",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_unknown_provider_outcome_is_observed_before_create",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_late_enrollment_cannot_reactivate_offboarded_identity",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_lifecycle_change_during_remote_enrollment_requires_correction",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_department_cleanup_preserves_current_backed_grant",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_old_operator_session_denied_after_local_revoke_provider_down",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_old_executor_token_and_replayed_response_denied_after_revoke",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_introspection_outage_inactive_and_wrong_sub_fail_closed",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_issuer_and_subject_both_required_for_executor_mapping",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_agent_tool_replay_reauthorizes_sponsor",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_tool_cross_task_input_injection_rejected",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_live_revocation_race_during_remote_delivery_is_not_verified",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_successor_acceptance_independent_approval_and_suspend",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_real_authlib_code_pkce_nonce_signature_flow",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_signed_but_invalid_oidc_claims_cannot_create_session[change0]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_signed_but_invalid_oidc_claims_cannot_create_session[change1]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_signed_but_invalid_oidc_claims_cannot_create_session[change2]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_signed_but_invalid_oidc_claims_cannot_create_session[change3]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_signed_but_invalid_oidc_claims_cannot_create_session[change4]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_wrong_state_and_code_replay_rejected_before_token_exchange",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_unavailable_principal_preserves_measured_drift_without_grant",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_pending_binding_is_unknown_not_measured_drift",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_malformed_observation_cannot_be_verified",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_complete_matching_observation_can_pass",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_empty_scope_cannot_be_passing_evidence",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_no_session_or_cookie_forgery",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_session_requires_live_binding_and_csrf",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_exact_idempotency_and_unknown_fields",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_self_approval_denied_even_with_role",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_approval_denies_no_effect[expiry]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_approval_denies_no_effect[policy]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_approval_denies_no_effect[intent]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_approval_denies_no_effect[identity]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_approval_denies_no_effect[approver]",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_immediate_revocation_without_approval",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_sponsor_offboard_suspends_agent_and_tasks",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_scope_offboard_cannot_ignore_other_project",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_policy_outage_and_audit_failure_rollback",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_audit_chain_detects_tampering",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_mitre_aml_t0051_001_indirect_injection_cannot_approve",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_task_six_calls_expiry_scope_and_sponsor",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_connector_ambiguous_retry_reconciles_before_repeat",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_stale_queued_grant_cannot_restore_revoked_access",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_console_containment_audit_rollback_and_no_grant_mode",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_oidc_rejects_unenrolled_wrong_issuer_and_never_stores_tokens",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_logout_jti_replay_deduplicated_and_session_revoked",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        },
+        {
+          "name": "test_postgresql_gate_serializes_competing_revocations",
+          "status": "passed",
+          "detail": "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "d7dc738f87ee1343e2967960f345ddefd16bc260500a26caafa86cbae35aa468",
+        "counts": {
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "local",
+        "sourceRevision": "unrecorded",
+        "limitations": [
+          "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements.",
+          "No signed provenance. JUnit identifies actual test outcomes; it does not establish a source revision."
+        ]
+      }
+    },
+    {
+      "id": "offboarding-1760eccefe910b96",
+      "name": "Connected offboarding and unbacked access",
+      "scenario": "offboarding",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:34:36.656611+00:00",
+      "finishedAt": "2026-10-03T04:35:48.861423+00:00",
+      "summary": "11 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "real operator and independent reviewer OIDC sessions established",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique human registered through authenticated API and native SCIM active observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "sponsored inventory agent registered suspended and native SCIM inactive observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "direct provider membership is observed as drift without adopting a local grant",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "independently approved fixture grant applied and native SCIM membership observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "offboarding commits local human containment, grant revocation and sponsored suspension",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "offboarding independently observes native SCIM human active=false",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "sponsored inventory agent remains suspended with native SCIM active=false",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique fixture provider membership removed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "1760eccefe910b96d4e88da17e0d5de99327381ad62a0256ee11593827114d89",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "authenticated API and native SCIM over verified TLS",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_offboarding.py": "b786b9abc9bf7da4396ed23c53ef7014cad83838bd8e1598a450a59bd7aa9405",
+            "scripts/live_oidc.py": "4b6fd36cb29ddbbbda49c546d45895c0a40e872c6f61f039837da5d69564fab0",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "dc35f0b8b4381bc86e8687e8c3ea5208adcd39f3b1ea8b4424c54f2bcc437301",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/accessops/settings.py": "dcf0cfbc23a68ec45c3b50cd888ce7db652ac04a2514d4344d0c6e12b3de45e6",
+            "backend/accessops/urls.py": "0e15d787416ccf1b330acdd54a14090571d5b0492e929eb96d141b948f6f190e",
+            "backend/core/auth.py": "1596ab4697195cb79043b408ee9322f663784e074cb4a73a7fa991890fd47f6f",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "33da54ff752e2e034b9f4ec3152a8fef3fe5708f0ec15c5e554cee9e3895a43b",
+            "backend/core/presentation.py": "a2ead2e2e7a41f57ed0f6e7e14c1022c1cd01016f97e7a385026b619c1d4b3f3",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "1f22d8f946767b37199d51b270570ef50a76205a5ae3fcf6d64a81e7a9db3f0e",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "d2c6aa774eb29d285410399ed850e7ff0e7a4507953eb44bcc8d1db9b4e1481d"
+          }
+        },
+        "limitations": [
+          "Uses unique synthetic inventory enrolled through the existing operator API.",
+          "Offboarded human, suspended agent, revoked grants, requests and audit history are retained.",
+          "The inventory agent starts suspended and has no machine credential; this does not measure running-agent token revocation.",
+          "No live operator session is linked to this fixture; denial of an old offboarded operator session is not measured.",
+          "IdP-triggered backchannel logout and signing-key rotation are not measured.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "oidc-business-8345d292fc1fb7bd",
+      "name": "OIDC login and protected access lifecycle",
+      "scenario": "oidc-business",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:34:15.571355+00:00",
+      "finishedAt": "2026-10-03T04:34:31.834109+00:00",
+      "summary": "11 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "three real operator OIDC code+PKCE sessions over verified TLS",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic lifecycle precondition and request recorded",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "self approval denied by real policy",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "execution without independent approval denied",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "independent approval and SCIM grant observed",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "protected synthetic resource allows active entitlement",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "revocation denies previous successful resource replay immediately",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "SCIM group revoke observed independently",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic clara application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "8345d292fc1fb7bd585f43f88299f6514a5f4235807d91ccc27c4f9560afb043",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real HTTP OIDC code+PKCE and authenticated API; no browser UI",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_oidc.py": "4b6fd36cb29ddbbbda49c546d45895c0a40e872c6f61f039837da5d69564fab0",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/accessops/settings.py": "dcf0cfbc23a68ec45c3b50cd888ce7db652ac04a2514d4344d0c6e12b3de45e6",
+            "backend/accessops/urls.py": "0e15d787416ccf1b330acdd54a14090571d5b0492e929eb96d141b948f6f190e",
+            "backend/core/auth.py": "1596ab4697195cb79043b408ee9322f663784e074cb4a73a7fa991890fd47f6f",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "33da54ff752e2e034b9f4ec3152a8fef3fe5708f0ec15c5e554cee9e3895a43b",
+            "backend/core/presentation.py": "a2ead2e2e7a41f57ed0f6e7e14c1022c1cd01016f97e7a385026b619c1d4b3f3",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "1f22d8f946767b37199d51b270570ef50a76205a5ae3fcf6d64a81e7a9db3f0e",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "d2c6aa774eb29d285410399ed850e7ff0e7a4507953eb44bcc8d1db9b4e1481d"
+          }
+        },
+        "limitations": [
+          "Uses synthetic Clara/Atlas only and requires no active Clara/Atlas grant at the start.",
+          "Leaves synthetic request/audit history and returns Clara/Atlas to a revoked grant state.",
+          "Local application logout is measured; IdP-triggered backchannel logout and signing-key rotation are not.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "identity-outage-99d3c05eec8796e6",
+      "name": "Actual identity-provider outage denial",
+      "scenario": "identity-outage",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:23:53.664566+00:00",
+      "finishedAt": "2026-10-03T04:23:56.531442+00:00",
+      "summary": "1 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "identity outage fails closed",
+          "status": "passed",
+          "detail": "Actual check using live service dependency outage."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "99d3c05eec8796e677f6992542e5f77ab5db415f316a57c6d2b20b90f75aeb51",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "live service dependency outage",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_failure.py": "1e715b04f205976ded97f670724f3372cada50928b137fa7f7435d532ea41ba9",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/policy.py": "1a19455b3bb590c71650ad664aafda8908e6a9864d34a8dfa60b454d8755af7b",
+            "integrations/security.py": "76e492006e6d9e6f1a5010b7facabfcd1ad5df76b45c6665471da2fa555e4c15",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
+          }
+        },
+        "limitations": [
+          "The policy probe measures authorization denial; the identity probe measures new token issuance failure.",
+          "Existing-token introspection during an outage is not measured by this suite.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "policy-outage-487129fee9e12b5c",
+      "name": "Actual OPA outage denial",
+      "scenario": "policy-outage",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:23:48.916012+00:00",
+      "finishedAt": "2026-10-03T04:23:49.029451+00:00",
+      "summary": "1 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "policy outage fails closed",
+          "status": "passed",
+          "detail": "Actual check using live service dependency outage."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "487129fee9e12b5cf26a7713b2012e8e8089e9f376c69d986d10e96c31c2c26b",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "live service dependency outage",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_failure.py": "1e715b04f205976ded97f670724f3372cada50928b137fa7f7435d532ea41ba9",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/policy.py": "1a19455b3bb590c71650ad664aafda8908e6a9864d34a8dfa60b454d8755af7b",
+            "integrations/security.py": "76e492006e6d9e6f1a5010b7facabfcd1ad5df76b45c6665471da2fa555e4c15",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
+          }
+        },
+        "limitations": [
+          "The policy probe measures authorization denial; the identity probe measures new token issuance failure.",
+          "Existing-token introspection during an outage is not measured by this suite.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "protocols-056b05e2b9246fdb",
+      "name": "Identity and authorization protocols",
+      "scenario": "protocols",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:20:58.674706+00:00",
+      "finishedAt": "2026-10-03T04:20:59.529316+00:00",
+      "summary": "18 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "native SCIM discovery",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM create and read",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM filter and pagination",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM group grant observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM group revoke observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM active=false observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "connector operators realm denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "private_key_jwt and signed token verified",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "live introspection active",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "executor denied SCIM administration",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "workforce SCIM token denied operator realm",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real AuthZEN allow with exact bundle digest",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA grant without approval denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA immediate containment allowed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA cross-project containment denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real AuthZEN unauthorized evaluation denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "temporary SCIM group removed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "temporary SCIM user removed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "056b05e2b9246fdb7db9801c319513268b6b8734f95424b12692c77afbdf4845",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "live service HTTP over verified TLS",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_integrations.py": "c1f7aff82c83931daf796cdd3fb0c0b31b146a94db12fe0ae717bcaf06c19b17",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "dc35f0b8b4381bc86e8687e8c3ea5208adcd39f3b1ea8b4424c54f2bcc437301",
+            "integrations/policy.py": "1a19455b3bb590c71650ad664aafda8908e6a9864d34a8dfa60b454d8755af7b",
+            "integrations/security.py": "76e492006e6d9e6f1a5010b7facabfcd1ad5df76b45c6665471da2fa555e4c15",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
+          }
+        },
+        "limitations": [
+          "A bounded interoperability check, not SCIM or AuthZEN conformance certification.",
+          "Provider login-session revocation and real signing-key rotation are not measured.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "policy-4e2979c77c1c2501",
+      "name": "OPA authorization rules",
+      "scenario": "policy",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:20:57.204595+00:00",
+      "finishedAt": "2026-10-03T04:20:57.593150+00:00",
+      "summary": "19 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "test_disabled_identity_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_no_sponsor_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_cross_project_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_scoped_tool",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_valid_operator",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_containment_no_approval",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_global_offboard_cross_project_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_global_offboard_scope",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_entitlement",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_revoked_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_agent_sponsor_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_budget_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_missing_input_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_cannot_approve",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_self_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_missing_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_expired_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_unknown_action_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_stale_policy_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "4e2979c77c1c250191fa2190e6cc19b2ed3c65e8b23ad791605361b22ccdc4b1",
+        "counts": {
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "local",
+        "driver": "digest-pinned OPA container; network disabled",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "unrecorded",
+          "files_sha256": {
+            "scripts/test_policy.py": "8320f0106f54ec1cac74df8f89bc066e1faa4c23d8a9584e789f1c6c789aa2a4",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "policies/accessops.rego": "192a869b7b04963aab9c8499beb9e25e44cb77d4777b57a4fff5b7420cd2cb87",
+            "policies/accessops_test.rego": "29d8c9507439d5204c7ee27c7028961edefd35c70a70473844ba122bae819891",
+            "infra/images.lock.json": "bf6da76d0281ff543cd9268e7029ca8bcb18f09c7242276b7ad7a9f7ef258197"
+          }
+        },
+        "limitations": [
+          "Tests local policy source, not live policy adapter interoperability.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "host-health-attempt-1-failed-9479a1197d66c0d7",
+      "name": "Initial TLS negative probe \u2014 failed attempt retained",
+      "scenario": "host-health-attempt-1-failed",
+      "status": "failed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:14:18.595804+00:00",
+      "finishedAt": "2026-10-03T04:14:18.634245+00:00",
+      "summary": "4 passed, 1 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "application front door serves connected UI over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "application health route reachable over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "operator discovery has exact issuer over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "Keycloak administration is not exposed through the host front door",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "wrong certificate hostname is rejected",
+          "status": "failed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "9479a1197d66c0d7d5a4661a67f23a34e5c8afc7f738c62ea54ddb7d314adbe6",
+        "counts": {
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "host Python/OpenSSL with fixed loopback routing and verified SNI",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "unrecorded",
+          "files_sha256": {
+            "scripts/host_health.py": "58e34145e2430226e8bbbc623c82f3c964aa00ab7cde5506b8120963e16b787d",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "infra/Caddyfile": "d4c1d1fe934c550e4aef59507b54f47d6ea38246dbafb4df0e6b80a2817f4306"
+          }
+        },
+        "limitations": [
+          "Public CA certificate is supplied per process; OS trust and hosts configuration are not changed.",
+          "The application health route measures reachability, not every dependency or browser interaction.",
+          "Local workstation measurement; not signed CI provenance or protocol certification.",
+          "Historical failed attempt retained alongside the later retry; its result was not rewritten."
+        ]
+      }
+    },
+    {
+      "id": "offboarding-attempt-1-failed-22ebb00c4e6b75a5",
+      "name": "Initial drift check \u2014 failed attempt retained",
+      "scenario": "offboarding-attempt-1-failed",
+      "status": "failed",
+      "origin": "recorded",
+      "startedAt": "2026-10-03T04:10:25.750478+00:00",
+      "finishedAt": "2026-10-03T04:11:24.209097+00:00",
+      "summary": "7 passed, 1 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "real operator and independent reviewer OIDC sessions established",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique human registered through authenticated API and native SCIM active observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "sponsored inventory agent registered suspended and native SCIM inactive observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "direct provider membership is observed as drift without adopting a local grant",
+          "status": "failed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "interrupted fixture validation contained through authenticated API",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique fixture provider membership removed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "22ebb00c4e6b75a5c0099d21390fa9ac3d38bc8e2a93f0307ddc2f6144b39eba",
+        "counts": {
+          "passed": 7,
+          "failed": 1,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "authenticated API and native SCIM over verified TLS",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "380aba6ac0b9777b42e6d5970fec4f4137f7c465d68f4bb5c8356fe878dcca14",
+          "files_sha256": {
+            "scripts/live_offboarding.py": "248a1267855f0603ad1138c7d3a11cf73e3c084ca651200f2d722f1ba94cf62d",
+            "scripts/live_oidc.py": "320c21e15a6f5729349289d0f7a3c46fc447cbb9c767f066b6ac633d1e9f3bcf",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "dc35f0b8b4381bc86e8687e8c3ea5208adcd39f3b1ea8b4424c54f2bcc437301",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
+          }
+        },
+        "limitations": [
+          "Uses unique synthetic inventory enrolled through the existing operator API.",
+          "Offboarded human, suspended agent, revoked grants, requests and audit history are retained.",
+          "The inventory agent starts suspended and has no machine credential; this does not measure running-agent token revocation.",
+          "No live operator session is linked to this fixture; denial of an old offboarded operator session is not measured.",
+          "IdP-triggered backchannel logout and signing-key rotation are not measured.",
+          "Local workstation measurement; not signed CI provenance or protocol certification.",
+          "Historical failed attempt retained alongside the later retry; its result was not rewritten."
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "platform": "linux/amd64",
+  "verifiedAt": "2026-10-03",
+  "keycloak": "quay.io/keycloak/keycloak:26.8.0@sha256:d79bc4bf1c54e802735ef91926b5c003de1fbb50b1a93382611972277219c9ad",
+  "postgres": "postgres:17-bookworm@sha256:91eb910c44c7ed13f7f1a4ccadaa9ca72ef14cddc04cacb6e070e48eb44731a3",
+  "python": "python:3.13-slim-bookworm@sha256:88310c082760d93ac7c74d579e95e53a4ab6ea52dd8901abc61a103daf488ac4",
+  "opa": "openpolicyagent/opa:1.9.0-static@sha256:24632a9cf355dc1ecb8e982693fab8e26461d3cf74ebc844289cbf254ad465cc",
+  "caddy": "caddy:2-alpine@sha256:86d4376ad067063d998533bf06e0c78b97cc8d99cd7cc66f84393165a95a65ed",
+  "node": "node:24-bookworm-slim@sha256:5cbc7caba8c2c0f0bca675d1b61b9f2857e1cf1853c6164ee9dd409501a936e7"
+}

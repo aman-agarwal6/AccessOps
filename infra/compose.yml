@@ -1,0 +1,175 @@
+name: accessops
+
+x-backend: &backend
+  image: accessops-backend:local
+  build:
+    context: ..
+    dockerfile: infra/Dockerfile.backend
+  env_file:
+    - ../.local/backend.env
+    - ../.local/policy-runtime.env
+  environment:
+    ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt
+    REQUESTS_CA_BUNDLE: /run/accessops-ca/root.crt
+    ACCESSOPS_TRUST_PRIVATE_PROXY: '1'
+    AUTHZEN_URL: https://policy.accessops.internal:8183
+    PYTHONPATH: /app:/app/backend
+  volumes:
+    - ../.local/tls:/run/accessops-ca:ro
+    - ../.local/executor:/run/executor:ro
+  networks: [app, identity, policy]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  mem_limit: 512m
+  pids_limit: 128
+
+services:
+  app-db:
+    image: postgres:17-bookworm@sha256:91eb910c44c7ed13f7f1a4ccadaa9ca72ef14cddc04cacb6e070e48eb44731a3
+    env_file: ../.local/app-db.env
+    volumes:
+      - app-db:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-accessops.sh:ro
+    networks: [app]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 256m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+
+  identity-db:
+    image: postgres:17-bookworm@sha256:91eb910c44c7ed13f7f1a4ccadaa9ca72ef14cddc04cacb6e070e48eb44731a3
+    env_file: ../.local/identity-db.env
+    volumes:
+      - identity-db:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-accessops.sh:ro
+    networks: [identity]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 256m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0@sha256:d79bc4bf1c54e802735ef91926b5c003de1fbb50b1a93382611972277219c9ad
+    command: [start, --import-realm]
+    env_file: ../.local/keycloak.env
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://identity-db:5432/accessops_identity
+      KC_HOSTNAME: https://id.accessops.test:8443
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_POOL_MAX_THREADS: '32'
+      JAVA_OPTS_KC_HEAP: -Xms256m -Xmx768m
+      KC_TRUSTSTORE_PATHS: /run/accessops-ca
+    depends_on:
+      identity-db: {condition: service_healthy}
+    volumes:
+      - ../.local/realms:/opt/keycloak/data/import:ro
+      - ../.local/tls:/run/accessops-ca:ro
+    networks: [identity]
+    healthcheck:
+      test: [CMD-SHELL, "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3; cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 30
+    mem_limit: 1200m
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  opa:
+    image: openpolicyagent/opa:1.9.0-static@sha256:24632a9cf355dc1ecb8e982693fab8e26461d3cf74ebc844289cbf254ad465cc
+    command: [run, --server, --addr=0.0.0.0:8181, --log-level=error, --bundle, /policy-bundle/bundle.tar.gz]
+    volumes: [../.local/policy:/policy-bundle:ro]
+    networks: [policy-engine]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    pids_limit: 32
+
+  policy:
+    image: accessops-policy:local
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.policy
+    env_file: ../.local/policy.env
+    volumes: [../.local/policy:/policy-bundle:ro]
+    networks: [policy, policy-engine]
+    depends_on: [opa]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8182/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 128m
+    pids_limit: 64
+
+  backend:
+    <<: *backend
+    depends_on:
+      app-db: {condition: service_healthy}
+      policy: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    <<: *backend
+    command: [python, /app/scripts/worker.py]
+    depends_on:
+      backend: {condition: service_healthy}
+    mem_limit: 384m
+
+  web:
+    image: accessops-web:local
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    ports: [127.0.0.1:8443:8443]
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge: {}
+      app:
+        aliases: [accessops.test]
+      identity:
+        aliases: [id.accessops.test, accessops.test]
+      policy:
+        aliases: [policy.accessops.internal]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    pids_limit: 64
+
+networks:
+  edge: {}
+  app: {internal: true}
+  identity: {internal: true}
+  policy: {internal: true}
+  policy-engine: {internal: true}
+volumes:
+  app-db:
+  identity-db:
+  caddy-data:
+  caddy-config:

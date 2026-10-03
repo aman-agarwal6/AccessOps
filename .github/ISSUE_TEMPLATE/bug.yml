@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a reproducible issue using synthetic data.
+body:
+  - type: markdown
+    attributes:
+      value: Do not include tokens, passwords, keys, personal data or raw authentication logs. Use SECURITY.md for private security reporting.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Browser simulation
+        - Connected local lab
+        - Evidence tooling
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps, expected result and actual result
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Source revision and runtime versions

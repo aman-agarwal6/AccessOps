@@ -1,0 +1,95 @@
+name: Release signed evidence
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: evidence-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/verify.yml
+  produce:
+    if: github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      test-db:
+        image: postgres:17-bookworm@sha256:91eb910c44c7ed13f7f1a4ccadaa9ca72ef14cddc04cacb6e070e48eb44731a3
+        env:
+          POSTGRES_DB: accessops_ci
+          POSTGRES_USER: accessops_ci
+          POSTGRES_PASSWORD: NONFUNCTIONAL_CI_DISPOSABLE_PASSWORD
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U accessops_ci -d accessops_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ACCESSOPS_TEST_DATABASE_URL: postgresql://accessops_ci:NONFUNCTIONAL_CI_DISPOSABLE_PASSWORD@127.0.0.1:55432/accessops_ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --require-hashes -r backend/requirements-dev.lock
+      - run: python tools/evidence.py begin --output output/source-inputs.json
+      - run: python -m pytest tests ../integrations/tests --junitxml=../output/backend.xml
+        working-directory: backend
+      - run: python tools/install_cli.py syft
+      - run: python tools/sbom_input.py
+      - run: .local/bin/syft scan dir:output/sbom-source --source-name accessops-locked-dependencies --source-version "${GITHUB_SHA}" -o cyclonedx-json@1.6=output/sbom.cdx.json
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+      - run: python tools/evidence.py freeze --report output/backend.xml --inputs output/source-inputs.json --sbom output/sbom.cdx.json --origin ci --output output/release
+      - run: cp output/sbom.cdx.json output/release/sbom.cdx.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: frozen-evidence
+          path: output/release/
+          retention-days: 14
+  sign:
+    needs: produce
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      # No checkout, application execution, install hook, or PR artifact in this job.
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: frozen-evidence
+          path: release
+      - name: Attest exact archive provenance
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release/accessops-evidence-*.tar.gz
+          push-to-registry: false
+          create-storage-record: false
+      - name: Attest SBOM for same archive
+        id: sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release/accessops-evidence-*.tar.gz
+          sbom-path: release/sbom.cdx.json
+          push-to-registry: false
+          create-storage-record: false
+      - name: Keep detached bundles outside signed bytes
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom.outputs.bundle-path }}
+        run: |
+          cp -- "$PROVENANCE_BUNDLE" release/provenance.sigstore.json
+          cp -- "$SBOM_BUNDLE" release/sbom.sigstore.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: signed-evidence
+          path: release/
+          retention-days: 14

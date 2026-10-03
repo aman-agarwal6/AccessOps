@@ -1,0 +1,14 @@
+title = "AccessOps source and evidence scan"
+[extend]
+useDefault = true
+[[allowlists]]
+description = "Clearly nonfunctional synthetic configuration and assertion fixtures"
+regexTarget = "match"
+regexes = ['''NONFUNCTIONAL_[A-Z_]+''']
+
+[[allowlists]]
+description = "Reviewed public verification source digests; no credential values"
+condition = "AND"
+paths = ['''^frontend/public/evidence/index\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"(?:(?:scripts|integrations|backend)/[A-Za-z0-9_./-]+\.py|policies/[A-Za-z0-9_./-]+\.rego|expected_policy_bundle_sha256)":\s*"[a-f0-9]{64}"[,]?\s*$''']

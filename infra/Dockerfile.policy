@@ -1,0 +1,8 @@
+FROM python:3.13-slim-bookworm@sha256:88310c082760d93ac7c74d579e95e53a4ab6ea52dd8901abc61a103daf488ac4
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+WORKDIR /app
+COPY backend/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.lock && useradd --uid 10001 --create-home accessops
+COPY integrations/ /app/integrations/
+USER 10001
+CMD ["python", "-m", "integrations.authzen_server"]

@@ -1,0 +1,104 @@
+name: Verify AccessOps
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      test-db:
+        image: postgres:17-bookworm@sha256:91eb910c44c7ed13f7f1a4ccadaa9ca72ef14cddc04cacb6e070e48eb44731a3
+        env:
+          POSTGRES_DB: accessops_ci
+          POSTGRES_USER: accessops_ci
+          POSTGRES_PASSWORD: NONFUNCTIONAL_CI_DISPOSABLE_PASSWORD
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U accessops_ci -d accessops_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ACCESSOPS_TEST_DATABASE_URL: postgresql://accessops_ci:NONFUNCTIONAL_CI_DISPOSABLE_PASSWORD@127.0.0.1:55432/accessops_ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --require-hashes -r backend/requirements-dev.lock
+      - run: |
+          python -m pip install --require-hashes --only-binary=:all: -r tools/requirements-quality.lock
+      - run: ruff check backend integrations scripts tools
+      - run: ruff format --check backend integrations scripts tools
+      - run: python -m unittest discover -s tools -p 'test_*.py'
+      - run: python manage.py check --settings accessops.test_settings
+        working-directory: backend
+      - run: python manage.py makemigrations --check --dry-run --settings accessops.test_settings
+        working-directory: backend
+      - run: mkdir -p output
+      - run: python -m pytest tests ../integrations/tests --junitxml=../output/backend.xml
+        working-directory: backend
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: backend-results
+          path: output/backend.xml
+          retention-days: 7
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: browser-test-report
+          path: frontend/playwright-report
+          retention-days: 7
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: docker run --rm -v "$PWD/policies:/policies:ro" openpolicyagent/opa:1.9.0-static@sha256:24632a9cf355dc1ecb8e982693fab8e26461d3cf74ebc844289cbf254ad465cc test /policies -v
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_cli.py gitleaks
+      - run: .local/bin/gitleaks git --redact --no-banner --config .gitleaks.toml

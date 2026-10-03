@@ -1,0 +1,254 @@
+"""SCIM 2 client for Keycloak 26.8's native workforce-realm endpoint.
+
+This connector never administers the operators realm, clients, or policy. Its
+manage-users credential is workforce-wide, not a claim of per-project FGAP.
+AccessOps performs project authorization before calling it.
+"""
+
+import json
+import os
+import re
+import time
+from urllib.parse import quote
+
+import httpx
+
+from .errors import ConnectorError, IntegrationError
+from .transport import checked_url, client, json_response
+
+USER = "urn:ietf:params:scim:schemas:core:2.0:User"
+GROUP = "urn:ietf:params:scim:schemas:core:2.0:Group"
+PATCH = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+LIST = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+
+
+def identifier(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", value):
+        raise ConnectorError("Invalid provider identifier")
+    return quote(value, safe="")
+
+
+class KeycloakConnector:
+    def __init__(self, *, http=None, issuer=None, client_id=None, client_secret=None):
+        self.issuer = checked_url(issuer or os.getenv("WORKFORCE_ISSUER", ""))
+        if not self.issuer.endswith("/realms/accessops-workforce"):
+            raise ConnectorError("Connector may only target the workforce realm")
+        self.base = self.issuer + "/scim/v2"
+        self.client_id = client_id or os.getenv("SCIM_CLIENT_ID", "accessops-scim")
+        self.secret = client_secret or os.getenv("SCIM_CLIENT_SECRET", "")
+        self.http = http or client()
+        self._access_token, self._expires = "", 0
+
+    def _token(self):
+        if self._expires > time.monotonic():
+            return self._access_token
+        if len(self.secret) < 32:
+            raise ConnectorError("SCIM credentials are not configured")
+        try:
+            response = self.http.post(
+                self.issuer + "/protocol/openid-connect/token",
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": self.client_id,
+                    "client_secret": self.secret,
+                },
+            )
+            if response.status_code != 200:
+                raise ConnectorError("SCIM authentication rejected")
+            data = json_response(response, limit=32768)
+            if not isinstance(data.get("access_token"), str) or not isinstance(
+                data.get("expires_in"), (int, float)
+            ):
+                raise ConnectorError("Invalid SCIM token response")
+            self._access_token = data["access_token"]
+            self._expires = time.monotonic() + max(0, min(data["expires_in"] - 10, 120))
+            return self._access_token
+        except (httpx.HTTPError, IntegrationError) as exc:
+            raise ConnectorError("SCIM authentication unavailable") from exc
+
+    def _call(self, method, path, *, body=None, params=None, expected=(200,)):
+        try:
+            response = self.http.request(
+                method,
+                self.base + path,
+                json=body,
+                params=params,
+                headers={
+                    "Authorization": "Bearer " + self._token(),
+                    "Accept": "application/scim+json",
+                    "Content-Type": "application/scim+json",
+                },
+            )
+            if response.status_code not in expected:
+                raise ConnectorError(f"SCIM operation failed (HTTP {response.status_code})")
+            return None if response.status_code == 204 else json_response(response)
+        except (httpx.HTTPError, IntegrationError) as exc:
+            raise ConnectorError("SCIM operation unavailable") from exc
+
+    def discover(self):
+        return {
+            name: self._call("GET", "/" + name)
+            for name in ("ServiceProviderConfig", "ResourceTypes", "Schemas")
+        }
+
+    def list_resources(self, resource_type, *, filter_expression=None, start_index=1, count=100):
+        if (
+            resource_type not in ("Users", "Groups")
+            or type(start_index) is not int
+            or start_index < 1
+            or type(count) is not int
+            or not 1 <= count <= 100
+        ):
+            raise ConnectorError("Invalid SCIM pagination")
+        if filter_expression is not None and (
+            not isinstance(filter_expression, str) or len(filter_expression) > 2048
+        ):
+            raise ConnectorError("Invalid SCIM filter")
+        params = {"startIndex": start_index, "count": count}
+        if filter_expression is not None:
+            params["filter"] = filter_expression
+        data = self._call("GET", "/" + resource_type, params=params)
+        if (
+            not isinstance(data, dict)
+            or LIST not in data.get("schemas", [])
+            or not isinstance(data.get("Resources", []), list)
+        ):
+            raise ConnectorError("Invalid SCIM list response")
+        return data
+
+    def create_user(self, username, *, external_id, given_name="", family_name="", email=None):
+        if not isinstance(username, str) or not 1 <= len(username) <= 100:
+            raise ConnectorError("Invalid username")
+        body = {
+            "schemas": [USER],
+            "userName": username,
+            "externalId": identifier(external_id),
+            "active": True,
+            "name": {"givenName": given_name[:100], "familyName": family_name[:100]},
+        }
+        if email:
+            body["emails"] = [{"value": email, "primary": True, "type": "work"}]
+        return self._call("POST", "/Users", body=body, expected=(201,))
+
+    def get_user(self, user_id):
+        return self._call("GET", "/Users/" + identifier(user_id))
+
+    def patch_user(self, user_id, operations):
+        if not isinstance(operations, list) or not 1 <= len(operations) <= 10:
+            raise ConnectorError("Invalid patch")
+        for operation in operations:
+            if operation.get("op", "").lower() not in ("add", "replace", "remove") or operation.get(
+                "path"
+            ) not in ("active", "name.givenName", "name.familyName", "displayName"):
+                raise ConnectorError("User patch is outside connector scope")
+            if operation.get("path") == "active" and type(operation.get("value")) is not bool:
+                raise ConnectorError("Active must be boolean")
+        return self._call(
+            "PATCH",
+            "/Users/" + identifier(user_id),
+            body={"schemas": [PATCH], "Operations": operations},
+        )
+
+    def delete_user(self, user_id):
+        return self._call("DELETE", "/Users/" + identifier(user_id), expected=(204,))
+
+    def create_group(self, display_name):
+        if (
+            not isinstance(display_name, str)
+            or not display_name.startswith("accessops-")
+            or len(display_name) > 100
+        ):
+            raise ConnectorError("Group must use accessops- namespace")
+        return self._call(
+            "POST",
+            "/Groups",
+            body={"schemas": [GROUP], "displayName": display_name},
+            expected=(201,),
+        )
+
+    def delete_group(self, group_id):
+        self.get_group(group_id)  # Namespace guard applies to deletion as well.
+        return self._call("DELETE", "/Groups/" + identifier(group_id), expected=(204,))
+
+    def get_group(self, group_id):
+        # Keycloak SCIM marks members as returned=request; omission is not absence.
+        data = self._call(
+            "GET",
+            "/Groups/" + identifier(group_id),
+            params={"attributes": "id,displayName,members"},
+        )
+        if not isinstance(data.get("displayName"), str) or not data["displayName"].startswith(
+            "accessops-"
+        ):
+            raise ConnectorError("Group is outside connector namespace")
+        return data
+
+    def set_membership(self, group_id, user_id, present):
+        identifier(user_id)
+        current = self.get_group(group_id)
+        exists = any(item.get("value") == user_id for item in current.get("members", []))
+        if exists == present:
+            return current
+        operation = (
+            {"op": "add", "path": "members", "value": [{"value": user_id}]}
+            if present
+            else {"op": "remove", "path": "members[value eq " + json.dumps(user_id) + "]"}
+        )
+        return self._call(
+            "PATCH",
+            "/Groups/" + identifier(group_id),
+            body={"schemas": [PATCH], "Operations": [operation]},
+        )
+
+    def _group(self, resource):
+        group = (resource or {}).get("providerGroup")
+        if not group:
+            raise ConnectorError("Resource has no managed provider group")
+        return identifier(group)
+
+    def apply(self, operation, identity, resource=None):
+        user_id = identity.get("providerSubject")
+        if not user_id:
+            raise ConnectorError("Identity has no provider binding")
+        kind = operation.get("kind", operation.get("action"))
+        if kind in ("grant", "revoke"):
+            group_id = self._group(resource)
+            expected = kind == "grant"
+            self.set_membership(group_id, user_id, expected)
+            group = self.get_group(group_id)
+            actual = any(member.get("value") == user_id for member in group.get("members", []))
+            return {
+                "desired": {"member": expected},
+                "observed": {"member": actual, "groupId": group_id},
+                "verified": actual == expected,
+            }
+        if kind == "offboard":
+            self.patch_user(user_id, [{"op": "replace", "path": "active", "value": False}])
+            actual = self.get_user(user_id)
+            return {
+                "desired": {"active": False},
+                "observed": {"active": actual.get("active")},
+                "verified": actual.get("active") is False,
+            }
+        if kind == "transfer":
+            # Sponsor is exclusively an AccessOps server record, not an OIDC act claim.
+            return {
+                "desired": {"sponsor": operation.get("new_sponsor_id")},
+                "observed": {"providerChangeRequired": False},
+                "verified": True,
+            }
+        raise ConnectorError("Unsupported connector operation")
+
+    def reconcile(self, identity, resource=None):
+        observed = self.get_user(identity.get("providerSubject"))
+        desired_active = identity.get("status") == "active"
+        result = {"active": observed.get("active")}
+        drift = observed.get("active") is not desired_active
+        if resource and resource.get("providerGroup"):
+            group = self.get_group(resource["providerGroup"])
+            result["member"] = any(
+                m.get("value") == identity.get("providerSubject") for m in group.get("members", [])
+            )
+            if "desiredMember" in resource:
+                drift = drift or result["member"] != resource["desiredMember"]
+        return {"drift": drift, "observed": result}
