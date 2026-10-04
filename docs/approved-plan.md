@@ -12,7 +12,7 @@ can be inspected and independently reproduced.
 - Authenticated local lab with real Django, PostgreSQL, Keycloak and OPA services.
 - Read-only recorded verification evidence with source revision and actual results.
 - One fictional organization, two departments and separate project resources.
-- Six destinations: overview/work queue, requests, identities, access reviews,
+- Seven destinations: overview/work queue, offboarding cases, requests, identities, access reviews,
   policies/resources, runs/evidence. Approval, application and verification are
   separate states. Every visible action must work or explain its prerequisite.
 - Deterministic bounded review assistant is required. Local LLM is optional and
@@ -54,3 +54,44 @@ The September 2026 updates were incorporated: SCIM semantics, AuthZEN requests,
 explicit agent authentication and sponsor records, logout/introspection, optional
 CAEP/DPoP/token exchange, control mapping, threat methods, approval expiry,
 break-glass, JWT edge cases, drift, SBOM and signed evidence.
+
+## Approved enterprise application extension — October 2026
+
+The user selected employee/contractor offboarding across systems and has no paid
+test tenant. The concrete job is to close an HR departure ticket with accountable
+work and reviewed evidence. Each case binds stable Entra/GitHub account IDs,
+has an owner and a four-hour reference deadline, and tracks directory containment,
+sessions, collaboration, shared credentials, data/license handover and legacy scope.
+
+The existing transactional containment and real local Keycloak connector remain
+the operational core. Vendor-shaped offline fixtures plus optional bounded
+read-only Graph/GitHub collectors extend coverage without requiring a tenant.
+Imported observations never become authenticated provider proof. Unknown absence,
+stale timestamps and incomplete visibility keep work unresolved. Owner statements
+record external work explicitly; independent reviewers close the exact current
+packet. Closed packets remain immutable through application paths.
+
+This extension adds a practical case queue and service-desk artifact, while keeping
+the original standards/control mappings, agent restrictions and free deployment.
+The separately supplied Samba AD-compatible lab is an optional local integration
+target; its independent tests do not establish AccessOps integration or Microsoft
+AD/Entra interoperability. Actual integration results must be recorded separately.
+
+The supplied lab is integrated through an opt-in connector with immutable
+server-enrolled GUIDs, object-specific delegated permissions, verified LDAPS,
+atomic stale-value account flag protection and explicit group readback. Existing
+tickets/sessions and Microsoft interoperability remain unverified. Offboarding
+also queues removals for known managed Keycloak grant history, so an earlier
+local revocation or a repeated HR event cannot conceal unfinished remote work.
+
+## Interface redesign — October 2026
+
+The user rejected the earlier light interface as hard to read and follow. The
+console was rebuilt around the offboarding job: a dark graphite default with a
+matching light theme, a 16px type scale, an urgency-ranked departure queue, one
+explicit next step per case that names the role able to take it, actions grouped
+by phase, and a closure-readiness rail. The seven destinations remain, grouped as
+Offboarding, Access governance and Evidence. The five evidence kinds (signed CI
+evidence, provider observation, imported snapshot, owner attestation, simulated)
+each keep a fixed icon, label and color. Server rules did not change; the UI only
+explains them. Automated axe checks run on every route in both themes.

@@ -1,5 +1,63 @@
 # Verification ledger
 
+Every row below records a check that actually ran, with its real count. Failed
+attempts are kept, not rewritten. Counts describe separate suites, not unique
+requirements. All runs used synthetic records on a personal workstation; no
+employer, production identity provider, Microsoft tenant or GitHub organization
+was contacted. Local reports are unsigned; signed CI evidence is listed separately.
+
+## v0.2: departure cases, directory lab and console redesign
+
+Local runs on 3–4 October 2026 (UTC). The backend source was unchanged between
+the PostgreSQL run on 3 October and the live lab runs on 4 October; the lab's
+runtime source matched the checkout (`runtime-source.json`: no mismatches).
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Departure cases through the live lab | 18 passed | Real OIDC sessions, CSRF denial, binding mismatch denial, containment through real Keycloak (account disabled and managed group membership removed, confirmed by an independent read-only native membership query), owner statements, owner self-closure denied, independent closure, immutable packet. Entra/GitHub inputs are synthetic fixtures. |
+| Departure case with a Samba directory account | 28 passed | Fresh fixture `6bfe42dc4a25`. Strict LDAPS and wrong-name/CA denial, GUID binding, canary and delegated-permission denials, stale-flag atomic denial, case-triggered disable and group removal with complete readback, read-first replay, private membership route (GET allowed; other methods, realms, paths and public admin denied). |
+| New directory logins before → after | 2 passed → 2 passed | Before: new LDAPS bind and Kerberos ticket succeed. After: both denied. Existing tickets and sessions are not measured. |
+| OIDC and business lifecycle | 11 passed | Code + S256 PKCE, independent approval, SCIM grant/revoke, protected read, replay denial, logout |
+| Identity and authorization protocols | 18 passed | Native SCIM, `private_key_jwt`, JWT validation, introspection, AuthZEN/OPA with exact bundle digest |
+| Connected offboarding and drift | 11 passed | Local containment, remote `active:false`, direct membership drift without adoption |
+| OPA policy rules | 23 passed | Pinned OPA container |
+| Host HTTPS boundary | 5 passed | Loopback only, SNI, CA/hostname verification, hidden admin route |
+| Backend on PostgreSQL 17 / Python 3.13 | 110 passed | Disposable database, including concurrent serialization (3 October) |
+| Backend on host test settings | 109 passed, 1 skipped | SQLite; the skipped test needs PostgreSQL row locks |
+| Integration boundaries | 145 passed | Collectors, directory adapter, membership observation, cryptography; isolated or mocked transport |
+| Console unit tests | 43 passed | Case rules, seeded queue, next-step and role logic, report parsing, DTO validation |
+| Console browser tests | 33 passed | Full departure journey to closure and export, role boundaries, queue filters, import errors, keyboard and focus, mobile layout, axe WCAG 2.2 A/AA on every route in both themes |
+| Connected console rendering | 9 passed | The sanitized snapshot recorded by the directory run, rendered by the connected build through intercepted read endpoints. Checks DTO compatibility, provenance labels, layout and accessibility; not authentication evidence. |
+| Evidence and lock tooling | 10 passed | Publisher allowlist, hashing, traversal and lock-consistency tests |
+| Public evidence index | 28 records | 20 passed, 8 failed attempts retained |
+
+### Failed attempts kept on record
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| `cases-attempt-1` (3 Oct) | The policy did not allow the new departure action | Added the reviewed AuthZEN/OPA allowance |
+| `cases-attempt-2` (3 Oct) | Disabling the account left the managed Keycloak group membership behind | Offboarding now queues a removal for every known managed grant, including history |
+| `ad-boundaries-attempt-1` (3 Oct, local report) | The lab CA lacked CA key usage, so strict TLS rejected it | Reissued the CA certificate with the same key and subject; verification unchanged |
+| `cases-attempt-3` (4 Oct) | Owner self-closure was denied, but by the role gate rather than the domain check the test expected | Test now expects the denial layer that applies to the owner's roles and confirms the case stayed open |
+
+The 4 October runs also exposed three Windows PowerShell 5.1 problems in the
+lab scripts (native stderr treated as an error, embedded quotes stripped from
+arguments, and a byte-order mark added to container stdin). Each failed closed
+before any directory change. The scripts were fixed and the runs repeated.
+
+### Not run for this version yet
+
+- GitHub CI on the v0.2 commit, the Pages deployment check and signed v0.2
+  release evidence. Until then, the newest signed release is v0.1.0.
+- A same-day PostgreSQL backend rerun (Docker was reserved for another workload
+  on 4 October; the 3 October run covers the current backend source).
+- Revocation of existing sessions or Kerberos tickets, MFA, live key rotation and
+  any Microsoft Entra, Microsoft AD or GitHub tenant measurement.
+- Manual screen-reader testing. Automated axe checks do not establish full
+  accessibility conformance.
+
+## v0.1.0 release (2–3 October 2026)
+
 Actual local checks were executed on 2–3 October 2026; UTC reports use 3 October.
 Counts describe separate suites, not unique combined requirements. Tests used
 synthetic records and an isolated local Docker lab. No employer or production
@@ -30,14 +88,14 @@ identity provider was contacted. Publication is separate from local verification
 | Repeatable lab startup | Passed | Reused local configuration, migrations, idempotent seed, protected credential files and strict service health |
 | GitHub CI | All four jobs passed | [Run 37097744436](https://github.com/aman-agarwal6/AccessOps/actions/runs/37097744436), revision `0c81aa4b5978`; 85 backend/integration cases, frontend, policy and source-history scanning |
 | Published simulation | 12 live-site checks passed | [Pages run 37097964717](https://github.com/aman-agarwal6/AccessOps/actions/runs/37097964717); six routes, guided containment, recorded results, source link, mobile layout, no protected/third-party calls or browser errors |
-| Signed release | Pending final maintenance commit | Successful signing and expected-signer verification must be recorded separately |
+| Signed v0.1.0 release | Passed: provenance, SBOM and published bytes verified | [Release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.1.0), [workflow 37098372200](https://github.com/aman-agarwal6/AccessOps/actions/runs/37098372200), exact source `94ad0f1f43ddace7921e15c52e621bd954637e79`; 85 passing cases and 59 components |
 
 [Lab instructions](../infra/README.md) describe report paths and exact-fixture
 containment. Browser simulation never proves remote effects. Negative tests can
 pass by proving denial; a reconciliation run still fails if any principal is
 unobservable. Failed attempts are retained alongside successful retries.
 
-## Unrun and unsupported scopes
+### Unrun and unsupported scopes (v0.1)
 
 - IdP-triggered backchannel logout and live realm signing-key rotation. Dedicated
   verification/replay/refresh code has isolated tests.

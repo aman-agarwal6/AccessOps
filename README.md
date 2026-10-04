@@ -1,27 +1,72 @@
 # AccessOps
 
-**Access governance that shows the change, the approval and the observed effect.**
+**Employee and contractor offboarding, closed with evidence.**
 
-AccessOps is an enterprise-style portfolio reference system for employee and
-sponsored-agent access. It connects a readable operations console to lifecycle
-workflows, bounded automation, policy decisions and inspectable evidence.
-The flagship scenario is an employee departure: remove access, suspend sponsored
-automation, deny the next protected action, and show which directory effects
-have actually completed.
+When someone leaves, disabling one account is the easy part. AccessOps turns the
+HR departure into a case with an owner, a four-hour target and a required action
+for every system the person could still reach: local grants and the agents they
+sponsor, the workforce directory, Entra sign-in and sessions, GitHub access,
+shared credentials, Microsoft 365 handover and legacy apps. Local access is
+contained immediately. The case closes only when someone other than the owner
+accepts the exact evidence packet.
 
-Everything uses a fictional organization and synthetic records. The public
-browser simulation requires no login or paid API. The local lab uses real open
-source services. Recorded verification is labeled separately from simulation.
+[Live demo](https://aman-agarwal6.github.io/AccessOps/) ·
+[Verification ledger](docs/verification.md) ·
+[How it is built](docs/enterprise-application.md)
 
-![AccessOps synthetic operations console](docs/assets/console.png)
+![A departure case: next step, required actions grouped by phase, and the evidence source of each action](docs/assets/offboarding.png)
 
-## Try the browser simulation
+## Try it
 
-[Open the live demo](https://aman-agarwal6.github.io/AccessOps/) ·
-[Inspect the source](https://github.com/aman-agarwal6/AccessOps) ·
-[Verification results](docs/verification.md)
+The demo runs entirely in your browser with synthetic data. No sign-in, live
+identities or external calls.
 
-Node.js 24 is the tested runtime family. From the project directory:
+1. Open **Mara's departure** from the overview.
+2. **Apply local containment.** Grants are revoked and her sponsored agent is
+   suspended.
+3. **Import the after-departure report.** Entra sign-in clears as an imported
+   snapshot; GitHub stays unresolved because absence from a list is not proof.
+4. **Record owner statements** for the remaining external work.
+5. **Act as Avery** (an independent reviewer), close the case and export the
+   frozen packet.
+
+The queue also holds an overdue contractor, a scheduled departure and a closed
+historical case. Switch roles from the top bar to see each boundary explained.
+
+## What is real and what is simulated
+
+Every action carries one of these labels, and a label never upgrades itself.
+
+| Evidence | Meaning |
+| --- | --- |
+| Signed CI evidence | Release bytes bound to the public workflow and source commit by a Sigstore attestation |
+| Provider observation | Read back from the lab's real Keycloak or Samba directory after the change |
+| Imported snapshot | A bounded report someone supplied; point-in-time and untrusted |
+| Owner attestation | A written statement by the case owner, reviewed at closure, never treated as proof |
+| Simulated | Produced by the browser demo; nothing outside the tab was contacted |
+
+## Verified results
+
+Measured on 3–4 October 2026 against the local lab (Django, PostgreSQL 17,
+Keycloak 26.8, OPA 1.9 and a Samba AD-compatible directory) on the current
+backend source. Details, failed attempts and limits are in the
+[verification ledger](docs/verification.md).
+
+| Check | Result |
+| --- | --- |
+| Departure case, end to end through real Keycloak | 18 / 18 passed |
+| Departure case with a Samba directory account | 28 / 28 passed |
+| New LDAPS and Kerberos logins before → after offboarding | allowed → denied (2 / 2 each) |
+| OIDC, protocol, offboarding, OPA and HTTPS boundary suites | 11, 18, 11, 23 and 5 passed |
+| Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
+| Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
+
+The demo's evidence page publishes these reports, including eight failed
+attempts kept on record beside the fixes they led to.
+
+## Run it
+
+Console only (Node.js 24):
 
 ```powershell
 cd frontend
@@ -29,118 +74,54 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173`. Start with the guided offboarding scenario, inspect
-the request timeline, and open the affected human and sponsored agent. Switch
-between the synthetic operator and independent reviewer to see approval rules.
-Reset returns to the initial fictional organization.
+The full local lab uses Docker Desktop and PowerShell; follow
+[infra/README.md](infra/README.md). The optional
+[directory lab](docs/directory-lab.md) adds a real Samba directory without a
+Microsoft tenant. Secrets are generated under `.local/` and never committed.
 
-The six workspace areas connect the executive view to the actual work:
+## How it is built
 
-| Area | What it answers |
-| --- | --- |
-| Overview | What needs an approval, investigation or retry? |
-| Requests | What changes, who approved it, and what was applied or verified? |
-| Identities | Who owns this identity and which grants remain active? |
-| Access reviews | What evidence supports a finding, and is a human decision still required? |
-| Policies & resources | Which rules and version explain the decision? |
-| Runs & evidence | Which checks actually ran, and which effects remain unknown? |
+- **Console:** React, TypeScript and Vite, with Radix dialogs. Dark and light
+  themes from one token set, a 16px type scale, keyboard-first navigation.
+- **Backend:** Django and PostgreSQL. Server sessions with OIDC code flow and
+  PKCE; no tokens in the browser. CSRF on every mutation.
+- **Identity and policy:** Keycloak keeps operator login separate from workforce
+  provisioning (SCIM). Every action is checked by OPA through an AuthZEN request,
+  and policy failure denies.
+- **Execution:** a durable outbox applies remote changes, reads before retrying
+  and records actual observation times.
+- **Directory:** LDAPS with verified TLS, immutable GUID targets, atomic account
+  flag updates and permissions limited to the exact fixture objects.
 
-## Run the connected local lab
+## Security choices
 
-The lab is designed for a personal Windows/WSL2 Docker Desktop setup with 16 GB
-or more host RAM. It isolates its database, realms, credentials and container
-network. Only the HTTPS front door binds to host loopback. Follow the
-[connected lab instructions](infra/README.md) and reviewed PowerShell scripts.
+- Independent approval, bound to the exact change and policy version, expiring
+  after 15 minutes.
+- Case owners and evidence submitters cannot close their own case.
+- Stale, unknown or partial readings keep work open; a disabled account does
+  not stand in for removed group memberships.
+- Accounts are matched by immutable IDs, never by name or email.
+- The review assistant can only propose. It cannot approve or apply anything.
 
-Runtime secrets and private keys are generated under `.local/` and excluded from
-Git. Do not substitute production data or credentials. The application uses a
-server session; OAuth tokens are not placed in browser storage. A public static
-build cannot silently become an authenticated connected lab.
+## Limits
 
-## What makes this useful
+This is a reference system with synthetic data, not a production deployment.
+No Microsoft or GitHub tenant was contacted; those platforms appear as offline
+fixtures and owner statements. Samba results do not prove Microsoft AD
+interoperability. Existing sessions and tickets are not revoked. Closure is an
+administrative record, not proof that every copy or session is gone. See the
+[threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
 
-- **Immediate local containment:** offboarding invalidates current grants and
-  suspends sponsored agents independently of directory availability.
-- **Independent, expiring approvals:** new access and ownership changes bind to
-  the exact request and policy version; approvals expire after fifteen minutes.
-- **Durable execution:** local application and remote provisioning are separate
-  states. Idempotency and reconciliation protect retries from duplicate effects.
-- **Constrained automation:** the assistant receives a fixed task, record set,
-  purpose, ten-minute window, six-call budget and one draft. A proposal cannot
-  approve or apply itself.
-- **Observable drift:** direct directory access without a backed grant is flagged
-  for a human decision, never automatically legitimized.
-- **Inspectable evidence:** actual test results retain failures and skipped cases;
-  released archives can carry detached provenance and SBOM attestations.
+## Documentation
 
-## Architecture and standards
+[Case contract](contracts/offboarding.md) ·
+[API contract](contracts/README.md) ·
+[Platform connectors](docs/platform-connectors.md) ·
+[Control-to-test map](docs/control-map.md) ·
+[Evidence verification](docs/evidence.md) ·
+[Maintenance](docs/maintenance.md) ·
+[Build plan](docs/approved-plan.md)
 
-React/TypeScript/Vite and Radix provide the console. Django 5.2 LTS and PostgreSQL
-provide the transactional governance system. Keycloak separates operator login
-from workforce provisioning. A thin AuthZEN adapter provides a swappable policy
-boundary in front of OPA. Caddy provides the loopback HTTPS entry point.
-
-The stable agent flow uses an independent client identity with `private_key_jwt`
-authentication and current server-side task authorization. Sponsor ownership is
-recorded explicitly; it is not fabricated into a delegated OAuth `act` claim.
-Preview protocols stay separate from the stable core.
-
-Read the [approved build contract](docs/approved-plan.md), [standards matrix](docs/standards.md),
-[threat model](docs/threat-model.md), [API contract](contracts/README.md) and
-[evidence verification guide](docs/evidence.md). These documents explain the
-boundaries and control mappings without claiming enterprise certification.
-The [feedback traceability table](docs/feedback-incorporation.md),
-[control-to-test mapping](docs/control-map.md) and
-[verification ledger](docs/verification.md) distinguish implemented, measured,
-and future profiles.
-
-## Verify it
-
-```powershell
-# Backend: create the documented isolated environment and install its lockfile.
-cd backend
-python -m pytest
-cd ../frontend
-npm run check
-npm test
-npm run build
-npm run test:e2e
-cd ..
-python -m unittest discover -s tools -p 'test_*.py'
-python backend/run_postgres_tests.py
-```
-
-CI checks use read-only permissions. Publishing and evidence signing are manual,
-main-branch workflows. The signer does not check out or execute application code.
-Third-party actions use immutable revisions. The verification ledger records
-what was actually run locally and what still needs a connected or CI run.
-
-## Free operation and maintenance
-
-The browser demo is static and can run on GitHub Pages or any static host. The
-lab runs on your own computer. No cloud database, paid model API or commercial
-identity platform is required. Optional local AI is a separately measured
-enhancement; deterministic replay remains the default.
-
-Public GitHub hosting and standard hosted-runner terms may change. The static
-build and local setup remain portable. Review dependency alerts and immutable
-image pins monthly; apply upgrades deliberately and rerun denial tests. Avoid
-always-on cloud services just to keep a portfolio link alive.
-
-[GitHub Pages is free for public repositories](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
-[Docker Desktop permits free personal/educational use](https://docs.docker.com/subscription-billing/desktop-license/);
-Docker Engine with Compose is the portable local alternative. Hosting terms and
-organization licensing are reviewed separately from application dependencies.
-
-The [maintenance guide](docs/maintenance.md) covers monthly dependency review,
-lock consistency, deployment, storage limits and recovery.
-
-## Portfolio use
-
-Use the public simulation for a ninety-second walkthrough, then point an
-interviewer to a real verification receipt and the offboarding/authorization
-tests. The project demonstrates IAM lifecycle design, security automation,
-backend APIs, data modeling, policy enforcement and operational troubleshooting.
-Describe only the integrations and checks recorded in the verification ledger.
-
-Licensed under Apache-2.0. See [SECURITY.md](SECURITY.md) for responsible reporting.
+AccessOps was built with AI coding assistance under my direction and review.
+Licensed under Apache-2.0. Report security issues as described in
+[SECURITY.md](SECURITY.md).

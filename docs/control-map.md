@@ -31,3 +31,11 @@ model performance result, or AI standard conformance is not claimed.
 See [verification](verification.md) for passed, skipped, and unrun scopes. Tests
 use synthetic fixtures and disposable databases. No security test targets an
 external organization or production identity system.
+
+Enterprise departure cases extend AC-2 with source events, stable account bindings,
+owners, deadlines and required lifecycle tasks. AC-5 is enforced by owner-only
+external statements and independent closure of an exact current packet. AU-2,
+AU-9 and AU-12 map to departure/import/attestation/closure audit events, immutable
+application packet paths and retained evidence origins. See
+`backend/tests/test_offboarding_cases.py` and the actual connected case driver;
+cloud fixtures are not provider verification or evidence of control certification.
