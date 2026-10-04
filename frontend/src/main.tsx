@@ -8,6 +8,10 @@ import "./styles/ui.css";
 import "./styles/layout.css";
 import "./styles/pages.css";
 import App from "./App";
+import { applyTheme, storedTheme } from "./theme";
+
+// Apply the saved theme before the first paint so light-theme visitors see no dark flash.
+applyTheme(storedTheme());
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
