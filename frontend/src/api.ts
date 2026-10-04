@@ -5,6 +5,7 @@ import type {
   Run,
   Snapshot,
 } from "./domain";
+import type { NewCase, OffboardingCase } from "./offboarding";
 
 export const CONNECTED = import.meta.env.VITE_ACCESSOPS_MODE === "connected";
 export type Session = {
@@ -30,6 +31,18 @@ const dateText = (v: unknown): v is string =>
   v.length <= 40 &&
   /^\d{4}-\d{2}-\d{2}T/.test(v) &&
   Number.isFinite(Date.parse(v));
+const guid = (value: unknown) =>
+  typeof value === "string" &&
+  /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
+const directoryBinding = (value: unknown) =>
+  value === undefined ||
+  (object(value) &&
+    guid(value.domainGuid) &&
+    guid(value.userGuid) &&
+    Array.isArray(value.groupGuids) &&
+    value.groupGuids.length <= 10 &&
+    value.groupGuids.every(guid) &&
+    new Set(value.groupGuids).size === value.groupGuids.length);
 
 export function parseSnapshot(value: unknown): Snapshot {
   if (!object(value))
@@ -52,6 +65,58 @@ export function parseSnapshot(value: unknown): Snapshot {
     )
       throw new Error(`The server returned invalid ${key} data.`);
   }
+  if (
+    !(value.identities as Record<string, unknown>[]).every((identity) =>
+      directoryBinding(identity.directoryBinding),
+    )
+  )
+    throw new Error(
+      "The server returned invalid trusted directory enrollment.",
+    );
+  if (
+    value.offboardingCases !== undefined &&
+    (!Array.isArray(value.offboardingCases) ||
+      value.offboardingCases.length > 1000 ||
+      !value.offboardingCases.every(
+        (item) =>
+          object(item) &&
+          boundedText(item.id, 128) &&
+          boundedText(item.title, 240) &&
+          boundedText(item.identityId, 128) &&
+          directoryBinding(item.adBinding) &&
+          Number.isSafeInteger(item.revision) &&
+          Number(item.revision) >= 1 &&
+          ["open", "in_progress", "blocked", "closed"].includes(
+            String(item.status),
+          ) &&
+          Array.isArray(item.tasks) &&
+          item.tasks.length <= 100 &&
+          item.tasks.every(
+            (task) =>
+              object(task) &&
+              boundedText(task.id, 128) &&
+              boundedText(task.title, 240) &&
+              ["pending", "observed", "attested"].includes(
+                String(task.status),
+              ) &&
+              [
+                "none",
+                "provider_observation",
+                "imported_snapshot",
+                "owner_attestation",
+              ].includes(String(task.evidenceKind)),
+          ) &&
+          Array.isArray(item.imports) &&
+          item.imports.every(object) &&
+          Array.isArray(item.bindings) &&
+          Array.isArray(item.blockers) &&
+          item.blockers.every((line) => boundedText(line, 500)) &&
+          Array.isArray(item.evidenceLimitations) &&
+          item.evidenceLimitations.every((line) => boundedText(line, 1000)),
+      ))
+  )
+    throw new Error("The server returned invalid offboarding cases.");
+  if (value.offboardingCases === undefined) value.offboardingCases = [];
   return value as Snapshot;
 }
 function csrf(): string {
@@ -102,6 +167,51 @@ async function request(path: string, body?: unknown): Promise<unknown> {
   return data;
 }
 export const lab = {
+  async observeDirectory(id: string) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(id)}/observe-directory`,
+      {},
+    );
+  },
+  async createCase(input: NewCase) {
+    return request("/api/v1/offboarding-cases", input);
+  },
+  async importCase(id: string, report: unknown) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(id)}/import`,
+      { report },
+    );
+  },
+  async containCase(id: string) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(id)}/contain`,
+      {},
+    );
+  },
+  async attestCase(
+    id: string,
+    taskId: string,
+    reference: string,
+    summary: string,
+  ) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(id)}/tasks/${encodeURIComponent(taskId)}/attest`,
+      { reference, summary },
+    );
+  },
+  async closeCase(
+    item: Pick<OffboardingCase, "id" | "revision" | "packetHash">,
+  ) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(item.id)}/close`,
+      { expectedRevision: item.revision, packetHash: item.packetHash },
+    );
+  },
+  async casePacket(id: string) {
+    return request(
+      `/api/v1/offboarding-cases/${encodeURIComponent(id)}/packet`,
+    );
+  },
   async session(): Promise<Session> {
     const data = await request("/api/v1/session");
     if (!object(data) || typeof data.authenticated !== "boolean")

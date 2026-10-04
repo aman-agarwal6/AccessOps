@@ -1,63 +1,82 @@
 # AccessOps console
 
-Six destinations connect the access workflow: Overview, Requests, Identities,
-Access reviews, Policies & resources, and Runs & evidence. The default build is
-a login-free browser simulation using synthetic Northstar Systems identities.
-State lives in memory and resets on refresh. It never calls lab APIs or produces
-real-run evidence.
+The console has three groups of pages: **Offboarding** (Overview, Offboarding
+cases), **Access governance** (Requests, Identities, Access reviews, Policies &
+resources) and **Evidence** (Runs & evidence). The default build is a login-free
+browser simulation with synthetic Northstar Systems data. State lives in memory
+and resets on refresh; it never calls lab APIs or creates recorded evidence.
 
 ## Run and verify
 
-Use the exact dependency versions in `package-lock.json`:
+Use the exact versions in `package-lock.json` (Node.js 24):
 
 ```sh
 npm ci --ignore-scripts
-npm run dev
-npm run check
-npm test
+npm run dev            # http://127.0.0.1:4173
+npm run check          # TypeScript
+npm test               # Vitest unit tests
 npm run build
 npm run format:check
-npm run test:e2e
+npm run test:e2e       # Playwright + axe, desktop and mobile, both themes
 ```
 
-The development server binds to `127.0.0.1:4173`. Local browser tests use an
-installed Chrome browser through Playwright's `chrome` channel. CI uses
-Playwright's Chromium installation (`npx playwright install --with-deps chromium`).
-Install Chrome separately if it is unavailable locally. Tests cover the guided employee/agent containment flow,
-independent approval, malicious review text, drift, registration, keyboard focus,
-six-route automated accessibility checks, and mobile layout. Automated checks
-do not establish full accessibility conformance.
+Local browser tests use the installed Chrome channel; CI installs Playwright's
+Chromium. Screenshots are written to `../output/screenshots/`.
 
-Screenshots are generated under `../output/screenshots/`. They show synthetic
-data. `npm run format` formats source and configuration with pinned Prettier.
+`npm run test:connected` renders a sanitized snapshot recorded from the real lab
+through the connected build. Set `ACCESSOPS_CONNECTED_SNAPSHOT` to that file
+first; without it the suite is skipped. Transport is intercepted and only the
+session and snapshot reads are allowed, so it checks rendering and data
+compatibility, not authentication or provider behavior.
+
+## Design system
+
+Tokens live in `src/styles/tokens.css`: a dark graphite theme (default) and a
+light theme with the same roles, a 16px type scale using the bundled Geist and
+Geist Mono fonts, and a 4px spacing grid. Every text token meets WCAG AA contrast
+on every surface of its theme. The theme choice is stored in `localStorage` when
+available and falls back to dark.
+
+Evidence provenance has its own palette and always pairs color with an icon and
+a label: signed CI evidence, provider observation, imported snapshot, owner
+attestation, simulated and no evidence. `src/ui.tsx` defines these with the other
+shared primitives.
+
+## Code map
+
+| Path                                                  | Role                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| `src/App.tsx`                                         | State, actions and routing; no page markup                                |
+| `src/workspace.ts`                                    | Navigation and the explicit `Workspace` contract each page receives       |
+| `src/caseflow.ts`                                     | Pure case logic: next step, role boundaries, SLA, queue order, provenance |
+| `src/pages/`                                          | Overview, cases (queue, detail, dialogs), governance and evidence pages   |
+| `src/details.tsx`, `src/forms.tsx`, `src/dialogs.tsx` | Drawers, forms, informational dialogs and the walkthrough coach           |
+| `src/domain.ts`, `src/offboarding.ts`                 | Simulation model and case rules, shared with the unit tests               |
+| `src/api.ts`                                          | Connected-mode client and recorded-evidence loader                        |
 
 ## Browser simulation
 
-The 90-second route starts on Overview. It establishes employee and agent reads,
-applies authorized containment, checks the simulated provider, and retries both
-reads. The results remain explicitly labeled simulation. Other scenarios cover
-approval expiry, unavailable policy, direct provider drift, bounded access review,
-onboarding, department transfer, and successor acceptance.
+The queue holds four synthetic cases: Mara (due soon, the guided case), Leo
+(overdue contractor), Sam (scheduled) and Priya (closed, built through the same
+case functions). Each case shows one **next step**. When the current role cannot
+take it, the card says why and offers to switch to a role that can. The
+boundaries themselves are enforced in the case functions, not in the UI.
 
-Containment requires an operator, without waiting for independent approval. New
-read grants and transfers require independent approval bound to the exact change,
-policy version, and a 15-minute expiry. Sponsor changes suspend the agent and
-revoke existing grants. Registration creates inventory only; agents remain
-suspended pending reviewed local credential binding. The UI cannot mint or bind
-credentials. Version 1 grants support read permission only.
-New agent grants expire after ten minutes and allow six successful reads; new
-human grants remain until explicitly revoked. The browser model and connected
-lab use these same limits. Existing synthetic baseline grants include expiring
-examples and are labeled as fixtures in identity details.
+Public report imports accept only canonical `synthetic_fixture` JSON, at most
+100 KB and 100 readings. Bindings, timestamps, duplicates and structure are
+checked. Unknown, stale, pre-departure or partial readings cannot clear an
+action, and each import resets owner statements for external actions. Never paste
+real employee, tenant or credential data into the public demo.
 
-The ten-minute engineering route links decisions to source areas and evidence.
-`src/domain.ts` contains the immutable simulation model and enforcement checks;
-`src/domain.test.ts` exercises meaningful success and denial boundaries.
+The containment walkthrough on the overview follows one departure request
+through containment, a simulated provider check and denied retries. Other
+scenarios cover approval expiry, policy outage, provider drift, bounded access
+review, registration, department transfer and successor acceptance.
 
 ## Connected local lab
 
 Build with `VITE_ACCESSOPS_MODE=connected` and serve `dist/` through the lab's
-HTTPS reverse proxy. For example, in PowerShell:
+HTTPS reverse proxy:
 
 ```powershell
 $env:VITE_ACCESSOPS_MODE = 'connected'
@@ -65,28 +84,20 @@ npm run build
 Remove-Item Env:VITE_ACCESSOPS_MODE
 ```
 
-`src/api.ts` talks to same-origin `/api/v1` and `/auth` endpoints using server
-session cookies, CSRF protection, bounded timeouts, and idempotency keys. No
-OAuth token is placed in local storage, session storage, or the bundle. Connected
-mode uses server snapshots and never falls back to synthetic data after a failed
-request. Client role labels are informational; the backend enforces authority.
+`src/api.ts` uses same-origin `/api/v1` and `/auth` endpoints with server
+session cookies, CSRF headers, bounded timeouts and idempotency keys. No OAuth
+token reaches browser storage or the bundle. Connected mode never falls back to
+synthetic data. Role labels in the UI are informational; the backend enforces
+authority. Server-enrolled directory accounts add a tenth action that can be
+refreshed read-only but never attested, and the UI has no editable GUID fields.
 
-All routes use URL hashes and Vite's relative base so the public build works
-under a GitHub Pages repository path. Set `VITE_SOURCE_URL` only after the source
-repository is available; otherwise the UI reports publication pending.
+Routes use URL hashes and Vite's relative base so the build works under a GitHub
+Pages path. Set `VITE_SOURCE_URL` to link the source repository.
 
 ## Recorded evidence
 
-The read-only public index is `public/evidence/index.json`, shaped as
-`{"runs": []}`. Publish only sanitized records from actual local execution. Each
-record follows the `Run` contract in `src/domain.ts` with `origin: "recorded"`,
-dated checks, outcome, limitations, and optional manifest. The loader validates
-the public contract; simulation records cannot enter this collection. Empty
-and unavailable evidence states are explicit.
-Run details display the supplied manifest's scope and limitations separately
-from its executed checks. Contract and browser tests also use clearly named
-viewer fixtures that are never published as local provider evidence.
-
-Do not include credentials, session cookies, private certificates, personal data,
-or raw runtime logs. Browser checks and downloads are useful for explanation;
-they are not cryptographic proof or actual connector measurements.
+`public/evidence/index.json` (`{"runs": []}`) is generated by
+`tools/publish_recordings.py` from an allowlist of actual local reports. The
+loader validates its contract, and simulation records cannot enter it. Loading,
+empty and error states are explicit, and a failed load assumes no results.
+Never add credentials, cookies, private certificates, personal data or raw logs.
