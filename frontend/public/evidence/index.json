@@ -1,13 +1,13 @@
 {
   "runs": [
     {
-      "id": "connected-renderer-tests-1facce9ef44fba8f",
+      "id": "connected-renderer-tests-37a609121f15a0a4",
       "name": "Connected console rendering of a recorded lab snapshot",
       "scenario": "connected-renderer-tests",
       "status": "passed",
       "origin": "recorded",
-      "startedAt": "2026-10-04T06:54:24.383000+00:00",
-      "finishedAt": "2026-10-04T06:54:50.077000+00:00",
+      "startedAt": "2026-10-04T07:16:29.173000+00:00",
+      "finishedAt": "2026-10-04T07:16:58.860000+00:00",
       "summary": "9 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
       "checks": [
         {
@@ -57,7 +57,7 @@
         }
       ],
       "manifest": {
-        "reportSha256": "1facce9ef44fba8f09e8ee65e84762d8b5a6fe6007f0f72c5e294f70f07d97b2",
+        "reportSha256": "37a609121f15a0a41051e824f257c39659e5b32f27edb7e20fc57f1a1447feb8",
         "counts": {
           "passed": 9,
           "failed": 0,
@@ -72,13 +72,13 @@
       }
     },
     {
-      "id": "browser-tests-ebcb3e3e041d1358",
+      "id": "browser-tests-9c32e1ffae10b943",
       "name": "Console browser and accessibility checks",
       "scenario": "browser-tests",
       "status": "passed",
       "origin": "recorded",
-      "startedAt": "2026-10-04T06:52:56.783000+00:00",
-      "finishedAt": "2026-10-04T06:54:15.650000+00:00",
+      "startedAt": "2026-10-04T07:14:59.780000+00:00",
+      "finishedAt": "2026-10-04T07:16:22.693000+00:00",
       "summary": "33 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
       "checks": [
         {
@@ -248,7 +248,7 @@
         }
       ],
       "manifest": {
-        "reportSha256": "ebcb3e3e041d1358acd0957d942bb4eb650b0d283443c3f58aa475a12e5083ef",
+        "reportSha256": "9c32e1ffae10b94380a1fa9462b22f46a4d1a61297d73635955302dd1e82fe46",
         "counts": {
           "passed": 33,
           "failed": 0,
@@ -263,13 +263,13 @@
       }
     },
     {
-      "id": "frontend-unit-6c81851e38ddfa51",
+      "id": "frontend-unit-58532248bf91420e",
       "name": "Console domain and contract tests",
       "scenario": "frontend-unit",
       "status": "passed",
       "origin": "recorded",
-      "startedAt": "2026-10-04T06:52:54.564000+00:00",
-      "finishedAt": "2026-10-04T06:52:54.869272+00:00",
+      "startedAt": "2026-10-04T07:14:57.566000+00:00",
+      "finishedAt": "2026-10-04T07:14:57.832357+00:00",
       "summary": "43 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
       "checks": [
         {
@@ -489,7 +489,7 @@
         }
       ],
       "manifest": {
-        "reportSha256": "6c81851e38ddfa517a205ee757710f3fc4243fafb6af6d00b1373828b82fb0ed",
+        "reportSha256": "58532248bf91420e9b883b3c04af2339ad01b761cce81cd36eb2f0451e2decd8",
         "counts": {
           "passed": 43,
           "failed": 0,

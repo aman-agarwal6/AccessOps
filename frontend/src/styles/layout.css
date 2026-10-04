@@ -427,6 +427,14 @@
   .hide-sm {
     display: none;
   }
+  .data th,
+  .data td {
+    padding-left: var(--s3);
+    padding-right: var(--s3);
+  }
+  .id-chip {
+    display: block;
+  }
   .dialog {
     top: auto;
     bottom: 0;

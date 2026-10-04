@@ -7,6 +7,26 @@ async function axe(page: Page) {
   const result = await new AxeBuilder({ page }).withTags(wcag).analyze();
   expect(result.violations).toEqual([]);
 }
+/** Elements that widen the page beyond its viewport (empty when the layout fits). */
+async function overflow(page: Page) {
+  return page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    if (document.documentElement.scrollWidth <= width) return [];
+    return [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const box = element.getBoundingClientRect();
+        const parent = element.parentElement?.getBoundingClientRect();
+        return (
+          box.right > width + 0.5 && (!parent || parent.right <= width + 0.5)
+        );
+      })
+      .slice(0, 8)
+      .map(
+        (element) =>
+          `${element.tagName.toLowerCase()}.${[...element.classList].join(".")} right=${Math.round(element.getBoundingClientRect().right)} of ${width}`,
+      );
+  });
+}
 async function useTheme(page: Page, theme: "dark" | "light") {
   await page.addInitScript((value) => {
     localStorage.setItem("accessops-theme", value);
@@ -360,16 +380,21 @@ test("desktop and mobile layouts are readable without page overflow", async ({
   page,
 }) => {
   await mkdir("../output/screenshots", { recursive: true });
+  await page.goto("/");
   for (const theme of ["dark", "light"] as const) {
-    await useTheme(page, theme);
-    await page.goto("/");
+    await page.evaluate((value) => {
+      localStorage.setItem("accessops-theme", value);
+    }, theme);
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.screenshot({
       path: `../output/screenshots/accessops-overview-desktop-${theme}.png`,
       fullPage: true,
     });
   }
-  await useTheme(page, "dark");
+  await page.evaluate(() => localStorage.setItem("accessops-theme", "dark"));
   await page.goto("/#/identities");
+  await page.reload();
   await page.screenshot({
     path: "../output/screenshots/accessops-identities-desktop.png",
     fullPage: true,
@@ -378,11 +403,7 @@ test("desktop and mobile layouts are readable without page overflow", async ({
   for (const route of ["overview", "cases", "requests", "identities", "runs"]) {
     await page.goto(`/#/${route}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+    expect(await overflow(page), route).toEqual([]);
   }
   await page.goto("/");
   await page.screenshot({
@@ -407,10 +428,6 @@ test("desktop and mobile layouts are readable without page overflow", async ({
   await expect(
     page.getByRole("heading", { name: "Policies & resources", exact: true }),
   ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  expect(await overflow(page), "policies").toEqual([]);
   await axe(page);
 });

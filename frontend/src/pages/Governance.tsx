@@ -123,7 +123,7 @@ export function RequestsPage({ ws }: { ws: Workspace }) {
                 <th scope="col" className="hide-sm">
                   Requested
                 </th>
-                <th scope="col">
+                <th scope="col" className="hide-sm">
                   <span className="sr-only">Open</span>
                 </th>
               </tr>
@@ -132,7 +132,14 @@ export function RequestsPage({ ws }: { ws: Workspace }) {
               {rows.map((request) => (
                 <tr key={request.id}>
                   <td>
-                    <Who identity={ws.person(request.identityId)} />
+                    <button
+                      className="who"
+                      onClick={() =>
+                        ws.select({ kind: "request", id: request.id })
+                      }
+                    >
+                      <Who identity={ws.person(request.identityId)} />
+                    </button>
                     <span className="id-chip">{request.id}</span>
                   </td>
                   <td>
@@ -163,7 +170,7 @@ export function RequestsPage({ ws }: { ws: Workspace }) {
                       {timeAgo(request.createdAt, ws.now)}
                     </span>
                   </td>
-                  <td style={{ textAlign: "right" }}>
+                  <td className="hide-sm" style={{ textAlign: "right" }}>
                     <button
                       className="btn btn-secondary btn-sm"
                       onClick={() =>
