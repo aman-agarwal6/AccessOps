@@ -45,12 +45,18 @@ lab scripts (native stderr treated as an error, embedded quotes stripped from
 arguments, and a byte-order mark added to container stdin). Each failed closed
 before any directory change. The scripts were fixed and the runs repeated.
 
-### Not run for this version yet
+### CI, deployment and signed release (4 October 2026)
 
-- GitHub CI on the v0.2 commit, the Pages deployment check and signed v0.2
-  release evidence. Until then, the newest signed release is v0.1.0.
-- A same-day PostgreSQL backend rerun (Docker was reserved for another workload
-  on 4 October; the 3 October run covers the current backend source).
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| GitHub CI on the PR | All four jobs passed | [Run 37185324787](https://github.com/aman-agarwal6/AccessOps/actions/runs/37185324787) on `94ede7d`, the PR head merged as `193d9ea`. An earlier run on `639505d` failed one phone-width browser check; the fix is commit `94ede7d`. |
+| Published simulation | 17 passed | [Pages run 37185519790](https://github.com/aman-agarwal6/AccessOps/actions/runs/37185519790) reran CI before deploying. `tools/check_published.mjs` against the live site: routes, both themes, recorded evidence, walkthrough denials, the departure journey to a labeled packet, mobile fit, and no API, third-party or error traffic. |
+| Signed v0.2.0 release | Passed: provenance, SBOM and published bytes verified | [Release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0), [workflow 37185521660](https://github.com/aman-agarwal6/AccessOps/actions/runs/37185521660), exact source `193d9eab4bca89c34bebdd8f5042ab8d3bfe2f5f`, clean tree. 255 backend and integration cases on PostgreSQL 17; CycloneDX SBOM of 63 components. Both attestations verified with the pinned repository, signer workflow, `refs/heads/main`, commit and GitHub-hosted runner; all seven published assets match the verified files byte for byte. |
+
+### Not run for this version
+
+- The local PostgreSQL runner on 4 October (Docker was reserved for another
+  workload). CI ran the same backend suite on PostgreSQL 17 in the signed run.
 - Revocation of existing sessions or Kerberos tickets, MFA, live key rotation and
   any Microsoft Entra, Microsoft AD or GitHub tenant measurement.
 - Manual screen-reader testing. Automated axe checks do not establish full
