@@ -31,6 +31,7 @@ import {
 } from "./offboarding";
 import type { CaseCommand } from "./casecommands";
 import { sla } from "./caseflow";
+import { applyTheme, saveTheme, storedTheme, type Theme } from "./theme";
 import { Sidebar, Topbar } from "./shell";
 import { Coach, GuideDialog, LabDialog, ResetDialog } from "./dialogs";
 import { IdentityDrawer, RequestDrawer, RunDrawer } from "./details";
@@ -65,16 +66,6 @@ const emptySnapshot: Snapshot = {
   policies: [],
   health: [],
 };
-type Theme = "dark" | "light";
-function storedTheme(): Theme {
-  try {
-    return localStorage.getItem("accessops-theme") === "light"
-      ? "light"
-      : "dark";
-  } catch {
-    return "dark";
-  }
-}
 const message = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
@@ -134,17 +125,7 @@ export default function App() {
     const timer = setInterval(() => setClock(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#0b0e13" : "#f3f5f8");
-    try {
-      localStorage.setItem("accessops-theme", theme);
-    } catch {
-      /* Storage can be unavailable; the theme still applies for this visit. */
-    }
-  }, [theme]);
+  useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
     const update = () => {
       setPage(readPage());
@@ -587,7 +568,11 @@ export default function App() {
           onActor={(id) =>
             setActor(operators.find((entry) => entry.id === id)!)
           }
-          onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onTheme={() => {
+            const next = theme === "dark" ? "light" : "dark";
+            saveTheme(next);
+            setTheme(next);
+          }}
           onReset={() => setModal("reset")}
           onRefresh={() => void refresh()}
           onSignOut={session?.authenticated ? signOut : undefined}
