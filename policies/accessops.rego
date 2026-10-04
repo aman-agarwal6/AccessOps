@@ -97,6 +97,16 @@ allow if {
 
 allow if {
     active
+    human
+    input.action == "departure_close"
+    has_role("approver")
+    in_project
+    input.subject.id != input.context.case_owner_id
+    version_matches
+}
+
+allow if {
+    active
     input.subject.kind == "agent"
     input.action == "agent_tool"
     in_project

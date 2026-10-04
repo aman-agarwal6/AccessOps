@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core import audit
-from core.models import Grant, Principal, Resource, Review
+from core.models import Grant, OffboardingCase, Principal, Resource, Review
 from core.services import policy_state
 
 
@@ -108,5 +108,33 @@ class Command(BaseCommand):
             review.resources.set(resources)
             audit.append(
                 "seed", "synthetic.seeded", review.pk, {"organization": "Northstar Systems"}
+            )
+        case, case_created = OffboardingCase.objects.get_or_create(
+            id=uid("departure-case:bob"),
+            defaults={
+                "identity": employees["bob-chen"],
+                "owner": Principal.objects.get(pk=uid("operator-alice")),
+                "employment_type": "contractor",
+                "hr_source": "Synthetic HR export",
+                "hr_event_id": "HR-NORTHSTAR-0042",
+                "effective_at": timezone.now() - timedelta(minutes=15),
+                "due_at": timezone.now() + timedelta(hours=3, minutes=45),
+                "reason": "Contract engagement ended; coordinate scoped departure work.",
+                "bindings": [
+                    {
+                        "provider": "entra",
+                        "tenantId": "11111111-1111-4111-8111-111111111111",
+                        "subjectId": "22222222-2222-4222-8222-222222222222",
+                    },
+                    {"provider": "github", "tenantId": "424242", "subjectId": "1001"},
+                ],
+            },
+        )
+        if case_created:
+            audit.append(
+                "seed",
+                "departure.created",
+                case.pk,
+                {"synthetic": True, "hrEventId": case.hr_event_id},
             )
         self.stdout.write("Synthetic seed present. No provider writes or login bypass created.")

@@ -240,3 +240,108 @@ class RateBucket(models.Model):
     key = models.CharField(max_length=64, primary_key=True)
     count = models.PositiveIntegerField(default=0)
     expires_at = models.DateTimeField()
+
+
+class OffboardingCase(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    identity = models.ForeignKey(
+        Principal, on_delete=models.PROTECT, related_name="departure_cases"
+    )
+    owner = models.ForeignKey(Principal, on_delete=models.PROTECT, related_name="owned_departures")
+    employment_type = models.CharField(max_length=12)
+    hr_event_id = models.CharField(max_length=64)
+    hr_source = models.CharField(max_length=64)
+    effective_at = models.DateTimeField()
+    due_at = models.DateTimeField()
+    reason = models.CharField(max_length=255)
+    bindings = models.JSONField(default=list)
+    ad_binding = models.JSONField(default=dict)
+    attestations = models.JSONField(default=dict)
+    containment_request = models.ForeignKey(ChangeRequest, null=True, on_delete=models.PROTECT)
+    revision = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    closed_at = models.DateTimeField(null=True)
+    closed_by = models.ForeignKey(
+        Principal, null=True, on_delete=models.PROTECT, related_name="closed_departures"
+    )
+    closed_packet = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["hr_source", "hr_event_id"], name="unique_departure_event"
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            old = type(self).objects.get(pk=self.pk)
+            if old.closed_at:
+                raise ValueError("Closed departure packets are immutable.")
+            if any(
+                getattr(old, key) != getattr(self, key)
+                for key in (
+                    "identity_id",
+                    "owner_id",
+                    "employment_type",
+                    "hr_event_id",
+                    "hr_source",
+                    "effective_at",
+                    "due_at",
+                    "reason",
+                    "bindings",
+                    "ad_binding",
+                )
+            ):
+                raise ValueError("Departure intent is immutable; create a new event.")
+        super().save(*args, **kwargs)
+
+
+class ADEnrollment(models.Model):
+    """Trusted local enrollment, never accepted from a browser mutation."""
+
+    identity = models.OneToOneField(
+        Principal, primary_key=True, on_delete=models.PROTECT, related_name="ad_enrollment"
+    )
+    domain_guid = models.UUIDField()
+    user_guid = models.UUIDField()
+    group_guids = models.JSONField(default=list)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["domain_guid", "user_guid"], name="unique_ad_directory_person"
+            )
+        ]
+
+    @property
+    def binding(self):
+        return {
+            "domainGuid": str(self.domain_guid),
+            "userGuid": str(self.user_guid),
+            "groupGuids": self.group_guids,
+        }
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Directory enrollment is immutable; review a new identity enrollment.")
+        super().save(*args, **kwargs)
+
+
+class PlatformImport(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        OffboardingCase, on_delete=models.PROTECT, related_name="platform_imports"
+    )
+    actor = models.ForeignKey(Principal, on_delete=models.PROTECT)
+    captured_at = models.DateTimeField()
+    imported_at = models.DateTimeField(auto_now_add=True)
+    report = models.JSONField()
+    sha256 = models.CharField(max_length=64)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Platform snapshots are immutable evidence.")
+        super().save(*args, **kwargs)

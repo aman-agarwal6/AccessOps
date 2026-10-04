@@ -93,7 +93,7 @@ def test_live_revocation_race_during_remote_delivery_is_not_verified(org):
     change = approved(org)
     svc.execute(org["alice"], change)
     connector = Mock()
-    connector.reconcile.return_value = {"observed": {"member": False}}
+    connector.observe_membership.return_value = {"observed": {"member": False}}
 
     def late_remote(*args):
         Grant.objects.filter(source_request=change).update(status="revoked")

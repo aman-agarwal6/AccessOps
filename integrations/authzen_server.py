@@ -19,6 +19,7 @@ ACTIONS = {
     "review",
     "agent_tool",
     "resource_read",
+    "departure_close",
 }
 
 

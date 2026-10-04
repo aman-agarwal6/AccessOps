@@ -35,6 +35,14 @@ flowchart LR
 | Evidence archive modified or wrong issuer | Exact hashes + detached attestation + trusted signer policy | Offline verification; signatures alone do not validate security claims |
 | CI privilege escalation from pull request | Read-only checks; isolated manual main-branch signer job | Workflow review; no untrusted PR signing or privileged local runner |
 | Emergency path becomes backdoor | Local OS/container access, containment-only actions, required incident/reason | No remote route, no grant creation; OS admin remains a platform trust root |
+| Imported account state is assigned to the wrong departure | Explicit stable tenant/subject bindings, no name/email matching | Mismatched account imports denied without partial persistence |
+| Partial or stale cloud snapshot is treated as access termination | Strict capability schema, fresh post-departure readings, unknown absence, source labels | Conflicting/stale Entra reads and GitHub absence leave tasks pending |
+| Case owner closes their own unverifiable work | Owner-only statements, independent scoped reviewer, current revision/hash/policy | Self-review and changed evidence denied; closed packet retained |
+| Old provider success hides later drift or unavailability | Latest timestamped account reading, two-hour freshness, reconciliation refresh | Later enabled/unknown Keycloak readings reopen required work |
+| New HR event hides earlier unfinished directory removals | Retained managed-grant history, exact durable removal pairs and fresh per-pair proof | Repeated departure and missing historical-job fixtures stay blocked |
+| Mutable directory DN or concurrent account flags retarget a write | Trusted immutable GUIDs, object-specific delegation and atomic old-value LDAP modify | Rename/stale-value denials; real lab checks recorded separately |
+| Owner supplies arbitrary directory write targets | Server-local enrollment, frozen case mapping, pre/post-delivery validation | Browser retarget input and tampered job state denied |
+| Console presents weaker evidence as provider proof | Provenance derived only from the server's evidence kind and build mode; browser readings always labeled simulated; fixed icon + label + color per kind | Unit and connected-renderer tests: simulated ≠ provider observation; the UI explains rules but never grants authority |
 
 The indirect prompt injection fixture maps to MITRE ATLAS
 [AML.T0051.001](https://atlas.mitre.org/techniques/AML.T0051.001), verified against

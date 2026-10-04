@@ -1,3 +1,5 @@
+import type { DirectoryBinding, OffboardingCase } from "./offboarding";
+
 export type Identity = {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ export type Identity = {
   projectIds?: string[];
   providerBinding?: string;
   credentialBinding?: string;
+  directoryBinding?: DirectoryBinding;
 };
 export type Resource = {
   id: string;
@@ -119,6 +122,7 @@ export type Health = {
   detail: string;
 };
 export type Snapshot = {
+  offboardingCases?: OffboardingCase[];
   identities: Identity[];
   resources: Resource[];
   requests: AccessRequest[];
@@ -271,6 +275,17 @@ export function initialSimulation(now = Date.now()): Simulation {
       role: "Proposal-only review assistant",
       sponsorId: "op-avery",
       updatedAt: stamp,
+    },
+    {
+      id: "priya",
+      name: "Priya Nair",
+      kind: "human",
+      department: "Engineering",
+      status: "offboarded",
+      role: "Contract QA engineer",
+      email: "priya.nair@example.test",
+      providerSubject: "northstar-workforce|priya-001",
+      updatedAt: iso(now - 6 * 86400000),
     },
     {
       id: "op-jules",

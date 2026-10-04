@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -17,6 +18,11 @@ CONNECTED = {
     "protocols": "Identity and authorization protocols",
     "oidc-business": "OIDC login and protected access lifecycle",
     "offboarding": "Connected offboarding and unbacked access",
+    "cases": "Authenticated enterprise departure cases — mixed evidence",
+    "cases-attempt-1": "Initial case adapter check — failed attempt retained",
+    "cases-attempt-2": "Initial membership-removal check — failed attempt retained",
+    "cases-attempt-3": "Owner self-closure assertion — failed attempt retained",
+    "ad-offboarding": "Actual scoped Samba AD directory departure",
     "host-health": "Verified host HTTPS boundary",
     "policy-outage": "Actual OPA outage denial",
     "identity-outage": "Actual identity-provider outage denial",
@@ -28,6 +34,10 @@ JUNIT = {
         "PostgreSQL lifecycle and security tests",
         "Disposable PostgreSQL 17 / Python 3.13; isolated provider boundaries, not live protocol measurements.",
     ),
+    "backend-host-tests.xml": (
+        "Backend lifecycle and security tests (host SQLite)",
+        "Actual host run with SQLite test settings; the PostgreSQL-only concurrency test is skipped here and covered by the PostgreSQL runner.",
+    ),
     "frontend-unit.xml": (
         "Console domain and contract tests",
         "Actual Vitest execution of browser-domain and data-contract tests; simulated state, no provider effects.",
@@ -35,6 +45,34 @@ JUNIT = {
     "browser-tests.xml": (
         "Console browser and accessibility checks",
         "Actual local browser automation; automated checks are not full accessibility conformance or provider authentication evidence.",
+    ),
+    "enterprise-integration-tests.xml": (
+        "Enterprise collector and integration boundary checks",
+        "Actual isolated synthetic parsing, scoped transport and denial checks; no Entra or GitHub tenant measurement.",
+    ),
+    "case-tests.xml": (
+        "Departure case evidence and closure regressions",
+        "Isolated case API/database tests, including simulated persisted provider observations; no live directory measurement.",
+    ),
+    "case-tests-attempt-1.xml": (
+        "Initial departure case test attempt — failures retained",
+        "Historical isolated test attempt; later corrections did not rewrite this result.",
+    ),
+    "case-tests-attempt-2.xml": (
+        "Initial directory freshness test attempt — failure retained",
+        "Historical isolated test fixture failure; later corrections did not rewrite this result.",
+    ),
+    "case-tests-attempt-3.xml": (
+        "Initial directory worker fixture attempt — failures retained",
+        "Historical isolated test fixture failures; later corrections did not rewrite this result.",
+    ),
+    "connected-renderer-tests.xml": (
+        "Connected console rendering of a recorded lab snapshot",
+        "Actual browser rendering of a sanitized snapshot recorded from the lab, served through intercepted read endpoints. Checks DTO compatibility, labels, layout and accessibility; it is not authentication or provider evidence.",
+    ),
+    "enterprise-ad-integration-tests.xml": (
+        "Enterprise collectors and scoped directory adapter checks",
+        "Actual isolated normalization, cryptography and transport denial checks; mocked boundaries do not prove a live tenant or directory effect.",
     ),
 }
 
@@ -98,7 +136,7 @@ def connected_record(stem, name):
     limits = data["limitations"] + [
         "Local workstation measurement; not signed CI provenance or protocol certification."
     ]
-    if "attempt-1-failed" in stem:
+    if "attempt" in stem:
         limits.append(
             "Historical failed attempt retained alongside the later retry; its result was not rewritten."
         )
@@ -158,6 +196,44 @@ def junit_record(filename, name, scope):
     )
 
 
+def directory_auth_record(stem):
+    raw, digest = read_report(ROOT / "output" / "connected" / (stem + ".json"))
+    data = json.loads(raw)
+    if (
+        data.get("schemaVersion") != 1
+        or data.get("origin") != "connected_samba_ad"
+        or data.get("phase") not in ("before", "after")
+    ):
+        raise ValueError("Only the exact synthetic directory authentication report is supported")
+    checks = []
+    for item in data["checks"]:
+        if item["status"] not in ("passed", "failed", "skipped"):
+            raise ValueError("Unknown authentication check result")
+        checks.append(
+            {
+                "name": item["name"],
+                "status": item["status"],
+                "detail": "Actual one-shot verified LDAPS and Kerberos fixture authentication.",
+            }
+        )
+    return record(
+        f"Scoped directory new authentication — {data['phase']} · fixture {stem[-12:]}",
+        stem,
+        timestamp(data["startedAt"]),
+        timestamp(data["finishedAt"]),
+        checks,
+        {
+            "measurementOrigin": data["origin"],
+            "sourceRevision": "unrecorded",
+            "limitations": [
+                *data["limitations"],
+                "Local one-shot measurement, not signed provenance or universal session revocation.",
+            ],
+        },
+        digest,
+    )
+
+
 def main():
     runs = []
     for stem, name in CONNECTED.items():
@@ -166,6 +242,23 @@ def main():
     for filename, (name, scope) in JUNIT.items():
         if (ROOT / "output" / filename).is_file():
             runs.append(junit_record(filename, name, scope))
+    # Only these reviewed report shapes and exact synthetic suffixes are eligible.
+    directory_reports = [
+        p
+        for p in (ROOT / "output" / "connected").glob("*.json")
+        if re.fullmatch(r"(?:cases-ad|ad-auth-before|ad-auth-after)-[a-f0-9]{12}", p.stem)
+    ]
+    if len(directory_reports) > 30:
+        raise ValueError("Directory report publication limit reached; review exact selections")
+    for path in directory_reports:
+        runs.append(
+            connected_record(
+                path.stem,
+                f"Actual scoped Samba directory departure case · fixture {path.stem[-12:]}",
+            )
+            if path.stem.startswith("cases-ad-")
+            else directory_auth_record(path.stem)
+        )
     if not runs:
         raise ValueError("No actual reports available; no evidence was published")
     target = ROOT / "frontend" / "public" / "evidence" / "index.json"

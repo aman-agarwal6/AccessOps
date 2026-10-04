@@ -56,3 +56,19 @@ https://policy.accessops.internal:8183 {
 		respond "Not found" 404
 	}
 }
+
+# Read-only workforce group observation, private Docker networks only.
+# No host publication and no public admin route; all other paths/methods deny.
+https://keycloak-observe.accessops.internal:8184 {
+	tls internal
+	@membership {
+		method GET
+		path_regexp membership ^/admin/realms/accessops-workforce/groups/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/members$
+	}
+	handle @membership {
+		reverse_proxy keycloak:8080
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

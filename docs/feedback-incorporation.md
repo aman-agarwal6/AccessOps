@@ -23,6 +23,7 @@ the [verification ledger](verification.md) separately records actual execution.
 | Approval expiry | Fifteen minutes; exact intent, policy version, identity revision and current approver authority checked at execution. |
 | Token edges | Issuer/audience/client, expiry, `alg:none`, confusion, unknown `kid`, bounded refresh, rotation and skew tested in isolated boundaries. Live rotation is separately unrun. |
 | Out-of-band drift | Direct SCIM membership without a backed grant, authenticated reconciliation and no adoption. Unobservable service-account records are unknown, never matches. |
+| Interface readability (October 2026) | Rebuilt console: dark and light themes from one token set, 16px type scale, urgency-ranked queue, one next step per case with role explanations, phase-grouped actions and fixed provenance labels. See [approved-plan.md](approved-plan.md). |
 
 New agent inventory has no credential or privilege; sponsor transfer leaves it
 suspended; v1 grants are read-only. Password-only synthetic operator login does

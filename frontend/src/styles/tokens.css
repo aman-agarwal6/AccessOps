@@ -1,0 +1,171 @@
+/*
+ * AccessOps design tokens.
+ * Dark graphite is the default; the light theme mirrors every role.
+ * Text tokens meet WCAG AA (4.5:1) on every surface token of their theme.
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces, back to front */
+  --bg: #0b0e13;
+  --bg-sidebar: #0e1218;
+  --surface: #131820;
+  --surface-2: #19202a;
+  --surface-3: #202834;
+  --surface-hover: #1d2530;
+  --surface-sunken: #0f1319;
+  --overlay: rgb(5 7 10 / 72%);
+
+  --border: #252e3b;
+  --border-strong: #354152;
+  --divider: #1f2733;
+
+  /* Text */
+  --text: #edf1f6;
+  --text-2: #b6c0cc;
+  --text-3: #8d99a9;
+  --text-on-accent: #ffffff;
+
+  /* Accent (actions, links, focus) */
+  --accent: #8b9bff;
+  --accent-strong: #4a5af0;
+  --accent-strong-hover: #3f4fe4;
+  --accent-soft: rgb(139 155 255 / 12%);
+  --accent-border: rgb(139 155 255 / 38%);
+  --focus: #a9b5ff;
+
+  /* Status */
+  --ok: #4fd69c;
+  --ok-soft: rgb(79 214 156 / 11%);
+  --ok-border: rgb(79 214 156 / 32%);
+  --warn: #f4bf55;
+  --warn-soft: rgb(244 191 85 / 11%);
+  --warn-border: rgb(244 191 85 / 34%);
+  --danger: #ff8080;
+  --danger-soft: rgb(255 128 128 / 11%);
+  --danger-border: rgb(255 128 128 / 34%);
+  --info: #6ccdff;
+  --info-soft: rgb(108 205 255 / 11%);
+  --info-border: rgb(108 205 255 / 32%);
+  --neutral: #a5b0be;
+  --neutral-soft: rgb(165 176 190 / 10%);
+  --neutral-border: rgb(165 176 190 / 26%);
+
+  /* Evidence provenance: strongest to weakest, always paired with icon + label */
+  --prov-signed: #ffd479;
+  --prov-observed: #4fd69c;
+  --prov-imported: #6ccdff;
+  --prov-attested: #ffb37d;
+  --prov-simulated: #c9a6ff;
+  --prov-pending: #a5b0be;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 24px 64px rgb(0 0 0 / 50%);
+  --glow-accent:
+    0 0 0 1px var(--accent-border), 0 8px 30px rgb(74 90 240 / 18%);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f3f5f8;
+  --bg-sidebar: #eceff4;
+  --surface: #ffffff;
+  --surface-2: #f7f8fb;
+  --surface-3: #eef1f6;
+  --surface-hover: #f2f4f9;
+  --surface-sunken: #f0f2f6;
+  --overlay: rgb(17 23 35 / 48%);
+
+  --border: #dce2ea;
+  --border-strong: #c3ccd8;
+  --divider: #e7ebf1;
+
+  --text: #0f1520;
+  --text-2: #374254;
+  --text-3: #586477;
+  --text-on-accent: #ffffff;
+
+  --accent: #3442c9;
+  --accent-strong: #4a5af0;
+  --accent-strong-hover: #3d4de3;
+  --accent-soft: rgb(74 90 240 / 9%);
+  --accent-border: rgb(74 90 240 / 34%);
+  --focus: #3442c9;
+
+  --ok: #0a6844;
+  --ok-soft: rgb(10 104 68 / 9%);
+  --ok-border: rgb(15 122 82 / 30%);
+  --warn: #805000;
+  --warn-soft: rgb(196 132 0 / 12%);
+  --warn-border: rgb(143 91 0 / 32%);
+  --danger: #b42f2f;
+  --danger-soft: rgb(180 47 47 / 8%);
+  --danger-border: rgb(180 47 47 / 30%);
+  --info: #0c6496;
+  --info-soft: rgb(12 100 150 / 9%);
+  --info-border: rgb(12 100 150 / 30%);
+  --neutral: #4f5b6c;
+  --neutral-soft: rgb(79 91 108 / 8%);
+  --neutral-border: rgb(79 91 108 / 24%);
+
+  --prov-signed: #7d5a00;
+  --prov-observed: #0a6844;
+  --prov-imported: #0c6496;
+  --prov-attested: #a24a0b;
+  --prov-simulated: #6c3dc4;
+  --prov-pending: #4f5b6c;
+
+  --shadow-sm: 0 1px 2px rgb(15 21 32 / 6%);
+  --shadow-md: 0 8px 24px rgb(15 21 32 / 8%);
+  --shadow-lg: 0 24px 60px rgb(15 21 32 / 18%);
+  --glow-accent:
+    0 0 0 1px var(--accent-border), 0 8px 24px rgb(74 90 240 / 12%);
+}
+
+:root {
+  /* Type */
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono:
+    "Geist Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Consolas,
+    monospace;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-body: 1.55;
+
+  /* Space (4px grid) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s16: 64px;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  --sidebar-w: 272px;
+  --topbar-h: 64px;
+  --content-max: 1360px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+}

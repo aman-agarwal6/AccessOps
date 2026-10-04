@@ -25,3 +25,9 @@ test_resource_read_entitlement if { accessops.allow with input as base with inpu
 test_resource_read_revoked_denied if { not accessops.allow with input as base with input.action as "resource_read" with input.context as {"policy_version": "accessops-v1", "grant_active": false, "sponsor_active": true, "within_budget": true} }
 test_resource_read_budget_denied if { not accessops.allow with input as base with input.action as "resource_read" with input.context as {"policy_version": "accessops-v1", "grant_active": true, "sponsor_active": true, "within_budget": false} }
 test_resource_read_agent_sponsor_denied if { not accessops.allow with input as base with input.subject.kind as "agent" with input.action as "resource_read" with input.context as {"policy_version": "accessops-v1", "grant_active": true, "sponsor_active": false, "within_budget": true} }
+
+departure := {"action": "departure_close", "resource": {}, "subject": {"id": "reviewer", "kind": "human", "status": "active", "roles": ["approver"], "project_ids": ["Atlas"]}, "context": {"policy_version": "accessops-v1", "identity_project_ids": ["Atlas"], "case_owner_id": "owner"}}
+test_independent_departure_reviewer if { accessops.allow with input as departure }
+test_departure_owner_cannot_close if { not accessops.allow with input as departure with input.context.case_owner_id as "reviewer" }
+test_departure_cross_scope_denied if { not accessops.allow with input as departure with input.context.identity_project_ids as ["Pulse"] }
+test_departure_stale_policy_denied if { not accessops.allow with input as departure with input.context.policy_version as "old" }

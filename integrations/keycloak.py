@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+import uuid
 from urllib.parse import quote
 
 import httpx
@@ -20,6 +21,7 @@ USER = "urn:ietf:params:scim:schemas:core:2.0:User"
 GROUP = "urn:ietf:params:scim:schemas:core:2.0:Group"
 PATCH = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
 LIST = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+MEMBERSHIP_ORIGIN = "https://keycloak-observe.accessops.internal:8184"
 
 
 def identifier(value):
@@ -52,6 +54,7 @@ class KeycloakConnector:
                     "client_id": self.client_id,
                     "client_secret": self.secret,
                 },
+                follow_redirects=False,
             )
             if response.status_code != 200:
                 raise ConnectorError("SCIM authentication rejected")
@@ -78,6 +81,7 @@ class KeycloakConnector:
                     "Accept": "application/scim+json",
                     "Content-Type": "application/scim+json",
                 },
+                follow_redirects=False,
             )
             if response.status_code not in expected:
                 raise ConnectorError(f"SCIM operation failed (HTTP {response.status_code})")
@@ -177,18 +181,91 @@ class KeycloakConnector:
             "/Groups/" + identifier(group_id),
             params={"attributes": "id,displayName,members"},
         )
-        if not isinstance(data.get("displayName"), str) or not data["displayName"].startswith(
-            "accessops-"
+        if (
+            not isinstance(data, dict)
+            or data.get("id") != group_id
+            or not isinstance(data.get("schemas"), list)
+            or GROUP not in data["schemas"]
+            or not isinstance(data.get("displayName"), str)
+            or not data["displayName"].startswith("accessops-")
+            or len(data["displayName"]) > 100
         ):
-            raise ConnectorError("Group is outside connector namespace")
+            raise ConnectorError("Group binding or schema is invalid")
+        if "members" in data:
+            self._member_ids(data["members"])
         return data
+
+    @staticmethod
+    def _member_ids(members):
+        if not isinstance(members, list) or len(members) > 500:
+            raise ConnectorError("Group membership incomplete")
+        ids = []
+        for member in members:
+            if not isinstance(member, dict):
+                raise ConnectorError("Group membership incomplete")
+            value = member.get("value")
+            identifier(value)
+            ids.append(value)
+        if len(set(ids)) != len(ids):
+            raise ConnectorError("Group membership incomplete")
+        return ids
+
+    def _admin_member(self, group_id, user_id):
+        """Read-only fixed workforce endpoint; omitted SCIM attributes are unknown."""
+        try:
+            if str(uuid.UUID(group_id)) != group_id or str(uuid.UUID(user_id)) != user_id:
+                raise ValueError
+        except (ValueError, TypeError, AttributeError):
+            raise ConnectorError("Native membership binding invalid") from None
+        url = (
+            MEMBERSHIP_ORIGIN + "/admin/realms/accessops-workforce/groups/" + group_id + "/members"
+        )
+        seen = set()
+        try:
+            # One native response avoids missing a target shifted between
+            # offset pages. The supported max parameter supplies cap+1; groups
+            # exceeding the documented local inventory cap remain unknown.
+            response = self.http.get(
+                url,
+                params={"first": 0, "max": 501, "briefRepresentation": "true"},
+                headers={"Authorization": "Bearer " + self._token(), "Accept": "application/json"},
+                follow_redirects=False,
+            )
+            if response.status_code != 200 or str(response.url).split("?", 1)[0] != url:
+                raise ConnectorError("Membership observation unavailable")
+            records = json_response(response, limit=131072)
+            if not isinstance(records, list) or len(records) > 500:
+                raise ConnectorError("Membership observation incomplete")
+            for record in records:
+                value = record.get("id") if isinstance(record, dict) else None
+                if not isinstance(value, str) or str(uuid.UUID(value)) != value or value in seen:
+                    raise ConnectorError("Membership observation incomplete")
+                seen.add(value)
+            return user_id in seen
+        except (httpx.HTTPError, IntegrationError, ValueError):
+            raise ConnectorError("Membership observation unavailable") from None
+
+    def observe_membership(self, identity, resource):
+        user_id = identity.get("providerSubject")
+        identifier(user_id)
+        group_id = self._group(resource)
+        group = self.get_group(group_id)
+        member = (
+            user_id in self._member_ids(group["members"])
+            if "members" in group
+            else self._admin_member(group_id, user_id)
+        )
+        return {"observed": {"member": member, "groupId": group_id}}
 
     def set_membership(self, group_id, user_id, present):
         identifier(user_id)
-        current = self.get_group(group_id)
-        exists = any(item.get("value") == user_id for item in current.get("members", []))
+        if type(present) is not bool:
+            raise ConnectorError("Membership intent invalid")
+        exists = self.observe_membership({"providerSubject": user_id}, {"providerGroup": group_id})[
+            "observed"
+        ]["member"]
         if exists == present:
-            return current
+            return {"verified": True}
         operation = (
             {"op": "add", "path": "members", "value": [{"value": user_id}]}
             if present
@@ -215,8 +292,7 @@ class KeycloakConnector:
             group_id = self._group(resource)
             expected = kind == "grant"
             self.set_membership(group_id, user_id, expected)
-            group = self.get_group(group_id)
-            actual = any(member.get("value") == user_id for member in group.get("members", []))
+            actual = self.observe_membership(identity, resource)["observed"]["member"]
             return {
                 "desired": {"member": expected},
                 "observed": {"member": actual, "groupId": group_id},
@@ -245,10 +321,7 @@ class KeycloakConnector:
         result = {"active": observed.get("active")}
         drift = observed.get("active") is not desired_active
         if resource and resource.get("providerGroup"):
-            group = self.get_group(resource["providerGroup"])
-            result["member"] = any(
-                m.get("value") == identity.get("providerSubject") for m in group.get("members", [])
-            )
+            result["member"] = self.observe_membership(identity, resource)["observed"]["member"]
             if "desiredMember" in resource:
                 drift = drift or result["member"] != resource["desiredMember"]
         return {"drift": drift, "observed": result}

@@ -58,6 +58,26 @@ def scope_identity(actor, identity):
         )
 
 
+def offboarding_projects(identity):
+    affected = [identity, *Principal.objects.filter(sponsor=identity, kind="agent")]
+    return {project for principal in affected for project in principal.project_ids} | set(
+        Grant.objects.filter(identity_id__in=[principal.pk for principal in affected]).values_list(
+            "resource__project", flat=True
+        )
+    )
+
+
+def scope_offboarding(actor, identity):
+    projects = offboarding_projects(identity)
+    if not projects or not projects.issubset(actor.project_ids):
+        raise DomainError(
+            "object_scope_denied",
+            "Departure coverage includes identities or historical grants outside your project scope.",
+            403,
+        )
+    return projects
+
+
 def require_policy(actor, action, resource=None, change=None, context=None):
     active(actor)
     if resource:
@@ -68,6 +88,7 @@ def require_policy(actor, action, resource=None, change=None, context=None):
         "review": "operator",
         "reconcile": "operator",
         "approve": "approver",
+        "departure_close": "approver",
     }.get(action)
     if actor.kind == "agent" and action not in ("agent_tool", "resource_read"):
         raise DomainError(
@@ -192,7 +213,9 @@ def create_request(actor, data):
     action = data["action"]
     if action in ("grant", "revoke") and resource is None:
         raise DomainError("resource_required", "A resource is required for this change.")
-    if action in ("offboard", "transfer"):
+    if action == "offboard":
+        scope_offboarding(actor, identity)
+    elif action == "transfer":
         scope_identity(actor, identity)
     if resource:
         scope_resource(actor, resource)
@@ -374,6 +397,7 @@ def execute(actor, request):
                 task.status = "revoked"
                 task.save(update_fields=["status"])
     elif action == "offboard":
+        scope_offboarding(actor, identity)
         identity.status = "offboarded"
         identity.revision += 1
         identity.save(update_fields=["status", "revision", "updated_at"])
@@ -385,6 +409,26 @@ def execute(actor, request):
         Principal.objects.filter(pk__in=agents).update(
             status="suspended", revision=F("revision") + 1
         )
+        # Historical grants remain evidence of known managed memberships. A
+        # repeated departure must not skip them merely because local access was
+        # revoked by an earlier case whose remote outcome is still unresolved.
+        remote_pairs = (
+            Grant.objects.filter(identity_id__in=[identity.pk, *agents])
+            .exclude(resource__provider_group="")
+            .values_list("identity_id", "resource_id")
+            .distinct()
+        )
+        for identity_id, resource_id in remote_pairs:
+            OutboxJob.objects.create(
+                kind="entitlement_revoke",
+                desired={
+                    "identityId": str(identity_id),
+                    "resourceId": str(resource_id),
+                    "action": "revoke",
+                    "containmentRequestId": str(request.pk),
+                },
+                available_at=timezone.now(),
+            )
         revoke_for([identity.pk, *agents])
         # Disabling a sponsor also becomes a separate durable provider operation.
         for agent_id in agents:

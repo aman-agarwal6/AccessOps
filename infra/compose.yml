@@ -154,7 +154,7 @@ services:
       app:
         aliases: [accessops.test]
       identity:
-        aliases: [id.accessops.test, accessops.test]
+        aliases: [id.accessops.test, accessops.test, keycloak-observe.accessops.internal]
       policy:
         aliases: [policy.accessops.internal]
     cap_drop: [ALL]

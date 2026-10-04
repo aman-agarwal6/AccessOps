@@ -66,7 +66,9 @@ SECURE_REFERRER_POLICY = "same-origin"
 if os.environ.get("ACCESSOPS_TRUST_PRIVATE_PROXY") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 X_FRAME_OPTIONS = "DENY"
-DATA_UPLOAD_MAX_MEMORY_SIZE = 65536
+# Match the private HTTPS edge's bounded request ceiling; canonical case reports
+# retain their stricter 100 KB/100-observation validation.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 131072
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],

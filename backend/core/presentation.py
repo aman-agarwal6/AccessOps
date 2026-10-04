@@ -2,6 +2,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .models import (
+    ADEnrollment,
     Approval,
     AuditEvent,
     ChangeRequest,
@@ -13,7 +14,7 @@ from .models import (
     Review,
     SponsorAcceptance,
 )
-from .services import policy_state
+from .services import offboarding_projects, policy_state
 
 
 def iso(value):
@@ -31,7 +32,7 @@ def identity(p):
             if p.status == "active"
             else "recovery-required"
         )
-    return {
+    value = {
         "id": str(p.pk),
         "name": p.name,
         "kind": p.kind,
@@ -47,6 +48,10 @@ def identity(p):
         "credentialBinding": credential_binding,
         "updatedAt": iso(p.updated_at),
     }
+    enrollment = ADEnrollment.objects.filter(identity=p).first()
+    if enrollment:
+        value["directoryBinding"] = enrollment.binding
+    return value
 
 
 def resource(r):
@@ -207,6 +212,8 @@ def run(r):
 
 
 def snapshot(actor):
+    from .offboarding import visible_cases
+
     resources = list(Resource.objects.filter(project__in=actor.project_ids))
     resource_ids = [r.pk for r in resources]
     identities = [
@@ -221,7 +228,12 @@ def snapshot(actor):
     requests = [
         r
         for r in requests.order_by("-created_at")[:200]
-        if r.resource_id or set(r.identity.project_ids).issubset(actor.project_ids)
+        if r.resource_id
+        or set(
+            offboarding_projects(r.identity)
+            if r.payload.get("action") == "offboard"
+            else r.identity.project_ids
+        ).issubset(actor.project_ids)
     ]
     reviews = [
         r
@@ -233,7 +245,22 @@ def snapshot(actor):
         for r in EvidenceRun.objects.order_by("-started_at")[:100]
         if set(r.project_ids).issubset(actor.project_ids)
     ]
-    target_ids = {str(v.pk) for v in [*resources, *identities, *requests, *reviews, *runs]}
+    cases = visible_cases(actor)
+    case_ids = [case["id"] for case in cases]
+    directory_jobs = OutboxJob.objects.filter(
+        kind__in=["ad_offboard", "ad_observe"], desired__caseId__in=case_ids
+    )
+    membership_jobs = OutboxJob.objects.filter(
+        kind="entitlement_revoke",
+        desired__identityId__in=[str(p.pk) for p in identities],
+        desired__resourceId__in=[str(r.pk) for r in resources],
+    )
+    target_ids = (
+        {str(v.pk) for v in [*resources, *identities, *requests, *reviews, *runs]}
+        | set(case_ids)
+        | {str(v.pk) for v in directory_jobs}
+        | {str(v.pk) for v in membership_jobs}
+    )
     # Events lacking an object scope are shown only to full-scope auditors.
     audit_events = [
         e
@@ -241,12 +268,18 @@ def snapshot(actor):
         if e.target_id in target_ids or e.actor_id == str(actor.pk)
     ]
     pending = (
-        OutboxJob.objects.filter(Q(request__in=requests) | Q(assistant_task__review__in=reviews))
+        OutboxJob.objects.filter(
+            Q(request__in=requests)
+            | Q(assistant_task__review__in=reviews)
+            | Q(pk__in=directory_jobs.values("pk"))
+            | Q(pk__in=membership_jobs.values("pk"))
+        )
         .exclude(status__in=["verified", "cancelled"])
         .count()
     )
     state = policy_state()
     return {
+        "offboardingCases": cases,
         "identities": [identity(p) for p in identities],
         "resources": [resource(r) for r in resources],
         "requests": [change(r) for r in requests],

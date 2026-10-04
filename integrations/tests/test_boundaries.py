@@ -182,6 +182,18 @@ def evaluation():
     }
 
 
+def test_departure_closure_is_allowlisted_without_relaxing_action_shape():
+    body = evaluation()
+    body["action"] = {"name": "departure_close"}
+    body["context"]["case_owner_id"] = "independent-case-owner"
+    normalized = normalize(body)
+    assert normalized["action"] == "departure_close"
+    assert normalized["context"]["case_owner_id"] == "independent-case-owner"
+    body["action"]["allow"] = True
+    with pytest.raises(ValueError):
+        normalize(body)
+
+
 def test_undefined_opa_response_fails_closed():
     connection = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={})))
     with pytest.raises(RuntimeError):
@@ -211,12 +223,19 @@ def test_scim_membership_patch_and_confirmation():
             body = json.loads(request.content)
             assert body["Operations"][0] == {"op": "remove", "path": 'members[value eq "user-1"]'}
             return httpx.Response(
-                200, json={"id": "group-1", "displayName": "accessops-test", "members": []}
+                200,
+                json={
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+                    "id": "group-1",
+                    "displayName": "accessops-test",
+                    "members": [],
+                },
             )
         return httpx.Response(
             200,
             json={
                 "id": "group-1",
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
                 "displayName": "accessops-test",
                 "members": [{"value": "user-1"}],
             },

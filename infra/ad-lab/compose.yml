@@ -1,0 +1,59 @@
+name: accessops-adlab
+services:
+  dc:
+    image: accessops-adlab:local
+    build: .
+    hostname: dc.adlab.test
+    secrets: [administrator_password, mara_password]
+    volumes:
+      - directory:/var/lib/adlab
+      - public-ca:/run/lab-ca
+    networks:
+      directory:
+        ipv4_address: 10.247.240.10
+        aliases: [dc.adlab.test]
+    read_only: true
+    tmpfs: [/tmp, /run/samba, /var/log/samba]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, FSETID, SETGID, SETUID, NET_BIND_SERVICE, KILL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    cpus: 1.5
+    pids_limit: 256
+    healthcheck:
+      test: [CMD, /usr/bin/python3, /lab/health.py]
+      interval: 10s
+      timeout: 8s
+      retries: 18
+      start_period: 30s
+    restart: unless-stopped
+  probe:
+    image: accessops-adlab:local
+    entrypoint: [/usr/bin/python3, /lab/probe.py]
+    profiles: [tools]
+    secrets: [administrator_password]
+    volumes:
+      - public-ca:/run/lab-ca:ro
+      - ./output:/reports
+    networks: [directory]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    pids_limit: 64
+    depends_on:
+      dc: {condition: service_healthy}
+networks:
+  directory:
+    internal: true
+    ipam:
+      config: [{subnet: 10.247.240.0/24}]
+volumes:
+  directory: {}
+  public-ca: {}
+secrets:
+  administrator_password:
+    file: ./.local/administrator-password.txt
+  mara_password:
+    file: ./.local/mara-password.txt
