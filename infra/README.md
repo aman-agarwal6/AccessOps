@@ -1,5 +1,25 @@
 # Connected local lab
 
+The optional [directory departure case](../docs/directory-lab.md) adds the bundled
+free Samba lab through an explicit private-network override. Base cases continue
+to work without that directory enrollment.
+
+SCIM group observations validate the exact group/schema and `accessops-` namespace.
+Native Keycloak can omit requested `members` on empty groups. Such omission needs
+a separate read-only workforce group-members observation through container-only
+verified TLS `keycloak-observe.accessops.internal:8184`; it never becomes absence
+by default. The proxy permits only GET for the fixed workforce UUID-group members
+path, with no host port or public admin route. The existing workforce credential
+keeps its whole-realm permissions; no new permission is added. One native response
+requests `first=0,max=501`; a result above 500, malformed/duplicate IDs, denial,
+redirect or incomplete observation stays unknown. This profile relies on the
+[pinned native endpoint's max contract](https://github.com/keycloak/keycloak/blob/26.8.0/services/src/main/java/org/keycloak/services/resources/admin/GroupResource.java),
+not unstable offset pages. Only the exact membership Boolean is retained; it
+does not establish general SCIM conformance, federation completeness, or a service
+account's disabled state. Native `/Users` service-account visibility remains a
+separate limitation. Positive and negative readings and proxy denials are checked
+in the real case script.
+
 Run these commands from the repository root in PowerShell. This reference uses
 synthetic data, Docker Engine with Compose, Python 3.13, and a loopback HTTPS
 front door. The tested workstation used Windows, WSL2, and Docker Desktop with
@@ -61,6 +81,7 @@ the front door after the outage probes.
 | `protocols.*` | Real native SCIM discovery, user/group changes, private-key client authentication, introspection, realm boundaries, AuthZEN and OPA |
 | `oidc-business.*` | Real HTTP authorization code + PKCE logins, independent grant approval, protected resource access, immediate revoke/replay denial, SCIM observation and local logout |
 | `offboarding.*` | Authenticated inventory registration, unique human/agent provider bindings, live drift without adopting access, independently approved grant, local offboarding and SCIM `active=false` observation |
+| `cases.*` | Real authenticated case creation/import/containment, native SCIM disabled-account observation, synthetic cloud snapshots and owner scope exclusions, independent administrative closure and immutable packet |
 | `host-health.*` | Host loopback HTTPS, exact operator issuer, hidden administration route and rejection of an unconfigured TLS server name |
 | `policy-outage.*`, `identity-outage.*` | Live policy denial and new token issuance failure while the respective dependency is stopped |
 
@@ -71,6 +92,15 @@ The source revision is `unrecorded` unless a real build revision was explicitly
 injected. These reports are local measurements, not signed provenance or a
 protocol certification. They omit passwords, tokens, login parameters, raw
 responses, stack traces, and exception messages.
+
+The case check enrolls another unique fictional worker and suspended inventory
+agent, grants that worker access through independent approval, and contains it
+through the departure case API. Its Entra/GitHub snapshots are explicitly
+synthetic, and external owner statements record fictional scope exclusions.
+Successful administrative case closure measures the persisted review workflow;
+it does not claim real cloud revocation. Session and credential gaps remain
+explicit in the packet. See [enterprise snapshots](../docs/platform-connectors.md)
+for the credential-free fixtures and optional read-only tenant collector.
 
 `runtime-source.json` records service states, published addresses, actual image
 IDs and SHA-256 hashes read from the running backend image. It compares those

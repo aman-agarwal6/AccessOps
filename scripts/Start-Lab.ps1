@@ -53,11 +53,17 @@ if (-not $SkipBuild) { Invoke-LabCompose -Arguments @('build') }
 # The edge generates the CA before clients start. Only its public certificate is exported.
 Invoke-LabCompose -Arguments @('up', '-d', 'web')
 $accessopsCopied = $false
-for ($accessopsAttempt = 0; $accessopsAttempt -lt 20; $accessopsAttempt++) {
-    & docker @accessopsDocker cp web:/data/caddy/pki/authorities/local/root.crt .local/tls/root.crt 2>$null
-    if ($LASTEXITCODE -eq 0) { $accessopsCopied = $true; break }
-    Start-Sleep -Seconds 1
-}
+# Compose reports copy progress on stderr. Windows PowerShell 5.1 turns redirected
+# native stderr into an error record, so rely on the exit code inside this loop.
+$accessopsPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    for ($accessopsAttempt = 0; $accessopsAttempt -lt 20; $accessopsAttempt++) {
+        & docker @accessopsDocker cp web:/data/caddy/pki/authorities/local/root.crt .local/tls/root.crt 2>$null
+        if ($LASTEXITCODE -eq 0) { $accessopsCopied = $true; break }
+        Start-Sleep -Seconds 1
+    }
+} finally { $ErrorActionPreference = $accessopsPreference }
 if (-not $accessopsCopied) { throw 'Public local CA certificate was not generated.' }
 if ($TrustLocalCA) {
     # Explicit switch: trust applies only to the current Windows user, never LocalMachine.

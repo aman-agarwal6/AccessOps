@@ -1,0 +1,24 @@
+# Opt-in only; attach to the explicit existing or bundled isolated Samba lab.
+services:
+  backend:
+    environment:
+      ACCESSOPS_AD_CONFIG_FILE: /run/accessops-ad/config.json
+    volumes:
+      - ../.local/ad:/run/accessops-ad:ro
+      - ad-public-ca:/run/accessops-ad-ca:ro
+    networks: [app, identity, policy, ad-directory]
+  worker:
+    environment:
+      ACCESSOPS_AD_CONFIG_FILE: /run/accessops-ad/config.json
+    volumes:
+      - ../.local/ad:/run/accessops-ad:ro
+      - ad-public-ca:/run/accessops-ad-ca:ro
+    networks: [app, identity, policy, ad-directory]
+networks:
+  ad-directory:
+    external: true
+    name: accessops-adlab_directory
+volumes:
+  ad-public-ca:
+    external: true
+    name: accessops-adlab_public-ca

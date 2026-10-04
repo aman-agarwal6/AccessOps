@@ -1,7 +1,15 @@
-from core import auth, enrollment, views
+from core import auth, enrollment, offboarding, views
 from django.urls import path
 
 urlpatterns = [
+    path("api/v1/offboarding-cases", offboarding.create),
+    path("api/v1/offboarding-cases/<uuid:case_id>/packet", offboarding.packet),
+    path(
+        "api/v1/offboarding-cases/<uuid:case_id>/tasks/<str:task_id>/attest",
+        offboarding.action,
+        {"operation": "attest"},
+    ),
+    path("api/v1/offboarding-cases/<uuid:case_id>/<str:operation>", offboarding.action),
     path("api/v1/identities", enrollment.identities),
     path(
         "api/v1/identities/<uuid:identity_id>/transfer-department", enrollment.transfer_department

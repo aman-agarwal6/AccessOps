@@ -9,7 +9,17 @@ from django.db.models import Q
 from django.utils import timezone
 
 from . import audit
-from .models import AssistantTask, ChangeRequest, EvidenceRun, Grant, OutboxJob, Principal, Resource
+from .models import (
+    ADEnrollment,
+    AssistantTask,
+    ChangeRequest,
+    EvidenceRun,
+    Grant,
+    OffboardingCase,
+    OutboxJob,
+    Principal,
+    Resource,
+)
 from .services import policy_state
 
 
@@ -133,6 +143,7 @@ def run_reconcile(job, connector):
                         "drift": None,
                         "status": "unavailable",
                         "observed": {"binding": "pending"},
+                        "observedAt": timezone.now().isoformat(),
                     }
                 )
                 continue
@@ -151,6 +162,7 @@ def run_reconcile(job, connector):
                     },
                     {"providerGroup": resource.provider_group, "desiredMember": desired_member},
                 )
+                observed_at = timezone.now().isoformat()
                 observed = result.get("observed") if isinstance(result, dict) else None
                 if (
                     not isinstance(observed, dict)
@@ -170,6 +182,7 @@ def run_reconcile(job, connector):
                         "status": "unavailable",
                         "drift": None,
                         "observed": {"availability": "unknown"},
+                        "observedAt": timezone.now().isoformat(),
                     }
                 )
                 continue
@@ -182,6 +195,7 @@ def run_reconcile(job, connector):
                     "observed": {
                         key: observed[key] for key in ("active", "member") if key in observed
                     },
+                    "observedAt": observed_at,
                 }
             )
     return {
@@ -245,6 +259,33 @@ def finish_reconciliation(job):
     run.save()
 
 
+def directory_job_binding(job):
+    """The durable payload cannot retarget a trusted, already-contained case."""
+    from integrations.ad import normalize_binding
+
+    desired = job.desired
+    if (
+        job.request_id is not None
+        or not isinstance(desired, dict)
+        or set(desired) != {"caseId", "identityId", "binding"}
+    ):
+        raise RuntimeError("directory_job_invalid")
+    binding = normalize_binding(desired["binding"])
+    case = OffboardingCase.objects.select_related("identity").get(pk=desired["caseId"])
+    enrollment = ADEnrollment.objects.get(identity_id=case.identity_id)
+    if (
+        str(case.identity_id) != desired["identityId"]
+        or case.identity.status != "offboarded"
+        or case.containment_request_id is None
+        or case.effective_at > timezone.now()
+        or case.closed_at is not None
+        or case.ad_binding != binding
+        or enrollment.binding != binding
+    ):
+        raise RuntimeError("directory_job_binding_changed")
+    return binding
+
+
 def process_one(connector=None):
     job = claim_job()
     if not job:
@@ -253,6 +294,19 @@ def process_one(connector=None):
     try:
         if job.kind == "assistant":
             result = run_assistant(job)
+        elif job.kind in ("ad_offboard", "ad_observe"):
+            from integrations.ad import ADDirectoryConnector, verified_result
+
+            with transaction.atomic():
+                policy_state(lock=True)
+                binding = directory_job_binding(job)
+            if connector is None:
+                connector, owned_connector = ADDirectoryConnector(), True
+            if job.kind == "ad_observe":
+                observed = connector.validate_binding(binding)
+                result = {"verified": verified_result(binding, observed), "observed": observed}
+            else:
+                result = connector.offboard(binding)
         else:
             if connector is None:
                 from integrations.keycloak import KeycloakConnector
@@ -273,7 +327,11 @@ def process_one(connector=None):
                     policy_state(lock=True)
                     operation, identity, resource = desired_operation(job)
                 # Every delivery, especially an ambiguous retry, reads first.
-                observed = connector.reconcile(identity, resource)
+                observed = (
+                    connector.observe_membership(identity, resource)
+                    if operation["kind"] in ("grant", "revoke")
+                    else connector.reconcile(identity, resource)
+                )
                 satisfied = (
                     observed.get("observed", {}).get("member") is (operation["kind"] == "grant")
                     if operation["kind"] in ("grant", "revoke")
@@ -284,14 +342,23 @@ def process_one(connector=None):
                     if satisfied
                     else connector.apply(operation, identity, resource)
                 )
+        # Capture the reading before waiting for the database serialization gate.
+        # The later audit timestamp records completion, not provider freshness.
+        result_read_at = timezone.now().isoformat()
         with transaction.atomic():
             policy_state(lock=True)
             current = OutboxJob.objects.select_for_update().get(pk=job.pk)
             if current.attempts != job.attempts or current.status != "running":
                 return True
             current.observed = result.get("observed", {})
+            if job.kind in ("ad_offboard", "ad_observe"):
+                from integrations.ad import verified_result
+
+                result["verified"] = verified_result(
+                    directory_job_binding(current), current.observed
+                )
             if (
-                job.kind not in ("assistant", "reconcile", "enroll")
+                job.kind not in ("assistant", "reconcile", "enroll", "ad_offboard", "ad_observe")
                 and job.desired.get("action") != "department_transfer"
             ):
                 # Remote delivery can overlap a committed local revocation. Do
@@ -303,6 +370,8 @@ def process_one(connector=None):
                     )
                 else:
                     result["verified"] = current.observed.get("active") is False
+            if job.kind != "assistant":
+                current.observed["observedAt"] = result_read_at
             current.status = "verified" if result.get("verified") is True else "retry"
             if current.status == "retry" and current.attempts >= 5:
                 current.status = "failed"
@@ -342,5 +411,8 @@ def process_one(connector=None):
             )
     finally:
         if owned_connector:
-            connector.http.close()
+            if job.kind in ("ad_offboard", "ad_observe"):
+                connector.close()
+            else:
+                connector.http.close()
     return True

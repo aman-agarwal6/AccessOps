@@ -1,0 +1,12 @@
+{
+  "provider": "github",
+  "tenantId": "424242",
+  "subjectId": "1001",
+  "responses": {
+    "organization": {"id": 424242},
+    "repository": {"id": 434343, "owner": {"id": 424242, "type": "Organization"}},
+    "members": [],
+    "outside_collaborators": [],
+    "collaborators": []
+  }
+}

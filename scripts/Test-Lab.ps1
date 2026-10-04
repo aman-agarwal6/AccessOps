@@ -15,6 +15,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Live integration tests failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Real OIDC and business lifecycle checks failed.' }
 & docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_offboarding.py --report /test-output/offboarding.json --junit /test-output/offboarding.xml --snapshot /test-output/connected-snapshot.json --principal /test-output/connected-principal.json
 if ($LASTEXITCODE -ne 0) { throw 'Connected synthetic offboarding checks failed.' }
+& docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_cases.py --report /test-output/cases.json --junit /test-output/cases.xml --snapshot /test-output/connected-cases-snapshot.json
+if ($LASTEXITCODE -ne 0) { throw 'Authenticated departure case checks failed.' }
 & $accessopsPython scripts/host_health.py --report "$accessopsReports/host-health.json" --junit "$accessopsReports/host-health.xml"
 if ($LASTEXITCODE -ne 0) { throw 'Verified host loopback TLS checks failed.' }
 & $accessopsPython scripts/record_runtime.py --output "$accessopsReports/runtime-source.json"

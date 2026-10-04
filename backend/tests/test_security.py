@@ -243,7 +243,7 @@ def test_connector_ambiguous_retry_reconciles_before_repeat(org):
     change = approved(org)
     svc.execute(org["alice"], change)
     connector = Mock()
-    connector.reconcile.return_value = {
+    connector.observe_membership.return_value = {
         "observed": {"active": True, "member": False},
         "drift": True,
     }
@@ -252,7 +252,7 @@ def test_connector_ambiguous_retry_reconciles_before_repeat(org):
     job = OutboxJob.objects.get()
     assert job.status == "retry"
     OutboxJob.objects.update(available_at=timezone.now())
-    connector.reconcile.return_value = {
+    connector.observe_membership.return_value = {
         "observed": {"active": True, "member": True},
         "drift": False,
     }
@@ -267,7 +267,7 @@ def test_stale_queued_grant_cannot_restore_revoked_access(org):
     svc.execute(org["alice"], change)
     Grant.objects.filter(source_request=change).update(status="revoked")
     connector = Mock()
-    connector.reconcile.return_value = {"observed": {"member": True}, "drift": True}
+    connector.observe_membership.return_value = {"observed": {"member": True}, "drift": True}
     connector.apply.return_value = {"verified": True, "observed": {"member": False}}
     process_one(connector)
     assert connector.apply.call_args.args[0]["kind"] == "revoke"
