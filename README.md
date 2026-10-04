@@ -104,6 +104,9 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
   not stand in for removed group memberships.
 - Accounts are matched by immutable IDs, never by name or email.
 - The review assistant can only propose. It cannot approve or apply anything.
+- Every pull request runs CodeQL, dependency review and OSV-Scanner; OpenSSF
+  Scorecard rates the repository weekly. See the
+  [maintenance guide](docs/maintenance.md) for how findings are handled.
 
 ## Limits
 

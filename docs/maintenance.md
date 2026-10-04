@@ -14,9 +14,23 @@ fourteen; small verified release files are copied to a GitHub Release for the
 portfolio handoff. Do not enable larger runners, paid storage or external APIs
 to maintain the demo. Provider terms can change; the static build remains portable.
 
+## Automated security checks
+
+| Workflow | Runs on | What it catches | What to do with a finding |
+| --- | --- | --- | --- |
+| CodeQL | PRs, `main`, weekly | Injection, XSS, unsafe deserialization and workflow injection in the Python backend, the TypeScript console and the GitHub Actions files (`security-extended` queries) | Fix it, or dismiss it in Security › Code scanning with a written reason. Never dismiss without one. |
+| Dependency review | PRs | A change that adds or upgrades to a dependency with a moderate-or-higher advisory | Choose a patched version or drop the change; the check blocks the PR until then. |
+| OSV-Scanner | PRs (new issues only), `main`, weekly (full) | Known vulnerabilities in the hashed Python locks and the npm lockfile, including advisories published after a merge | Upgrade through the normal lock process below; record a reviewed exception only if the vulnerable code path is provably unused. |
+| OpenSSF Scorecard | `main`, weekly, branch-protection changes | Repository practices: pinned actions, token permissions, branch protection, signed releases | Treat low checks as backlog items; some (branch protection, code review) are repository settings, not code. |
+
+All four run on GitHub-hosted runners with read-only tokens except the
+narrow `security-events` (and, for Scorecard, `id-token`) permissions they need
+to upload results. Every action is pinned to a commit SHA that was checked
+against the upstream release tag.
+
 ## Monthly review
 
-1. Open dependency/security alerts and the monthly Dependabot proposals. Read
+1. Open code-scanning and dependency alerts and the monthly Dependabot proposals. Read
    the upstream release notes and check the affected trust boundary. Do not
    merge a green dependency proposal automatically.
 2. Keep Django in the supported 5.2 LTS family until a separately tested major

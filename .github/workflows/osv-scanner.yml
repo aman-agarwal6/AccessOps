@@ -1,0 +1,37 @@
+name: OSV-Scanner
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, so advisories published after a merge still surface.
+    - cron: '41 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  # Pull requests fail only on vulnerabilities they introduce.
+  pull-request:
+    if: github.event_name == 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+    with:
+      scan-args: |-
+        --lockfile=requirements.txt:backend/requirements.lock
+        --lockfile=requirements.txt:backend/requirements-dev.lock
+        --lockfile=frontend/package-lock.json
+  # Main and the weekly run report every known vulnerability in the locked dependencies.
+  full:
+    if: github.event_name != 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+    with:
+      scan-args: |-
+        --lockfile=requirements.txt:backend/requirements.lock
+        --lockfile=requirements.txt:backend/requirements-dev.lock
+        --lockfile=frontend/package-lock.json
