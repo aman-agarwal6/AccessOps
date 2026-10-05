@@ -5,9 +5,9 @@
 **AccessOps: employee and contractor offboarding, closed with evidence**
 
 An HR departure becomes a case with an owner, a four-hour target and a required
-action for every system the person could still reach. Local access is contained
-immediately; the case closes only when an independent reviewer accepts the exact
-evidence packet. A local lab runs it against real Keycloak, OPA and a Samba
+action for every system the person could still reach. A signed HR event opens the
+case and contains access within seconds, including the person's sessions; the
+case closes only when an independent reviewer accepts the exact evidence packet. A local lab runs it against real Keycloak, OPA and a Samba
 directory; the public demo is a browser simulation with synthetic data.
 
 Skills: IAM lifecycle, authorization policy, Python and Django APIs,
@@ -44,6 +44,14 @@ React/TypeScript, LDAP and SCIM integration, security testing, accessible UI des
   atomically.
 - What the live run caught: account disable left a managed group membership
   behind, so offboarding now removes every known managed grant.
+- Why disabling an account doesn't sign anyone out: the before-and-after table
+  (the app session and Keycloak session survive a plain disable; containment ends
+  them; an app that checks tokens itself still accepts one for up to two minutes).
+- Why the HR feed is its own narrow identity: it can open and contain departures
+  and nothing else, so a stolen webhook secret can't grant, read or close.
+- How sign-ins after departure are caught: the identity provider's own events are
+  read for a day after each departure, any success blocks closure, and the SOC
+  receives signed Shared Signals events.
 
 ## Resume wording
 
@@ -54,6 +62,13 @@ PostgreSQL, React, Keycloak, OPA). Departure cases track every system with an
 owner and deadline, contain access immediately and close only on independent
 review; verified end to end against real Keycloak and a Samba directory, including
 denial of new LDAPS and Kerberos logins after offboarding.”
+
+For identity and security roles, the newer lab results also support:
+
+“Automated leaver intake from signed HR events, containing access and signing the
+person out of applications in 2.8 seconds in the lab; revoked existing sessions,
+proven with a before-and-after test; and flagged sign-ins after departure to a
+SOC tool through signed Shared Signals (CAEP and RISC) events.”
 
 Use only counts from the [verification ledger](verification.md). Do not claim
 users, percentages, certification, production use or Microsoft tenant testing.
