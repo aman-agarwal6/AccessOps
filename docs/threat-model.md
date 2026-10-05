@@ -38,6 +38,8 @@ flowchart LR
 | Imported account state is assigned to the wrong departure | Explicit stable tenant/subject bindings, no name/email matching | Mismatched account imports denied without partial persistence |
 | Partial or stale cloud snapshot is treated as access termination | Strict capability schema, fresh post-departure readings, unknown absence, source labels | Conflicting/stale Entra reads and GitHub absence leave tasks pending |
 | Case owner closes their own unverifiable work | Owner-only statements, independent scoped reviewer, current revision/hash/policy | Self-review and changed evidence denied; closed packet retained |
+| Departed worker keeps using a session or token issued before containment | Containment disables the account, then calls Keycloak's per-user logout: sessions end, earlier tokens are rejected (not-before) and registered apps receive signed back-channel logout. Verified only when Keycloak lists no session | Live before/after suite; an app that validates access tokens itself, without asking Keycloak, accepts one already issued until it expires (120 s in the lab) |
+| Containment route used for other admin writes | Private edge host allows only POST `.../users/{uuid}/logout` and GET `.../users/{uuid}/sessions` in the workforce realm; exact UUID paths | Connector rejects non-UUID subjects, redirects and foreign session records; all other paths and methods return 404 |
 | Old provider success hides later drift or unavailability | Latest timestamped account reading, two-hour freshness, reconciliation refresh | Later enabled/unknown Keycloak readings reopen required work |
 | New HR event hides earlier unfinished directory removals | Retained managed-grant history, exact durable removal pairs and fresh per-pair proof | Repeated departure and missing historical-job fixtures stay blocked |
 | Mutable directory DN or concurrent account flags retarget a write | Trusted immutable GUIDs, object-specific delegation and atomic old-value LDAP modify | Rename/stale-value denials; real lab checks recorded separately |
@@ -58,7 +60,9 @@ these boundaries. Technique mapping identifies the scenario; it does not imply
 exhaustive coverage of ATLAS or protection against every prompt injection.
 
 Availability limits: disconnected applications cannot receive revocation until
-they connect and enforce it. Provider failures remain visible. An administrator
+they connect and enforce it. Back-channel logout reaches only applications
+registered for it, and an access token already issued stays usable to an
+application that never asks Keycloak until it expires. Provider failures remain visible. An administrator
 with OS/database control is outside the application's tamper-prevention boundary.
 No enterprise deployment, multi-tenancy, certified identity assurance, or general
 agent sandbox isolation is claimed by this lab. The current assistant uses a

@@ -27,6 +27,7 @@ from .models import (
 )
 from .serializers import EmptyInput, StrictSerializer, validate
 from .views import actor_of
+from .worker import account_contained
 
 TASKS = (
     ("local-containment", "accessops", "local", "Revoke local access and contain sponsored agents"),
@@ -58,6 +59,7 @@ AD_TASK = (
 LIMITATIONS = [
     "Administrative closure records reviewed evidence; it does not prove every remote access path ended.",
     "Imported snapshots are not authenticated live observations made by this application.",
+    "Keycloak session revocation ends the sessions Keycloak holds and rejects earlier tokens when apps ask Keycloak; an app that validates access tokens itself accepts one already issued until it expires (2 minutes in the lab).",
     "Entra directory state does not prove application-owned sessions or guest home-tenant sessions ended.",
     "GitHub removal does not erase clones, unknown repositories or every token/key.",
     "Data retention, licensing and legacy actions are owner attestations, not automatic platform writes.",
@@ -347,7 +349,7 @@ def keycloak_reading(case, now):
                     None if event.action.startswith("job.") else job.observed.get("observedAt"),
                     event,
                     job.status == "verified"
-                    and job.observed.get("active") is False
+                    and account_contained(job.observed)
                     and event.action == "provider.verified",
                 )
     active_jobs = list(
@@ -412,7 +414,7 @@ def keycloak_reading(case, now):
                 event,
                 event.action.startswith("provider.")
                 and o.get("status") == "observed"
-                and o.get("observed", {}).get("active") is False,
+                and account_contained(o.get("observed")),
             )
     if not candidates:
         return None
@@ -563,7 +565,7 @@ def assess(case):
             task.update(
                 status="observed",
                 evidenceKind="provider_observation",
-                evidenceSummary="Fresh Keycloak readings observed the workforce account disabled and known managed grant memberships absent; sessions, credentials and unknown access paths are separate.",
+                evidenceSummary="Fresh Keycloak readings observed the workforce account disabled with no active sessions, and known managed grant memberships absent. Keycloak rejects tokens issued before containment and sent back-channel logout to registered apps; credentials and unknown access paths are separate.",
                 observedAt=provider_at.isoformat(),
             )
         elif key == "ad-directory" and directory_at:

@@ -17,8 +17,14 @@ if ($LASTEXITCODE -ne 0) { throw 'Real OIDC and business lifecycle checks failed
 if ($LASTEXITCODE -ne 0) { throw 'Connected synthetic offboarding checks failed.' }
 & docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_cases.py --report /test-output/cases.json --junit /test-output/cases.xml --snapshot /test-output/connected-cases-snapshot.json
 if ($LASTEXITCODE -ne 0) { throw 'Authenticated departure case checks failed.' }
+if (Test-Path -LiteralPath '.local/atlas.env') {
+    & docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_sessions.py --report /test-output/sessions.json --junit /test-output/sessions.xml
+    if ($LASTEXITCODE -ne 0) { throw 'Workforce session revocation checks failed.' }
+} else {
+    Write-Host 'Skipped session revocation checks: run scripts/Upgrade-Lab.ps1 once to add the Atlas lab app.'
+}
 & $accessopsPython scripts/host_health.py --report "$accessopsReports/host-health.json" --junit "$accessopsReports/host-health.xml"
 if ($LASTEXITCODE -ne 0) { throw 'Verified host loopback TLS checks failed.' }
 & $accessopsPython scripts/record_runtime.py --output "$accessopsReports/runtime-source.json"
 if ($LASTEXITCODE -ne 0) { throw 'Running backend source differs from this checkout; rebuild the lab before recording evidence.' }
-Write-Host 'Sanitized, timestamped JSON and JUnit reports are in output/connected. Browser UI, dependency outages, backchannel logout and key rotation have separate coverage.'
+Write-Host 'Sanitized, timestamped JSON and JUnit reports are in output/connected. Browser UI, dependency outages and key rotation have separate coverage.'

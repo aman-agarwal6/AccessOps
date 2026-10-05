@@ -36,6 +36,9 @@ Only the latest fifty scope-visible cases are included in this reference snapsho
 Fixed required task keys:
 `local-containment`, `keycloak-directory`, `entra-directory`, `entra-sessions`,
 `github-org`, `github-repositories`, `credentials`, `m365-handover`, `legacy-scope`.
+`keycloak-directory` is observed only from fresh provider readings that show the
+workforce account disabled with zero Keycloak sessions after containment ended
+them; a reading without a counted session total stays pending.
 Task status is pending|observed|attested, separately from evidenceKind
 none|provider_observation|imported_snapshot|owner_attestation. The owner can document
 a scope exclusion with a reason; an independent reviewer decides whether it is

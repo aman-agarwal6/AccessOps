@@ -30,7 +30,7 @@ def test_unavailable_principal_preserves_measured_drift_without_grant(org):
     def observe(identity, resource):
         if identity["providerSubject"] == org["agent"].subject:
             raise ConnectorError("Synthetic service-account scope unavailable")
-        return {"drift": True, "observed": {"active": True, "member": True}}
+        return {"drift": True, "observed": {"active": True, "sessions": 0, "member": True}}
 
     result = run_reconcile(job, Mock(reconcile=observe))
     assert result["verified"] is False
@@ -53,7 +53,12 @@ def test_pending_binding_is_unknown_not_measured_drift(org):
     org["employee"].save(update_fields=["subject"])
     result = run_reconcile(
         job,
-        Mock(reconcile=lambda *a: {"drift": False, "observed": {"active": True, "member": False}}),
+        Mock(
+            reconcile=lambda *a: {
+                "drift": False,
+                "observed": {"active": True, "sessions": 1, "member": False},
+            }
+        ),
     )
     assert result["verified"] is False
     assert result["observed"]["driftCount"] == 0
@@ -73,7 +78,12 @@ def test_complete_matching_observation_can_pass(org):
     job = job_for(org)
     result = run_reconcile(
         job,
-        Mock(reconcile=lambda *a: {"drift": False, "observed": {"active": True, "member": False}}),
+        Mock(
+            reconcile=lambda *a: {
+                "drift": False,
+                "observed": {"active": True, "sessions": 1, "member": False},
+            }
+        ),
     )
     assert result["verified"] is True
     assert result["observed"]["unknownCount"] == 0

@@ -140,6 +140,36 @@ services:
       backend: {condition: service_healthy}
     mem_limit: 384m
 
+  # Lab-only app a workforce user signs in to, so containment has a real app
+  # session to end. Gets only its own client secret, never backend.env.
+  atlas-app:
+    image: accessops-backend:local
+    pull_policy: never
+    command: [python, /app/scripts/atlas_app.py]
+    env_file:
+      - path: ../.local/atlas.env
+        required: false
+    environment:
+      ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt
+      WORKFORCE_ISSUER: https://id.accessops.test:8443/realms/accessops-workforce
+      ATLAS_ORIGIN: https://atlas.accessops.internal:8186
+    volumes:
+      - ../.local/tls:/run/accessops-ca:ro
+    networks: [identity]
+    depends_on:
+      keycloak: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 128m
+    pids_limit: 64
+
   web:
     image: accessops-web:local
     build:
@@ -154,7 +184,12 @@ services:
       app:
         aliases: [accessops.test]
       identity:
-        aliases: [id.accessops.test, accessops.test, keycloak-observe.accessops.internal]
+        aliases:
+          - id.accessops.test
+          - accessops.test
+          - keycloak-observe.accessops.internal
+          - keycloak-sessions.accessops.internal
+          - atlas.accessops.internal
       policy:
         aliases: [policy.accessops.internal]
     cap_drop: [ALL]

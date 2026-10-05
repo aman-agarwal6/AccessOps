@@ -19,7 +19,7 @@ if (-not (Test-Path -LiteralPath '.local/backend.env')) {
 }
 # Windows: remove inherited broad ACLs from this application's credential directory.
 # The current user and SYSTEM retain access; Docker Desktop file sharing uses this user.
-foreach ($accessopsSecretPath in @('tls', 'executor', 'realms', 'backend.env', 'app-db.env', 'identity-db.env', 'keycloak.env', 'policy.env', 'policy-runtime.env', 'operator-logins.json')) {
+foreach ($accessopsSecretPath in @('tls', 'executor', 'realms', 'backend.env', 'app-db.env', 'identity-db.env', 'keycloak.env', 'policy.env', 'policy-runtime.env', 'operator-logins.json', 'atlas.env', 'backups')) {
     $accessopsTarget = Join-Path $accessopsLocal $accessopsSecretPath
     if (Test-Path -LiteralPath $accessopsTarget) {
         $accessopsItem = Get-Item -LiteralPath $accessopsTarget -Force
@@ -76,6 +76,12 @@ Invoke-LabCompose -Arguments @('restart', 'opa', 'policy')
 Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', 'backend', 'python', 'manage.py', 'migrate', '--noinput')
 Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', 'backend', 'python', 'manage.py', 'seed_demo')
 Invoke-LabCompose -Arguments @('up', '-d', '--wait', 'backend', 'worker')
+# The Atlas lab app gives offboarding a real application session to end.
+if (Test-Path -LiteralPath '.local/atlas.env') {
+    Invoke-LabCompose -Arguments @('up', '-d', '--wait', 'atlas-app')
+} else {
+    Write-Host 'This lab predates session revocation. Run scripts/Upgrade-Lab.ps1 once to add the Atlas lab app.'
+}
 Write-Host 'AccessOps services are ready at https://accessops.test:8443.'
 Write-Host 'Windows hosts must resolve accessops.test and id.accessops.test to 127.0.0.1. See scripts/Configure-Hosts.ps1.'
 Write-Host 'Credentials are local-only in .local/operator-logins.json. Do not share or commit that file.'

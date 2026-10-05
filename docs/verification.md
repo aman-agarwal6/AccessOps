@@ -6,6 +6,53 @@ requirements. All runs used synthetic records on a personal workstation; no
 employer, production identity provider, Microsoft tenant or GitHub organization
 was contacted. Local reports are unsigned; signed CI evidence is listed separately.
 
+## Next release: workforce session revocation
+
+Local runs on 5 October 2026 (UTC). Containment now disables the workforce
+account, calls Keycloak's per-user logout and counts sessions back; the Keycloak
+task is a provider observation only when none remain. Atlas, a lab app in the
+workforce realm, gives the leaver real sessions and tokens to lose.
+
+What a unique synthetic worker could still do, measured at each stage
+(`sessions.json`, 19 checks passed in 7 s):
+
+| | Before | Disable only (control) | After containment |
+| --- | --- | --- | --- |
+| Atlas web session | Signed in | Still signed in | Ended by verified back-channel logout |
+| Keycloak session listed | Yes | Yes | None |
+| Refresh token | Renews | Rejected | Rejected |
+| Offline token | Renews | Rejected | Rejected |
+| Atlas API, asking Keycloak (introspection) | Accepted | Rejected | Rejected |
+| Atlas API, checking the token itself | Accepted | Accepted | Accepted until expiry (115 s left) |
+| New sign-in | Allowed | Not measured | Refused |
+
+The control row is why the change matters: disabling the account already stops
+new tokens, but the app's own session and Keycloak's session record survive it.
+The last row is the remaining gap: an app that never asks Keycloak keeps
+accepting an access token it already holds until it expires (120-second
+lifetime in the lab).
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Session revocation before → after | 19 passed | Real workforce sign-in to Atlas (authorization code + PKCE) and its command-line client (refresh and offline tokens), containment through the AccessOps case API, Keycloak session counts through the new private route. The worker's one-time password was random and never stored. |
+| Existing live suites on the new containment | Protocols 18, OIDC 11, offboarding 11, departure cases 18 passed | Rerun into a separate folder so the v0.2 reports stay unchanged |
+| Host HTTPS boundary and runtime source | 5 passed; source matches | 74 Python files in the running image match the checkout; 9 services |
+| Console in a real browser | Passed | The PR #9 journey rerun on the new containment |
+| Backend on host test settings | 114 passed, 1 skipped | Includes containment that ends sessions even for an already-disabled account, and evidence that requires a counted zero |
+| Integration boundaries | 179 passed | Includes the session route's UUID, redirect and record checks, and the Atlas app's logout-token rules |
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| `sessions-attempt-1` | Introspection reported the Atlas command-line token inactive even before containment. Keycloak 26 introspects only for clients in a token's audience | Atlas became the resource server for those tokens (audience mapper) and introspects with its own client |
+| `sessions-attempt-2` | Passed (18 checks); the disable-only token results were printed, not asserted | Asserted as a check in the final run |
+| Lab upgrade, first run | Stopped while copying the backup: Windows PowerShell 5.1 turned Docker's progress message into an error. Nothing else had changed | The upgrade judges each Docker step by its exit code |
+| Lab upgrade, later pass | Stopped after adding the audience mapper: the realm has no `basic` client scope, which is how Keycloak puts the subject in access tokens | The subject is mapped directly on the client. Every run that created the temporary admin removed it and confirmed its credential was refused |
+| Browser rerun with a bad report path | Git Bash rewrote the report folder, so the run stopped at its first screenshot after containment, leaving one contained synthetic case open | Rerun with the path unchanged; passed |
+
+Not run for this change: the Samba directory case, the dependency-outage suite
+and `Test-Lab.ps1` end to end (each stage ran separately), and the local
+PostgreSQL runner (CI runs that suite).
+
 ## v0.2: departure cases, directory lab and console redesign
 
 Local runs on 3–4 October 2026 (UTC). The backend source was unchanged between
