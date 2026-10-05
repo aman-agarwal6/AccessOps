@@ -31,10 +31,6 @@ from urllib.parse import quote
 
 REALM = "accessops-workforce"
 OPERATORS_REALM = "accessops-operators"
-TOKEN_URL = "https://id.accessops.test:8443/realms/master/protocol/openid-connect/token"
-# Keycloak's admin API is never published. Only this one-shot container reaches
-# it, over the private identity network.
-ADMIN_URL = "http://keycloak:8080/admin/realms"
 
 
 def read_env(path):
@@ -282,38 +278,15 @@ def ssf():
 
 
 def realm():
-    import httpx
+    from lab_admin import require, temporary_admin
 
-    from integrations.transport import client
-
-    admin_id = os.environ["UPGRADE_CLIENT_ID"]
-    credentials = {
-        "grant_type": "client_credentials",
-        "client_id": admin_id,
-        "client_secret": os.environ["UPGRADE_CLIENT_SECRET"],
-    }
     clients = lab_clients(
         read_env("/run/atlas.env")["ATLAS_CLIENT_SECRET"],
         read_env("/run/keycloak-events.env")["EVENTS_CLIENT_SECRET"],
     )
-    result = {"created": [], "present": [], "updated": [], "temporaryAdminRemoved": False}
-    with client(timeout=15) as public:
-        response = public.post(TOKEN_URL, data=credentials)
-        if response.status_code != 200:
-            raise SystemExit("Temporary admin token was refused; nothing was changed.")
-        admin = httpx.Client(
-            base_url=ADMIN_URL,
-            headers={"Authorization": "Bearer " + response.json()["access_token"]},
-            timeout=15,
-            trust_env=False,
-            follow_redirects=False,
-        )
+    result = {"created": [], "present": [], "updated": []}
 
-        def require(response, *statuses):
-            if response.status_code not in statuses:
-                raise RuntimeError(f"Admin API returned HTTP {response.status_code}")
-            return response
-
+    def apply(admin):
         def ensure(app):
             path = f"/{REALM}/clients"
             found = require(admin.get(path, params={"clientId": app["clientId"]}), 200).json()
@@ -371,31 +344,19 @@ def realm():
                     require(admin.post(path, json=[role]), 204)
                     result["updated"].append(f"accessops-events {label} view-events")
 
-        try:
-            for app in clients:
-                client_id = ensure(app)
-                if app["clientId"] == "accessops-events":
-                    grant_view_events(client_id)
-            operator_mfa(admin, require, result)
-        finally:
-            # Always remove the temporary admin, even after a failed step. The
-            # refused-token check below is what decides success.
-            try:
-                for item in require(
-                    admin.get("/master/clients", params={"clientId": admin_id}), 200
-                ).json():
-                    require(admin.delete(f"/master/clients/{item['id']}"), 204)
-            except (httpx.HTTPError, RuntimeError, ValueError, KeyError):
-                pass
-            finally:
-                admin.close()
-            refused = public.post(TOKEN_URL, data=credentials).status_code in (400, 401)
-            result["temporaryAdminRemoved"] = refused
-            if not refused:
-                result["temporaryAdminClientId"] = admin_id
-            print(json.dumps(result))
+        for app in clients:
+            client_id = ensure(app)
+            if app["clientId"] == "accessops-events":
+                grant_view_events(client_id)
+        operator_mfa(admin, require, result)
+
+    try:
+        with temporary_admin(result) as admin:
+            apply(admin)
+    finally:
+        print(json.dumps(result))
     if not result["temporaryAdminRemoved"]:
-        raise SystemExit(f"Temporary admin client {admin_id} may remain; delete it.")
+        raise SystemExit("The temporary admin client may remain; delete it.")
 
 
 if __name__ == "__main__":

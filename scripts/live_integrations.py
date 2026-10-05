@@ -23,7 +23,7 @@ def main():
         driver="live service HTTP over verified TLS",
         limitations=[
             "A bounded interoperability check, not SCIM or AuthZEN conformance certification.",
-            "Provider login-session revocation and real signing-key rotation are not measured.",
+            "Provider login-session revocation and signing-key rotation are measured by their own suites, not here.",
         ],
         source_files=[
             "scripts/live_integrations.py",

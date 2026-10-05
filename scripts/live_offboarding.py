@@ -75,7 +75,7 @@ def main():
             "Offboarded human, suspended agent, revoked grants, requests and audit history are retained.",
             "The inventory agent starts suspended and has no machine credential; this does not measure running-agent token revocation.",
             "No live operator session is linked to this fixture; denial of an old offboarded operator session is not measured.",
-            "IdP-triggered backchannel logout and signing-key rotation are not measured.",
+            "IdP-triggered back-channel logout and signing-key rotation are measured by their own suites, not here.",
         ],
         source_files=[
             "scripts/live_offboarding.py",

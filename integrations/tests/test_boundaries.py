@@ -126,6 +126,21 @@ def test_unknown_kid_refresh_bounded(signing):
     assert len(calls) == 1
 
 
+def test_a_removed_key_stops_being_trusted_when_the_cache_expires(signing):
+    other = dict(signing[1], kid="replacement-key")
+    connection = httpx.Client(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"keys": [other]}))
+    )
+    # Still cached: the removed key is trusted until the cache lifetime passes.
+    security._keys[ISSUER] = (time.monotonic() + 5, [signing[1]])
+    assert security._decode(token(signing[0]), ISSUER, "accessops-api", http=connection)
+    security._keys[ISSUER] = (time.monotonic() - 1, [signing[1]])
+    security._refresh_attempt[ISSUER] = time.monotonic() - security.KEY_CACHE_SECONDS
+    with pytest.raises(TokenValidationError):
+        security._decode(token(signing[0]), ISSUER, "accessops-api", http=connection)
+    assert security._keys[ISSUER][0] <= time.monotonic() + security.KEY_CACHE_SECONDS
+
+
 def test_key_rotation_after_refresh_interval(signing, monkeypatch):
     security._keys.clear()
     security._refresh_attempt[ISSUER] = time.monotonic() - 31

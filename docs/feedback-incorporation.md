@@ -21,7 +21,7 @@ the [verification ledger](verification.md) separately records actual execution.
 | Supply chain / evidence | Locked dependencies, CycloneDX 1.6, allowlisted frozen archive, isolated manual GitHub provenance/SBOM signing. A local unsigned report is never presented as an attestation. |
 | Break-glass | Console-only containment, incident/reason and transactional audit. No HTTP counterpart or grant/unfreeze action. No shared emergency password or automated recovery account. |
 | Approval expiry | Fifteen minutes; exact intent, policy version, identity revision and current approver authority checked at execution. |
-| Token edges | Issuer/audience/client, expiry, `alg:none`, confusion, unknown `kid`, bounded refresh, rotation and skew tested in isolated boundaries. Live rotation is separately unrun. |
+| Token edges | Issuer/audience/client, expiry, `alg:none`, confusion, unknown `kid`, bounded refresh, rotation and skew tested in isolated boundaries; live rotation in both realms, including removal of a leaked key, by `Test-KeyRotation.ps1`. |
 | Out-of-band drift | Direct SCIM membership without a backed grant, authenticated reconciliation and no adoption. Unobservable service-account records are unknown, never matches. |
 | Interface readability (October 2026) | Rebuilt console: dark and light themes from one token set, 16px type scale, urgency-ranked queue, one next step per case with role explanations, phase-grouped actions and fixed provenance labels. See [approved-plan.md](approved-plan.md). |
 

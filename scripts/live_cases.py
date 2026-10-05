@@ -121,7 +121,7 @@ def main():
             "Entra/GitHub observations are offline synthetic fixtures; no cloud tenant API or revocation write is measured.",
             "External owner attestations explicitly document fictional scope exclusions, not completed real tenant operations.",
             "Administrative closure and immutable packet persistence are measured; universal access termination is not claimed.",
-            "Existing operator/agent token revocation, signing-key rotation, MFA and Microsoft AD are not measured; workforce session revocation has its own suite.",
+            "Existing operator/agent token revocation and Microsoft AD are not measured here; workforce sessions, operator MFA and signing-key rotation have their own suites.",
             "Terminal fixture inventory, case, statements, requests and audit history are retained.",
             "Native membership observation is a bounded read-only Keycloak 26.8 profile, not general SCIM conformance or federation coverage.",
         ],

@@ -59,6 +59,7 @@ backend source. Details, failed attempts and limits are in the
 | Departure case with a Samba directory account | 28 / 28 passed |
 | New LDAPS and Kerberos logins before → after offboarding | allowed → denied (2 / 2 each) |
 | Operator sign-in requires a second factor | 14 / 14 OIDC checks: password then one-time code; a wrong code and a request lowered to password-only are both refused; sessions audited at the `mfa` level |
+| Live signing-key rotation drill, both realms | 13 / 13 passed: publish-first rotation with no refused tokens; a leaked key's forged token was refused by Keycloak at once and by an app that checks tokens itself 60 s after removal |
 | Protocol, offboarding, OPA and HTTPS boundary suites | 18, 11, 32 and 5 passed |
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |

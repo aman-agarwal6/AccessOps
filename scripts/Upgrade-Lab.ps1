@@ -29,32 +29,13 @@ foreach ($accessopsSecret in @('atlas.env', 'keycloak-events.env', 'ssf-receiver
 }
 
 # 2. Recovery point: a full identity database backup, kept under .local/backups.
-#    Restore with pg_restore --clean into the stopped identity database if needed.
-$accessopsStamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-$accessopsBackups = Join-Path $accessopsRoot '.local/backups'
-New-Item -ItemType Directory -Path $accessopsBackups -Force | Out-Null
-& icacls $accessopsBackups /inheritance:r /grant:r "${accessopsUser}:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' /Q | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Could not restrict the backup directory.' }
-Invoke-LabCompose -Arguments @('exec', '-T', 'identity-db', 'sh', '-c', 'pg_dump -U $POSTGRES_USER -d accessops_identity -Fc -f /tmp/identity-upgrade.dump')
-$accessopsBackup = ".local/backups/identity-$accessopsStamp.dump"
-Invoke-LabCompose -Arguments @('cp', 'identity-db:/tmp/identity-upgrade.dump', $accessopsBackup)
-Invoke-LabCompose -Arguments @('exec', '-T', 'identity-db', 'rm', '-f', '/tmp/identity-upgrade.dump')
-if ((Get-Item -LiteralPath $accessopsBackup).Length -lt 1024) { throw 'Identity database backup looks empty; nothing else was changed.' }
-Protect-LocalPath (Join-Path $accessopsRoot $accessopsBackup)
-Write-Host "Identity database backed up to $accessopsBackup."
+Backup-IdentityDatabase -Root $accessopsRoot -Label 'upgrade'
 
-# 3. Temporary admin service account. Keycloak must be stopped to create it; the
-#    realm step deletes it and proves its credential is refused. Values reach the
-#    containers by variable name only, never on a command line.
-$accessopsRandom = [byte[]]::new(36)
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($accessopsRandom)
-$env:UPGRADE_CLIENT_SECRET = [Convert]::ToBase64String($accessopsRandom).TrimEnd('=').Replace('+', '-').Replace('/', '_')
-$env:UPGRADE_CLIENT_ID = 'accessops-upgrade-' + $accessopsStamp.ToLowerInvariant()
+# 3. A temporary admin service account; the realm step deletes it and proves its
+#    credential is refused.
 try {
     Invoke-LabCompose -Arguments @('build', 'backend', 'web')
-    Invoke-LabCompose -Arguments @('stop', 'keycloak')
-    Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', '-T', '-e', 'UPGRADE_CLIENT_ID', '-e', 'UPGRADE_CLIENT_SECRET', '--entrypoint', '/opt/keycloak/bin/kc.sh', 'keycloak', 'bootstrap-admin', 'service', '--client-id:env', 'UPGRADE_CLIENT_ID', '--client-secret:env', 'UPGRADE_CLIENT_SECRET', '--no-prompt')
-    Invoke-LabCompose -Arguments @('up', '-d', '--wait', 'keycloak', 'web')
+    Start-KeycloakWithTemporaryAdmin -Label 'upgrade'
     Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', '-T', '-e', 'UPGRADE_CLIENT_ID', '-e', 'UPGRADE_CLIENT_SECRET', '-v', "${accessopsRoot}/.local/atlas.env:/run/atlas.env:ro", '-v', "${accessopsRoot}/.local/keycloak-events.env:/run/keycloak-events.env:ro", '-v', "${accessopsRoot}/.local/operator-logins.json:/run/operator-logins.json:ro", 'backend', 'python', '/app/scripts/upgrade_lab.py', 'realm')
 } catch {
     # Leave the lab running even when a step fails; the error still stops the upgrade.

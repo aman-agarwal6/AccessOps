@@ -58,6 +58,27 @@ them in the generated realm import.
 Not run: phishing-resistant authenticators (WebAuthn). The authenticator is a
 software TOTP secret held in the lab's protected login file.
 
+### Live signing-key rotation
+
+Local runs on 5 October 2026 (UTC). `Test-KeyRotation.ps1` rotates the RS256
+signing key of both realms on the running lab, through a temporary Keycloak
+admin that is deleted at the end (the identity database is backed up first).
+It covers a planned rotation and a leaked key.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Rotation drill (`key-rotation.json`) | 13 passed in 2 min 39 s | New keys published as passive, then a 65 s wait (one key-cache lifetime plus margin), then made the signing keys: Atlas accepted the first token signed by the new key on the first try; the previous key's token stayed valid locally and by introspection while passive; operator sign-in with a one-time code worked; Keycloak's back-channel logout, signed with the new operators key, ended the AccessOps session within 0.3 s. Every previous RS256 key was then removed |
+| Leaked-key rehearsal | Passed | A key the drill generated was published (as a stolen key would be) and an Atlas token forged with it. Both Atlas's local check and Keycloak's introspection accepted the forgery while the key was published. After removal, introspection refused it at once and Atlas's local check 60 s later |
+| Full `Test-Lab.ps1` on the rotated keys | All passed | Policy 32, protocols 18, OIDC 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5 |
+| Integration boundaries | 34 passed in the boundary tests | Includes a removed key ceasing to be trusted once the cache lifetime passes |
+
+What the drill changed:
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| First drill (its report was overwritten by the rerun; results from the console) | Activating a new key at once made Atlas refuse tokens signed with it for 30 s: Atlas had just refreshed Keycloak's key set, and unknown-key refreshes are limited to one per 30 seconds. The leaked-key step then failed on its own expectation: Keycloak's introspection accepted the forged token, because Keycloak 26 accepts a token without a session ID when a realm key signs it | Planned rotation now publishes the new key first and waits one key-cache lifetime. The rehearsal now expects introspection to accept a forgery while the key is published: removing a leaked key is the only remedy, so its speed is what matters |
+| Key cache lifetime | Keycloak's keys were cached for 300 s, so a removed key could stay trusted for five minutes | Cut to 60 s (`KEY_CACHE_SECONDS`), measured above at 60 s |
+
 ### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce
