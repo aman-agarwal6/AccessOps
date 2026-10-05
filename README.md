@@ -60,6 +60,7 @@ backend source. Details, failed attempts and limits are in the
 | OIDC, protocol, offboarding, OPA and HTTPS boundary suites | 11, 18, 11, 23 and 5 passed |
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
+| Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
 | Deployed demo | 17 / 17 checks passed |
 

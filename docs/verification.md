@@ -45,6 +45,19 @@ lab scripts (native stderr treated as an error, embedded quotes stripped from
 arguments, and a byte-order mark added to container stdin). Each failed closed
 before any directory change. The scripts were fixed and the runs repeated.
 
+### Console in a real browser against the live lab (5 October 2026, UTC)
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Full departure case through the redesigned console | Passed (final run 27 s, `console-live.xml`) | Firefox in the pinned Playwright image on the lab's internal networks, verifying TLS with only the lab CA added to its trust. Real Keycloak sign-in as the operator; a new synthetic employee registered in the UI and provisioned to Keycloak; case opened, contained, and both native tasks read back as provider observations (none simulated); the other seven actions recorded and displayed as owner attestations; owner's closure button disabled; the approver, in a separate browser profile, closed the case and exported a `connected_case` packet with closure basis `reviewed_evidence`. axe WCAG 2.2 A/AA passed on the live overview, the open case and the closed case. |
+| Repeatability | Passed on four consecutive runs | Attempts 3–5 and the final run each opened and closed a new case. Attempt 4 contained one worker left active by attempt 2; later runs found none. |
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| Attempt 1 (report overwritten, not kept) | Firefox rejected the lab certificate (`SEC_ERROR_UNKNOWN_ISSUER`): Playwright's Firefox build ignores the standard `distribution/policies.json` | Point `PLAYWRIGHT_FIREFOX_POLICIES_JSON` at the CA-only policy |
+| `console-live-attempt-2` | Sign-in, axe and registration passed; the status poll from Playwright's Node HTTP client failed TLS because only Firefox trusts the lab CA. Its error log also printed that request's lab session cookie and CSRF token | Polls now run as same-origin fetches inside the page. The local report was redacted; that loopback-only lab session had a fixed 30-minute lifetime and was not reused. The run left its new worker active, so the test now contains leftovers before it starts and after a failure |
+| `console-live-attempt-3` to `-attempt-5` | Passed | Earlier passing runs, kept. The final run added an explicit check that the seven non-native actions display as attestations |
+
 ### CI, deployment and signed release (4 October 2026)
 
 | Check | Actual result | Scope |
@@ -59,6 +72,8 @@ before any directory change. The scripts were fixed and the runs repeated.
   workload). CI ran the same backend suite on PostgreSQL 17 in the signed run.
 - Revocation of existing sessions or Kerberos tickets, MFA, live key rotation and
   any Microsoft Entra, Microsoft AD or GitHub tenant measurement.
+- The real-browser check in Chromium or WebKit, at phone width, or in the light
+  theme against the live lab; those were covered with mocked or recorded data.
 - Manual screen-reader testing. Automated axe checks do not establish full
   accessibility conformance.
 
