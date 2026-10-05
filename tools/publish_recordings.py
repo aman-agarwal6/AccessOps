@@ -30,11 +30,12 @@ CONNECTED = {
     "host-health-attempt-1-failed": "Initial TLS negative probe — failed attempt retained",
     "sessions": "Workforce session revocation before and after containment",
     "sessions-attempt-1": "Initial session revocation run — failed attempt retained",
-    "hr-intake": "Signed HR leaver intake, timed to app sign-out",
+    "hr-intake": "Signed HR leaver intake, timed to sign-out and token refusal",
     "hr-intake-attempt-1": "Initial HR intake run — failed attempt retained",
     "hr-intake-attempt-2": "Second HR intake run — failed attempt retained",
     "leaver-assurance": "Leaver assurance and signed SOC signals",
     "leaver-assurance-attempt-1": "Initial leaver assurance run — failed attempt retained",
+    "key-rotation": "Live signing-key rotation and leaked-key drill",
 }
 JUNIT = {
     "postgresql-tests.xml": (
@@ -241,6 +242,49 @@ def directory_auth_record(stem):
     )
 
 
+def held_sessions_record(stem):
+    raw, digest = read_report(ROOT / "output" / "connected" / (stem + ".json"))
+    data = json.loads(raw)
+    if (
+        data.get("schemaVersion") != 1
+        or data.get("origin") != "connected_samba_ad"
+        or data.get("suite") != "directory-held-sessions"
+    ):
+        raise ValueError("Only the exact synthetic held-session report is supported")
+    checks = []
+    for item in data["checks"]:
+        if item["status"] not in ("passed", "failed", "skipped"):
+            raise ValueError("Unknown held-session check result")
+        checks.append(
+            {
+                "name": item["name"],
+                "status": item["status"],
+                "detail": "Actual LDAP and Kerberos sessions held by the fixture user across offboarding.",
+            }
+        )
+    limits = [
+        *data["limitations"],
+        "Local measurement, not signed provenance; Kerberos has no per-user revocation.",
+    ]
+    if data["counts"]["failed"]:
+        limits.append(
+            "Historical failed attempt retained alongside the later retry; its result was not rewritten."
+        )
+    return record(
+        f"Directory sessions and tickets held across offboarding · fixture {stem[-12:]}",
+        stem,
+        timestamp(data["startedAt"]),
+        timestamp(data["finishedAt"]),
+        checks,
+        {
+            "measurementOrigin": data["origin"],
+            "sourceRevision": "unrecorded",
+            "limitations": limits,
+        },
+        digest,
+    )
+
+
 def main():
     runs = []
     for stem, name in CONNECTED.items():
@@ -253,7 +297,9 @@ def main():
     directory_reports = [
         p
         for p in (ROOT / "output" / "connected").glob("*.json")
-        if re.fullmatch(r"(?:cases-ad|ad-auth-before|ad-auth-after)-[a-f0-9]{12}", p.stem)
+        if re.fullmatch(
+            r"(?:cases-ad|ad-auth-before|ad-auth-after|ad-held-sessions)-[a-f0-9]{12}", p.stem
+        )
     ]
     if len(directory_reports) > 30:
         raise ValueError("Directory report publication limit reached; review exact selections")
@@ -264,6 +310,8 @@ def main():
                 f"Actual scoped Samba directory departure case · fixture {path.stem[-12:]}",
             )
             if path.stem.startswith("cases-ad-")
+            else held_sessions_record(path.stem)
+            if path.stem.startswith("ad-held-sessions-")
             else directory_auth_record(path.stem)
         )
     if not runs:

@@ -1,4 +1,4 @@
-# Concrete application: enterprise departure closure
+# The departure problem
 
 An IAM analyst receives an HR event: an employee leaves or a contractor's
 engagement expires. With the signed HR feed connected, AccessOps opens the case
@@ -22,8 +22,9 @@ sponsored automation, including ending the identity's Keycloak sessions so apps
 registered for back-channel logout sign the person out. An optional Samba AD-compatible directory adds a tenth
 required task: disable the explicitly enrolled account and remove mapped group
 memberships through verified LDAPS with object-specific delegated permissions.
-Its new-login and new-ticket checks are distinct from existing session revocation
-and Microsoft interoperability. Optional Microsoft Graph and GitHub adapters collect
+New sign-ins and new Kerberos tickets are refused afterwards; connections and
+tickets already held keep working until they close or expire, and the case says
+when that is. Samba results do not establish Microsoft interoperability. Optional Microsoft Graph and GitHub adapters collect
 minimal read-only observations for explicit accounts in an authorized test tenant.
 No tenant is required: vendor-shaped synthetic fixtures exercise normalization,
 residual-access assessment, action tracking and closure using free local tools.

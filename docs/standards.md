@@ -8,10 +8,10 @@ in the verification ledger. Preview features do not define the default lab.
 
 | Specification | Implementation boundary |
 | --- | --- |
-| [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html), [PKCE RFC 7636](https://www.rfc-editor.org/rfc/rfc7636), [OAuth Security BCP RFC 9700](https://www.rfc-editor.org/rfc/rfc9700) | Authorization code + PKCE, server session, state/nonce validation; no tokens stored in the browser |
+| [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html), [PKCE RFC 7636](https://www.rfc-editor.org/rfc/rfc7636), [OAuth Security BCP RFC 9700](https://www.rfc-editor.org/rfc/rfc9700) | Authorization code + PKCE, server session, state/nonce validation; no tokens stored in the browser. Operator sign-in requests `acr_values=mfa` and the backend requires `acr` = `mfa` in the ID token (Keycloak step-up flow: password, then a time-based one-time code, [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)) |
 | [JWT assertions RFC 7523](https://www.rfc-editor.org/rfc/rfc7523) | Executor client authentication with private_key_jwt; model never receives the private key or token |
 | [Introspection RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) | Active-token check plus current app grant/sponsor state; introspection failure denies |
-| [Shared Signals Framework 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html), [CAEP](https://openid.net/specs/openid-caep-1_0.html), [RISC](https://openid.net/specs/openid-risc-1_0-final.html) | Leaver signals as Security Event Tokens ([RFC 8417](https://www.rfc-editor.org/rfc/rfc8417)) with `sub_id` iss_sub subjects and `secevent+jwt` typing: RISC account-disabled, CAEP session-revoked and session-established. Transmitter metadata and keys only; no stream-management API |
+| [Shared Signals Framework 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html), [CAEP](https://openid.net/specs/openid-caep-1_0.html), [RISC](https://openid.net/specs/openid-risc-1_0-final.html) | Leaver signals as Security Event Tokens ([RFC 8417](https://www.rfc-editor.org/rfc/rfc8417)) with `sub_id` iss_sub subjects and `secevent+jwt` typing: RISC account-disabled, CAEP session-revoked and session-established. One stream per receiver, each with its own audience, event types and delivery state. The Atlas lab app is a CAEP receiver: it refuses tokens issued before a revocation of their subject. Transmitter metadata and keys; no stream-management API |
 | [Poll-based SET delivery, RFC 8936](https://www.rfc-editor.org/rfc/rfc8936) | The receiver pulls with a bearer token and acknowledges by `jti`; unacknowledged events are offered again; receiver errors are recorded |
 | [Standard Webhooks](https://www.standardwebhooks.com/) | HR leaver events signed with HMAC-SHA256 over id, timestamp and body; five-minute window; webhook ID as idempotency key; several `v1` signatures accepted for secret rotation |
 | [OIDC Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html) | Dedicated verified logout-token receivers for the console and the Atlas lab app; containment triggers the workforce realm's logout tokens and the Atlas session ending is measured |
@@ -27,7 +27,7 @@ use separate realms and credentials. Principal identity is `(issuer, subject)`.
 | Guidance | What the project demonstrates |
 | --- | --- |
 | [OWASP ASVS 5.0](https://owasp.org/www-project-application-security-verification-standard/) | Selected authentication, authorization, validation, session and logging requirements tied to denial tests |
-| [NIST SP 800-63-4](https://pages.nist.gov/800-63-4/) | Authentication/session design rationale; no claimed assurance level |
+| [NIST SP 800-63-4](https://pages.nist.gov/800-63-4/) | Authentication/session design rationale; operators use two factors (password and a software TOTP authenticator, not phishing-resistant); no claimed assurance level |
 | [NIST SP 800-53 Rev.5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final) | AC-2 lifecycle; AC-5 independent approval; AC-6 constrained grants; AU-2/AU-12 audit generation; AU-9 app-layer integrity limitations |
 | [NIST CSF 2.0](https://www.nist.gov/cyberframework) | Governance outcomes, not individual executable test requirements |
 | [JWT access-token profile RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) | Validate configured issuer, audience, signature, timestamps and key handling; claim full profile only when typ and every mandatory claim are verified |
@@ -51,13 +51,11 @@ task authorization. It must not fabricate an `act` claim from the sponsor field.
   include method, URI, access-token hash, key binding, freshness and replay.
   Keycloak 26.8 exchange constraints depend on original client and binding key;
   do not generalize the older blanket subject-token limitation.
-- [SSF 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0-final.html),
-  [CAEP 1.0](https://openid.net/specs/openid-caep-1_0-final.html),
-  [RISC 1.0](https://openid.net/specs/openid-risc-1_0-final.html),
-  [SET delivery RFC 8935](https://www.rfc-editor.org/rfc/rfc8935): optional
-  experimental Keycloak transmitter profile and narrow CAEP receiver. Durable
-  inbox before acknowledgment; dedicated SET validation, replay identity and
-  bounded event scope. Credential change does not automatically mean logout.
+- [Push-based SET delivery RFC 8935](https://www.rfc-editor.org/rfc/rfc8935)
+  and the SSF stream-management API: AccessOps never connects out today, so
+  receivers poll. Keycloak's own experimental SSF transmitter is not used.
+- [WebAuthn](https://www.w3.org/TR/webauthn-3/): phishing-resistant operator
+  authenticators would replace the lab's software TOTP secret.
 - [NIST agent identity resource hub](https://pages.nist.gov/nccoe-ai-identity/):
   rolling resources and feedback; its first SDLC use case complements this
   access-governance scenario. No unfinished agent-standard conformance claim.
