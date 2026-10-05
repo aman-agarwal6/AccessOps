@@ -80,6 +80,14 @@ authentication by that `iss` and `sub` in the receiver's own telemetry, is
 access after departure and deserves a high-severity case. AccessOps already
 blocks closure of that departure until its owner records an investigation.
 
+## Producing test signals
+
+The lab's own check, `scripts/live_leaver_assurance.py`, normally acts as the
+receiver and acknowledges everything. Run it with `--external-receiver` while
+another receiver is polling: it then leaves every signal queued, including a
+`session-established` for a sign-in after departure, and checks them on the case
+instead. Its `Test-Lab.ps1` form drains the queue, so don't run both at once.
+
 ## Limits
 
 There is no SSF stream-management API: one receiver, one stream, configured by

@@ -7,7 +7,9 @@ it. It then checks the post-departure watch twice: a refused sign-in is only
 counted, and a sign-in that succeeds after the account is re-enabled outside
 AccessOps is detected, signalled and blocks the case until investigated.
 
-As the lab's only receiver, this suite acknowledges every event it is offered.
+As the lab's receiver, this suite acknowledges every event it is offered. With
+--external-receiver it leaves signals for another receiver (such as
+SignalBridge) and checks them on the case instead of polling.
 Mount .local/operator-logins.json read-only at /run/test-logins.json into a
 one-shot test container only. Secrets and passwords are never reported.
 """
@@ -95,7 +97,13 @@ class Receiver:
 
 
 def main():
-    args = report_arguments(__doc__).parse_args()
+    parser = report_arguments(__doc__)
+    parser.add_argument(
+        "--external-receiver",
+        action="store_true",
+        help="leave signals for another receiver; check them on the case instead",
+    )
+    args = parser.parse_args()
     report = CheckReport(
         "leaver-assurance",
         driver="real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver",
@@ -133,7 +141,8 @@ def main():
         connector = KeycloakConnector()
         http = client(timeout=15)
         receiver = Receiver(http, receiver_token)
-        receiver.poll()  # Acknowledge earlier lab events so this run starts clean.
+        if not args.external_receiver:
+            receiver.poll()  # Acknowledge earlier lab events so this run starts clean.
 
         suffix = uuid.uuid4().hex[:12]
         with report.case("unique synthetic worker enrolled and signed in to Atlas"):
@@ -176,6 +185,17 @@ def main():
         def task(item, key):
             return next((t for t in item["tasks"] if t["id"] == key), None)
 
+        uris = {
+            "account-disabled": RISC + "account-disabled",
+            "session-revoked": CAEP + "session-revoked",
+            "session-established": CAEP + "session-established",
+        }
+
+        def kinds():
+            if args.external_receiver:
+                return {uris[item["eventType"]] for item in (case() or {}).get("signals", [])}
+            return receiver.kinds(subject)
+
         with report.case("containment sends signed account-disabled and session-revoked events"):
             # Effective after the Atlas sign-in: access between the effective time
             # and containment would rightly count as access after departure.
@@ -187,9 +207,7 @@ def main():
                 raise AssertionError("HR event was not accepted")
             contained = True
             until(
-                lambda: (
-                    {RISC + "account-disabled", CAEP + "session-revoked"} <= receiver.kinds(subject)
-                ),
+                lambda: {RISC + "account-disabled", CAEP + "session-revoked"} <= kinds(),
                 "containment signals",
                 60,
             )
@@ -197,7 +215,7 @@ def main():
                 if claims["sub_id"] != {"format": "iss_sub", "iss": WORKFORCE, "sub": subject}:
                     raise AssertionError("Signal subject is not the leaver's account")
             signals = until(lambda: case().get("signals"), "case signal record", 10)
-            if not all(item["deliveredAt"] for item in signals):
+            if not args.external_receiver and not all(item["deliveredAt"] for item in signals):
                 raise AssertionError("Acknowledged signals are not shown as delivered")
 
         with report.case("a refused sign-in after departure is counted, with no successful one"):
@@ -227,7 +245,7 @@ def main():
                     raise AssertionError("Re-enabled account could not sign in")
             until(
                 lambda: (
-                    CAEP + "session-established" in receiver.kinds(subject)
+                    CAEP + "session-established" in kinds()
                     and task(case(), "post-departure-access") is not None
                 ),
                 "post-departure detection",

@@ -104,6 +104,7 @@ as the receiver.
 | Check | Actual result | Scope |
 | --- | --- | --- |
 | Leaver assurance, live | 7 passed | Containment signals arrived signed, verified against the published key and were shown on the case as delivered once acknowledged; a refused sign-in by the disabled account was counted and recorded on the Keycloak task with no access recorded; after the account was re-enabled outside AccessOps, the leaver's sign-in was detected, signalled and blocked the case 32 s later (mostly the 30-second reading interval); containing again ended it, and the owner's investigation statement unblocked the case |
+| Leaver assurance with `--external-receiver` | 7 passed | Same journey, leaving its signals queued for SignalBridge's receiver and checking them on the case; detection 33 s after the sign-in |
 | Existing live suites on the new worker loop | Protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 19, HR intake 10 passed | Written to a separate folder |
 | Host HTTPS boundary | 5 passed | |
 | Console in a real browser | Passed | The PR #9 journey |
