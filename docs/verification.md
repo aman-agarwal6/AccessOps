@@ -25,6 +25,18 @@ failures; the latest results are:
 The demo's evidence index lists 48 recorded runs: 35 passed and 13 failed
 attempts kept beside their fixes.
 
+### CI, deployment and signed release (5 October 2026)
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| GitHub CI on each pull request | All nine required checks passed | PRs #18 to #23; `main` accepts only pull requests that pass Verify (backend, frontend, policy, secrets), dependency review and CodeQL |
+| Published simulation | 17 passed | [Pages run 37348348038](https://github.com/aman-agarwal6/AccessOps/actions/runs/37348348038) reran CI before deploying; `tools/check_published.mjs` against the live site; 48 recorded runs served |
+| Signed v0.3.0 release | Passed: provenance, SBOM and published bytes verified | [Release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.3.0), [workflow 37348343541](https://github.com/aman-agarwal6/AccessOps/actions/runs/37348343541), exact source `d924b4c3762224860ba865526085c50cc8826c79`, clean tree. 372 backend and integration cases on PostgreSQL 17, none skipped; CycloneDX SBOM of 63 components. Both attestations verified with the pinned repository, signer workflow, `refs/heads/main`, commit and GitHub-hosted runner; all seven published assets match the verified files byte for byte |
+
+A secret scan of the release files before publishing flagged 50 lines; every one
+was a public source file's SHA-256 digest (the same lines the repository's
+scanner allowlists in the evidence index), not a credential.
+
 ### Tokens refused by apps that check them locally
 
 Local runs on 5 October 2026 (UTC). The session table below ended with one
