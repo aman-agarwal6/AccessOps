@@ -3,8 +3,33 @@
 Every row below records a check that actually ran, with its real count. Failed
 attempts are kept, not rewritten. Counts describe separate suites, not unique
 requirements. All runs used synthetic records on a personal workstation; no
-employer, production identity provider, Microsoft tenant or GitHub organization
-was contacted. Local reports are unsigned; signed CI evidence is listed separately.
+employer or production identity provider or GitHub organization was contacted;
+Microsoft Entra was used only in the lab's own free test tenant with synthetic
+users. Local reports are unsigned; signed CI evidence is listed separately.
+
+## Next release: live Microsoft Entra containment
+
+### Live Microsoft Entra departure
+
+Local runs on 5 October 2026 (UTC) against the lab's own Entra ID Free test
+tenant: two synthetic test users and one group, a single-tenant app registration
+signing in with a certificate, and five Graph application permissions granted
+by the tenant administrator. On containment, the worker disables the enrolled
+test user, removes its group membership and revokes its sign-in sessions, then
+reads all three back; the case's Entra task counts only that reading.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Live Entra departure (`entra-departure.json`) | 11 passed | The connector signed in with its certificate and read the tenant; the test user was enabled and in the group before; a unique synthetic worker was created and enrolled server-locally; enrolling the tenant administrator and an unlisted user were both refused with nothing changed; from the containment request, the case showed Graph evidence of disable, group removal and session revocation in 19.8 s; a separate Graph read confirmed all three, with sessions revoked after the departure; an owner statement could not replace that evidence; the harness then re-enabled the test user and returned it to the group |
+| Worker job | Verified on its first attempt | Queued 18:09:25, sessions revoked 18:09:37, read back 18:09:40 UTC; no retries |
+| Test users after the run | Both enabled and in the group, no directory roles | Read through Graph |
+| Full `Test-Lab.ps1` on the connector branch | All passed in 5 min 1 s | Policy 32, protocols 18, OIDC 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5; migration 0008 applied |
+| Backend and integrations, host test settings | 400 passed, 1 skipped | Includes 13 connector tests against a simulated Graph (scope and administrator refusals before any request, never re-enabling, read-back retries, the certificate assertion, the consent gate) and 16 case tests |
+
+Sign-ins of the test users were not exercised (they have no stored password),
+and sign-in logs need Entra ID P1, so access after departure is still watched
+in Keycloak only. An access token an app already holds stays valid until it
+expires unless the app uses continuous access evaluation.
 
 ## v0.3.0: closing what disabling leaves behind (5 October 2026)
 

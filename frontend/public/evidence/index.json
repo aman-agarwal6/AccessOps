@@ -1,6 +1,1274 @@
 {
   "runs": [
     {
+      "id": "host-health-7aff9d7ce6cd20db",
+      "name": "Verified host HTTPS boundary",
+      "scenario": "host-health",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:16:04.491324+00:00",
+      "finishedAt": "2026-10-05T18:16:04.529407+00:00",
+      "summary": "5 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "application front door serves connected UI over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "application health route reachable over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "operator discovery has exact issuer over verified host TLS",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "Keycloak administration is not exposed through the host front door",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        },
+        {
+          "name": "unconfigured TLS server name is rejected",
+          "status": "passed",
+          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "7aff9d7ce6cd20db276613368d2c9d280ee6bae0cf7c105223339241bfc3c35d",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "host Python/OpenSSL with fixed loopback routing and verified SNI",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "unrecorded",
+          "files_sha256": {
+            "scripts/host_health.py": "7df9472eecce0035436bdec48490b75664c9e682447a9a2d771d64b8fee89b37",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "infra/Caddyfile": "e2ba7de9a529b692eace8c93751c20d5b601d6d88085717e0dd865fc9cc18465"
+          }
+        },
+        "limitations": [
+          "Public CA certificate is supplied per process; OS trust and hosts configuration are not changed.",
+          "The application health route measures reachability, not every dependency or browser interaction.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "leaver-assurance-8aebfe53e8313234",
+      "name": "Leaver assurance and signed SOC signals",
+      "scenario": "leaver-assurance",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:14:52.448191+00:00",
+      "finishedAt": "2026-10-05T18:16:03.792699+00:00",
+      "summary": "7 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "operator session, HR secret and receiver token present",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "unique synthetic worker enrolled and signed in to Atlas",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "containment sends signed account-disabled and session-revoked events",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "a refused sign-in after departure is counted, with no successful one",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "sign-in after an outside re-enable: blocking task and signed session-established within 60 s",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "containing again ends the new sign-in, and the investigation unblocks the case",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "8aebfe53e8313234e94127f285cf5763d37701b633fdad231ca5246e05195bff",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_leaver_assurance.py": "5924c0cd14a1664663bd36123bed00c15e22bf5984ee0c9ad43bbce782e703c4",
+            "scripts/live_hr_intake.py": "4992d40f8504039f487d89509895f019cd2b88b0808086e63c630928e8dbe84b",
+            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "backend/core/assurance.py": "8b5a6874d8ff951b209f4d90be3e56d519cbc18ab6b89433214f60d11cfbeb54",
+            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
+            "backend/core/intake.py": "8e2bc196af11317d7a213766c03d37940a2286c35c63240909f64962e1199d9d",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "This suite is the lab's SOC receiver; SignalBridge's receiver is built separately against contracts/leaver-signals.md.",
+          "Keycloak keeps sign-in, code-exchange and refused sign-in events here, not refresh-token events; reuse of an old refresh token is not watched.",
+          "The watch reads events every 30 seconds for 24 hours after departure, so detection time includes that interval.",
+          "The account is re-enabled through SCIM as a synthetic administrator mistake and contained again before the suite ends.",
+          "Unique synthetic workers, cases, signals and audit history are retained.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "hr-intake-d989a6e844d902ec",
+      "name": "Signed HR leaver intake, timed to sign-out and token refusal",
+      "scenario": "hr-intake",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:14:01.825399+00:00",
+      "finishedAt": "2026-10-05T18:14:50.852838+00:00",
+      "summary": "10 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "operator session established and HR signing secret present",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "unique synthetic workers enrolled and signed in to Atlas",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "unsigned, wrongly signed, stale or altered events are refused",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "effective HR event: case, containment, zero sessions, Atlas sign-out and token refused within 60 s",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "the case is owned by a person and attributed to the HR feed",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "redelivery returns the original result and opens no second case",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "a reused HR event ID with a different departure is refused",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "future-dated HR event opens a scheduled case and changes no access yet",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "at the effective time the feed contains it: zero sessions, sign-out and token refused within 30 s",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "d989a6e844d902ec6b6d65dc9bfa4b2ab5acf6f49b8b3d90533ef8b4511b61bc",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_hr_intake.py": "4992d40f8504039f487d89509895f019cd2b88b0808086e63c630928e8dbe84b",
+            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "scripts/atlas_app.py": "08526e5292cf80e44229019982e36840393f62d0e4ac20859e403cb035737e99",
+            "backend/core/intake.py": "8e2bc196af11317d7a213766c03d37940a2286c35c63240909f64962e1199d9d",
+            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
+            "backend/core/offboarding.py": "f9d4bf54a441e3ff42c1424a84c58762e7ba9fa7060ddf5aff4031278adddd7a",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "The HR system is simulated by this harness with the lab's shared secret; no real HR product is integrated.",
+          "Workers are matched by their AccessOps identity ID, which the HR system is assumed to hold; names and emails are never matched.",
+          "Timed checks include harness polling every half second, so measured times are upper bounds.",
+          "Only worker.departed events are handled. Rehires, corrections and cancellations need a person.",
+          "Unique synthetic workers, their cases and audit history are retained.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "sessions-ed81e388014906e4",
+      "name": "Workforce session revocation before and after containment",
+      "scenario": "sessions",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:13:48.515354+00:00",
+      "finishedAt": "2026-10-05T18:14:00.280607+00:00",
+      "summary": "22 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "operator session established over verified TLS",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "unique synthetic worker enrolled and bound to a workforce account",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "worker signs in to the Atlas app through the workforce realm",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "worker's command-line client holds a refresh token and an offline token",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "Atlas is reading its leaver signal stream",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "before: Keycloak lists the worker's session",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "before: the refresh token and the offline token both renew",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "before: the Atlas API accepts the access token, by introspection and locally",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "control: disabling the account alone leaves the Atlas session signed in",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "control: disabling the account alone leaves the Keycloak session listed",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "control: disabling alone already blocks token renewal and introspection, not local validation",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "AccessOps departure case opened for the worker",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "containment: Atlas's local check refuses the existing token within 30 s",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "AccessOps containment ends the worker's sessions and observes none left",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: Keycloak lists no session for the worker",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: the Atlas session ended through a verified back-channel logout",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: the refresh token is rejected",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: the offline token is rejected",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: the Atlas API rejects the earlier access token when it asks Keycloak",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: a new sign-in to Atlas is refused",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "after: Atlas's local check refuses the unexpired access token from the revocation signal",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "ed81e388014906e4c03c6fc8167a383df85615487c95ebea24092c753b8d82f2",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
+            "scripts/atlas_app.py": "08526e5292cf80e44229019982e36840393f62d0e4ac20859e403cb035737e99",
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "integrations/security.py": "ac35f7add907827c6cc9ecff132779b5147cbce737235d39fa1b3d7e0a66b37f",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/core/offboarding.py": "f9d4bf54a441e3ff42c1424a84c58762e7ba9fa7060ddf5aff4031278adddd7a",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "Only a uniquely registered synthetic worker is contained. Its one-time password is random, held in memory and never reported.",
+          "The harness sets that password over the private identity network with the SCIM service account's existing manage-users role; AccessOps has no route for it.",
+          "Atlas is a lab app registered for back-channel logout. A real application's sessions end only if it implements and registers back-channel logout or checks tokens with Keycloak.",
+          "Atlas closes the local-validation window by polling AccessOps' signal stream once a second. An app that checks tokens locally without following such a stream still accepts an issued token until it expires (two minutes in the lab), as the disable-only control shows.",
+          "Keycloak 26.8 lab behavior only. MFA, federation, external identity providers and Microsoft Entra sessions are not measured.",
+          "The terminal fixture identity, case and audit history are retained.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "cases-76b5e4359aa7461d",
+      "name": "Authenticated enterprise departure cases \u2014 mixed evidence",
+      "scenario": "cases",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:13:04.589243+00:00",
+      "finishedAt": "2026-10-05T18:13:46.736135+00:00",
+      "summary": "18 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "real owner and independent reviewer OIDC sessions established over verified TLS",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "unique synthetic worker and sponsored inventory agent enrolled and SCIM bindings observed",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "independently approved fixture resource grant applied and SCIM membership observed",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "private verified TLS native membership GET succeeds while other methods, realms, paths and public admin are denied",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "authenticated contractor departure case records exact synthetic platform bindings",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "case import without CSRF is denied on the authenticated HTTP boundary",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "synthetic before imports reveal residual access and preserve collection method",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "mismatched account import and unexpected report fields are denied",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "unresolved case cannot close and native containment cannot be replaced by attestation",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "case containment revokes local grant and durable SCIM observes disabled worker",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "synthetic after import observes Entra disabled and leaves GitHub and session gaps unresolved",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "stale closure input and non-owner external attestations are denied",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "owner records explicit synthetic scope exclusions with owner-attestation evidence kind",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "owner self-closure is denied and the current draft packet records evidence boundaries",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "independent reviewer closes exact current evidence into a persisted administrative packet",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "closed case rejects later import and attestation while its packet remains immutable",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "76b5e4359aa7461d5f0e9246f435f145e654d1b139387119da7383538353bd40",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_cases.py": "1547aeb0e8cb7ac95ceac25e15c9fe4d25eb11d86f734eb1a54dbd55ba848462",
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "scripts/live_offboarding.py": "ba924876e165710e1c25932559e30fda316ec1fef8ec9cb0feee2c81e5ae566c",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/enterprise.py": "543b2e4e6157690cdbc5c534241403ad52c77dc8e76f7beb96f582a5d397569e",
+            "integrations/ad.py": "aca0dfef1a5e98ed9acfd8cd7116917959f4ad63621ce6d531cee20abf0b3023",
+            "scripts/ad_checks.py": "4ea9e3f6b5ae6e463e1bbd416a191c6f8bc5b50597794418a9c9787bc11bd542",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/core/offboarding.py": "f9d4bf54a441e3ff42c1424a84c58762e7ba9fa7060ddf5aff4031278adddd7a",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9",
+            "integrations/fixtures/enterprise-entra-before.json": "a6cb0dd358827aa1cb46e3752648bca549f76f80982be9254c142fd97567aef5",
+            "integrations/fixtures/enterprise-entra-after.json": "85b7ef6f1069b459c7b2a9ff41ede2af4148dec7fff1e1135c9027906494f58c",
+            "integrations/fixtures/enterprise-github-before.json": "4d06533949d8268f4829ef26dc6c91aa15278eccc38741521afb25b0078b493b",
+            "integrations/fixtures/enterprise-github-after.json": "797876450df47c99c24bf91e1e5363c9fe0a8515610f8025c6fbe2fdbcf8361b"
+          }
+        },
+        "limitations": [
+          "Only a uniquely registered synthetic human and suspended sponsored inventory agent are contained.",
+          "Entra/GitHub observations are offline synthetic fixtures; no cloud tenant API or revocation write is measured.",
+          "External owner attestations explicitly document fictional scope exclusions, not completed real tenant operations.",
+          "Administrative closure and immutable packet persistence are measured; universal access termination is not claimed.",
+          "Existing operator/agent token revocation and Microsoft AD are not measured here; workforce sessions, operator MFA and signing-key rotation have their own suites.",
+          "Terminal fixture inventory, case, statements, requests and audit history are retained.",
+          "Native membership observation is a bounded read-only Keycloak 26.8 profile, not general SCIM conformance or federation coverage.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "offboarding-ea6d08914fda93b8",
+      "name": "Connected offboarding and unbacked access",
+      "scenario": "offboarding",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:11:25.127270+00:00",
+      "finishedAt": "2026-10-05T18:13:03.094214+00:00",
+      "summary": "11 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "real operator and independent reviewer OIDC sessions established",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique human registered through authenticated API and native SCIM active observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "sponsored inventory agent registered suspended and native SCIM inactive observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "direct provider membership is observed as drift without adopting a local grant",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "independently approved fixture grant applied and native SCIM membership observed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "offboarding commits local human containment, grant revocation and sponsored suspension",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "offboarding independently observes native SCIM human active=false",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "sponsored inventory agent remains suspended with native SCIM active=false",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "unique fixture provider membership removed",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "ea6d08914fda93b8afb852941fab4448bcf4f6f4e7625de688f2edc9d7d0fa88",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "authenticated API and native SCIM over verified TLS",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_offboarding.py": "ba924876e165710e1c25932559e30fda316ec1fef8ec9cb0feee2c81e5ae566c",
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "Uses unique synthetic inventory enrolled through the existing operator API.",
+          "Offboarded human, suspended agent, revoked grants, requests and audit history are retained.",
+          "The inventory agent starts suspended and has no machine credential; this does not measure running-agent token revocation.",
+          "No live operator session is linked to this fixture; denial of an old offboarded operator session is not measured.",
+          "IdP-triggered back-channel logout and signing-key rotation are measured by their own suites, not here.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "oidc-business-054df3b68b198bd0",
+      "name": "OIDC login and protected access lifecycle",
+      "scenario": "oidc-business",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:11:11.013587+00:00",
+      "finishedAt": "2026-10-05T18:11:23.535602+00:00",
+      "summary": "14 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "operator sign-in stops for a one-time code after a correct password",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "a wrong one-time code is refused and opens no session",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "a request lowered to password-only still cannot open a session",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "three real operator OIDC code+PKCE sessions over verified TLS",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic lifecycle precondition and request recorded",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "self approval denied by real policy",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "execution without independent approval denied",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "independent approval and SCIM grant observed",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "protected synthetic resource allows active entitlement",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "revocation denies previous successful resource replay immediately",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "SCIM group revoke observed independently",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic bob application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        },
+        {
+          "name": "synthetic clara application session logged out",
+          "status": "passed",
+          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "054df3b68b198bd0ad80d098b976c09413e4a45e2c4ed83d7985ef9c6f5e7c7e",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "real HTTP OIDC code+PKCE and authenticated API; no browser UI",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "Uses synthetic Clara/Atlas only and requires no active Clara/Atlas grant at the start.",
+          "Leaves synthetic request/audit history and returns Clara/Atlas to a revoked grant state.",
+          "Operators sign in with a password and a time-based one-time code from the lab's generated authenticator secret; phishing-resistant authenticators (WebAuthn) are not configured.",
+          "Local application logout is measured here; signing-key rotation has its own drill.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "protocols-ba1551d6829d4d89",
+      "name": "Identity and authorization protocols",
+      "scenario": "protocols",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:11:08.163234+00:00",
+      "finishedAt": "2026-10-05T18:11:09.421447+00:00",
+      "summary": "18 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "native SCIM discovery",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM create and read",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM filter and pagination",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM group grant observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM group revoke observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "SCIM active=false observed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "connector operators realm denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "private_key_jwt and signed token verified",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "live introspection active",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "executor denied SCIM administration",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "workforce SCIM token denied operator realm",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real AuthZEN allow with exact bundle digest",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA grant without approval denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA immediate containment allowed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real OPA cross-project containment denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "real AuthZEN unauthorized evaluation denied",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "temporary SCIM group removed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        },
+        {
+          "name": "temporary SCIM user removed",
+          "status": "passed",
+          "detail": "Actual check using live service HTTP over verified TLS."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "ba1551d6829d4d89a370ccfd7e28f2ead9860f4f862f56ee5a1aac0bf57dc670",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "live service HTTP over verified TLS",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_integrations.py": "b55ddee8e0c0bb56b33f5a6dc83da2904e625461449199c118e7c5b70f3bbd54",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
+            "integrations/policy.py": "1a19455b3bb590c71650ad664aafda8908e6a9864d34a8dfa60b454d8755af7b",
+            "integrations/security.py": "ac35f7add907827c6cc9ecff132779b5147cbce737235d39fa1b3d7e0a66b37f",
+            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
+          }
+        },
+        "limitations": [
+          "A bounded interoperability check, not SCIM or AuthZEN conformance certification.",
+          "Provider login-session revocation and signing-key rotation are measured by their own suites, not here.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "policy-ef79200fe68f74c7",
+      "name": "OPA authorization rules",
+      "scenario": "policy",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:11:06.361080+00:00",
+      "finishedAt": "2026-10-05T18:11:06.799865+00:00",
+      "summary": "32 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "test_service_without_intake_role_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_budget_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_agent_sponsor_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_cross_project_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_missing_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_departure_owner_cannot_close",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_expired_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_valid_operator",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_departure_stale_policy_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_no_sponsor_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_stale_policy_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_cannot_approve",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_independent_departure_reviewer",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_disabled_identity_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_missing_input_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_containment_no_approval",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_self_approval_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_global_offboard_scope",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_global_offboard_cross_project_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_entitlement",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_resource_read_revoked_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_agent_scoped_tool",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_contains_departure",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_opens_departure",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_outside_project_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_cannot_grant",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_cannot_close_approve_request_or_read",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_inactive_hr_feed_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_operator_cannot_use_intake",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_hr_feed_cannot_revoke_or_transfer",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_unknown_action_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        },
+        {
+          "name": "test_departure_cross_scope_denied",
+          "status": "passed",
+          "detail": "Actual check using digest-pinned OPA container; network disabled."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "ef79200fe68f74c7343b595727b0b5eadc743d5f8bf0a2fc21bbe4bb72e71efd",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "local",
+        "driver": "digest-pinned OPA container; network disabled",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "unrecorded",
+          "files_sha256": {
+            "scripts/test_policy.py": "8320f0106f54ec1cac74df8f89bc066e1faa4c23d8a9584e789f1c6c789aa2a4",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "policies/accessops.rego": "487daef747e92190ca562166ead5a6c4b26094e6ddcdd42039b9f61b25ecb12f",
+            "policies/accessops_test.rego": "d215a42fa235f056b6c6e58e3e5cc509974c9103f3a23810c635201b597e5ba7",
+            "infra/images.lock.json": "bf6da76d0281ff543cd9268e7029ca8bcb18f09c7242276b7ad7a9f7ef258197"
+          }
+        },
+        "limitations": [
+          "Tests local policy source, not live policy adapter interoperability.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
+      "id": "entra-departure-8d6b739cfc068f4a",
+      "name": "Live Microsoft Entra departure through Microsoft Graph",
+      "scenario": "entra-departure",
+      "status": "passed",
+      "origin": "recorded",
+      "startedAt": "2026-10-05T18:09:08.310982+00:00",
+      "finishedAt": "2026-10-05T18:09:57.065208+00:00",
+      "summary": "11 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
+      "checks": [
+        {
+          "name": "the connector signs in with its certificate and reads the lab tenant",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "before: the test user is enabled and in the lab group",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "a unique synthetic worker is created and bound to a workforce account",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "denied: enrolling the tenant's protected admin account changes nothing",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "denied: enrolling a user outside the connector's list changes nothing",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "the worker is enrolled to the test user by the server-local command",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "containment: the case shows Graph evidence of disable, group removal and session revocation within 120 s",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "after: a separate Graph read shows the account disabled, out of the group and sessions revoked after the departure",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "after: an owner statement cannot replace the Graph evidence",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "the harness restores the test user for the next run",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        },
+        {
+          "name": "synthetic alice application session logged out",
+          "status": "passed",
+          "detail": "Actual check using Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker."
+        }
+      ],
+      "manifest": {
+        "reportSha256": "8d6b739cfc068f4a8a6ae7a484ba900546bd8efbfc4faa4d18feb0701edae322",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "measurementOrigin": "connected",
+        "driver": "Microsoft Graph v1.0 against the lab's own Entra ID Free tenant, the AccessOps case API and worker",
+        "source": {
+          "revision": "unrecorded",
+          "revision_origin": "runtime setting; not an attestation",
+          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
+          "files_sha256": {
+            "scripts/live_entra.py": "0d621a1e89bd2e304edc4e07e9e29b77b0ac0b6f66bb6a1df00ef574ed224f56",
+            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
+            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
+            "integrations/entra.py": "ec873de220fe8194c5dc332568a9d0653ffd4d69d72c9c1ded0e084b7fb470b5",
+            "backend/core/offboarding.py": "f9d4bf54a441e3ff42c1424a84c58762e7ba9fa7060ddf5aff4031278adddd7a",
+            "backend/core/management/commands/enroll_entra.py": "dd51623042f0904987a782d759538d414c896336772d4eebe5ee269a2b5ec762",
+            "backend/accessops/settings.py": "4859dacdec4a39296dd7fb6d3e30d92873ce3685f86a1843734127308449f711",
+            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
+            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
+            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
+            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
+            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
+            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
+            "backend/core/models.py": "3ab754e23b7a91ecd60bec676ca2cbee2cfc0b1b54b0a8c4a45a85c60e8e01f0",
+            "backend/core/presentation.py": "51a85451dbb7e5b23c6d650f8adc0cbfea6e38848cf9ed3500738e33c829d5ed",
+            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
+            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
+            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
+            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
+            "backend/core/worker.py": "16f69ea1c1ed57d082129111ec8bb492d02c633c4158ebf7043e256a68d009e9"
+          }
+        },
+        "limitations": [
+          "One test tenant with synthetic test users; no employee or production tenant.",
+          "Sign-ins are not exercised: the test users have no stored password. Revocation is read from signInSessionsValidFromDateTime.",
+          "An access token already issued to an app stays valid until it expires unless the app uses continuous access evaluation; app-owned sessions are separate.",
+          "Graph application permissions are tenant-wide on Entra ID Free; the connector's own list of test objects and its directory-role refusal are the scope boundary.",
+          "The harness re-enables the test user afterwards; the synthetic AccessOps worker, case and audit history are retained.",
+          "Local workstation measurement; not signed CI provenance or protocol certification."
+        ]
+      }
+    },
+    {
       "id": "ad-auth-after-2a882426c8f1-51b475621423b901",
       "name": "Scoped directory new authentication \u2014 after \u00b7 fixture 2a882426c8f1",
       "scenario": "ad-auth-after-2a882426c8f1",
@@ -997,1162 +2265,6 @@
           "Only this unique synthetic user is tested; no existing session or ticket revocation is measured.",
           "Samba AD-compatible lab behavior, not Microsoft AD interoperability.",
           "Local one-shot measurement, not signed provenance or universal session revocation."
-        ]
-      }
-    },
-    {
-      "id": "host-health-e7f7fa6ad62698ee",
-      "name": "Verified host HTTPS boundary",
-      "scenario": "host-health",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T17:02:54.258508+00:00",
-      "finishedAt": "2026-10-05T17:02:54.301198+00:00",
-      "summary": "5 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "application front door serves connected UI over verified host TLS",
-          "status": "passed",
-          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
-        },
-        {
-          "name": "application health route reachable over verified host TLS",
-          "status": "passed",
-          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
-        },
-        {
-          "name": "operator discovery has exact issuer over verified host TLS",
-          "status": "passed",
-          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
-        },
-        {
-          "name": "Keycloak administration is not exposed through the host front door",
-          "status": "passed",
-          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
-        },
-        {
-          "name": "unconfigured TLS server name is rejected",
-          "status": "passed",
-          "detail": "Actual check using host Python/OpenSSL with fixed loopback routing and verified SNI."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "e7f7fa6ad62698eefb615ad6c0e1793b33a242a012a0845595188486df5139ea",
-        "counts": {
-          "passed": 5,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "host Python/OpenSSL with fixed loopback routing and verified SNI",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "unrecorded",
-          "files_sha256": {
-            "scripts/host_health.py": "7df9472eecce0035436bdec48490b75664c9e682447a9a2d771d64b8fee89b37",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "infra/Caddyfile": "e2ba7de9a529b692eace8c93751c20d5b601d6d88085717e0dd865fc9cc18465"
-          }
-        },
-        "limitations": [
-          "Public CA certificate is supplied per process; OS trust and hosts configuration are not changed.",
-          "The application health route measures reachability, not every dependency or browser interaction.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "leaver-assurance-fe280a19369daef5",
-      "name": "Leaver assurance and signed SOC signals",
-      "scenario": "leaver-assurance",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T17:01:25.771338+00:00",
-      "finishedAt": "2026-10-05T17:02:53.607994+00:00",
-      "summary": "7 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "operator session, HR secret and receiver token present",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "unique synthetic worker enrolled and signed in to Atlas",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "containment sends signed account-disabled and session-revoked events",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "a refused sign-in after departure is counted, with no successful one",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "sign-in after an outside re-enable: blocking task and signed session-established within 60 s",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "containing again ends the new sign-in, and the investigation unblocks the case",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "fe280a19369daef5312fdd9920ff809f0bd83fb0383e38873c6eec84bea706d3",
-        "counts": {
-          "passed": 7,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "real Keycloak 26.8 events, signed HR intake, Atlas lab app and an RFC 8936 receiver",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_leaver_assurance.py": "5924c0cd14a1664663bd36123bed00c15e22bf5984ee0c9ad43bbce782e703c4",
-            "scripts/live_hr_intake.py": "4992d40f8504039f487d89509895f019cd2b88b0808086e63c630928e8dbe84b",
-            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "backend/core/assurance.py": "8b5a6874d8ff951b209f4d90be3e56d519cbc18ab6b89433214f60d11cfbeb54",
-            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
-            "backend/core/intake.py": "5cae260451cb16a421f622ea59c7321247877459750a5c00f04b027c2e2fcc5c",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d"
-          }
-        },
-        "limitations": [
-          "This suite is the lab's SOC receiver; SignalBridge's receiver is built separately against contracts/leaver-signals.md.",
-          "Keycloak keeps sign-in, code-exchange and refused sign-in events here, not refresh-token events; reuse of an old refresh token is not watched.",
-          "The watch reads events every 30 seconds for 24 hours after departure, so detection time includes that interval.",
-          "The account is re-enabled through SCIM as a synthetic administrator mistake and contained again before the suite ends.",
-          "Unique synthetic workers, cases, signals and audit history are retained.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "hr-intake-6107137aea31ca10",
-      "name": "Signed HR leaver intake, timed to sign-out and token refusal",
-      "scenario": "hr-intake",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T17:00:35.473509+00:00",
-      "finishedAt": "2026-10-05T17:01:24.277779+00:00",
-      "summary": "10 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "operator session established and HR signing secret present",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "unique synthetic workers enrolled and signed in to Atlas",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "unsigned, wrongly signed, stale or altered events are refused",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "effective HR event: case, containment, zero sessions, Atlas sign-out and token refused within 60 s",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "the case is owned by a person and attributed to the HR feed",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "redelivery returns the original result and opens no second case",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "a reused HR event ID with a different departure is refused",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "future-dated HR event opens a scheduled case and changes no access yet",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "at the effective time the feed contains it: zero sessions, sign-out and token refused within 30 s",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "6107137aea31ca10c50b72f15581b40046b8efc4845141f662f6306317401ff8",
-        "counts": {
-          "passed": 10,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "real signed HR webhook, AccessOps worker, Keycloak 26.8 and the Atlas lab app",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_hr_intake.py": "4992d40f8504039f487d89509895f019cd2b88b0808086e63c630928e8dbe84b",
-            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
-            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "scripts/atlas_app.py": "08526e5292cf80e44229019982e36840393f62d0e4ac20859e403cb035737e99",
-            "backend/core/intake.py": "5cae260451cb16a421f622ea59c7321247877459750a5c00f04b027c2e2fcc5c",
-            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
-            "backend/core/offboarding.py": "555eb61516ade0880155181f2bf21d056b6c2a7a5d875d48b8a183c394b54fc4",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d"
-          }
-        },
-        "limitations": [
-          "The HR system is simulated by this harness with the lab's shared secret; no real HR product is integrated.",
-          "Workers are matched by their AccessOps identity ID, which the HR system is assumed to hold; names and emails are never matched.",
-          "Timed checks include harness polling every half second, so measured times are upper bounds.",
-          "Only worker.departed events are handled. Rehires, corrections and cancellations need a person.",
-          "Unique synthetic workers, their cases and audit history are retained.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "sessions-4e3d028c663d6400",
-      "name": "Workforce session revocation before and after containment",
-      "scenario": "sessions",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T17:00:24.810131+00:00",
-      "finishedAt": "2026-10-05T17:00:33.928119+00:00",
-      "summary": "22 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "operator session established over verified TLS",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "unique synthetic worker enrolled and bound to a workforce account",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "worker signs in to the Atlas app through the workforce realm",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "worker's command-line client holds a refresh token and an offline token",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "Atlas is reading its leaver signal stream",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "before: Keycloak lists the worker's session",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "before: the refresh token and the offline token both renew",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "before: the Atlas API accepts the access token, by introspection and locally",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "control: disabling the account alone leaves the Atlas session signed in",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "control: disabling the account alone leaves the Keycloak session listed",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "control: disabling alone already blocks token renewal and introspection, not local validation",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "AccessOps departure case opened for the worker",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "containment: Atlas's local check refuses the existing token within 30 s",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "AccessOps containment ends the worker's sessions and observes none left",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: Keycloak lists no session for the worker",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: the Atlas session ended through a verified back-channel logout",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: the refresh token is rejected",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: the offline token is rejected",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: the Atlas API rejects the earlier access token when it asks Keycloak",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: a new sign-in to Atlas is refused",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "after: Atlas's local check refuses the unexpired access token from the revocation signal",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "4e3d028c663d64000cafa1d53782bc0db9b7d84f32296ad3b37ae8ff12ae7388",
-        "counts": {
-          "passed": 22,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "real workforce OIDC sign-in, Atlas back-channel logout, AccessOps case containment and Keycloak 26.8",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_sessions.py": "a38bdd3ed891679c66202df0fd3c9fdcc4f38b0cc4c9a593b343374b771e4be5",
-            "scripts/atlas_app.py": "08526e5292cf80e44229019982e36840393f62d0e4ac20859e403cb035737e99",
-            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
-            "backend/core/ssf.py": "f95eda9ac25b156a7e3de19e92a636b22821a36d1037068aa358f97a70747223",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "integrations/security.py": "ac35f7add907827c6cc9ecff132779b5147cbce737235d39fa1b3d7e0a66b37f",
-            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
-            "backend/core/offboarding.py": "555eb61516ade0880155181f2bf21d056b6c2a7a5d875d48b8a183c394b54fc4",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d"
-          }
-        },
-        "limitations": [
-          "Only a uniquely registered synthetic worker is contained. Its one-time password is random, held in memory and never reported.",
-          "The harness sets that password over the private identity network with the SCIM service account's existing manage-users role; AccessOps has no route for it.",
-          "Atlas is a lab app registered for back-channel logout. A real application's sessions end only if it implements and registers back-channel logout or checks tokens with Keycloak.",
-          "Atlas closes the local-validation window by polling AccessOps' signal stream once a second. An app that checks tokens locally without following such a stream still accepts an issued token until it expires (two minutes in the lab), as the disable-only control shows.",
-          "Keycloak 26.8 lab behavior only. MFA, federation, external identity providers and Microsoft Entra sessions are not measured.",
-          "The terminal fixture identity, case and audit history are retained.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "cases-14d2433e90a29664",
-      "name": "Authenticated enterprise departure cases \u2014 mixed evidence",
-      "scenario": "cases",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T16:59:51.018841+00:00",
-      "finishedAt": "2026-10-05T17:00:23.176849+00:00",
-      "summary": "18 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "real owner and independent reviewer OIDC sessions established over verified TLS",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "unique synthetic worker and sponsored inventory agent enrolled and SCIM bindings observed",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "independently approved fixture resource grant applied and SCIM membership observed",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "private verified TLS native membership GET succeeds while other methods, realms, paths and public admin are denied",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "authenticated contractor departure case records exact synthetic platform bindings",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "case import without CSRF is denied on the authenticated HTTP boundary",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "synthetic before imports reveal residual access and preserve collection method",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "mismatched account import and unexpected report fields are denied",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "unresolved case cannot close and native containment cannot be replaced by attestation",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "case containment revokes local grant and durable SCIM observes disabled worker",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "synthetic after import observes Entra disabled and leaves GitHub and session gaps unresolved",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "stale closure input and non-owner external attestations are denied",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "owner records explicit synthetic scope exclusions with owner-attestation evidence kind",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "owner self-closure is denied and the current draft packet records evidence boundaries",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "independent reviewer closes exact current evidence into a persisted administrative packet",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "closed case rejects later import and attestation while its packet remains immutable",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        },
-        {
-          "name": "synthetic bob application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "14d2433e90a296640a470e08cd1627b3f2a14385a61cc334463513b54d1ea5d8",
-        "counts": {
-          "passed": 18,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "real HTTP OIDC, case API, independent reviewer and native Keycloak SCIM; synthetic cloud imports",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_cases.py": "a63cb660008811578f49a7e0b83c056812ecde4129a6df97908a131b1123d05c",
-            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
-            "scripts/live_offboarding.py": "b786b9abc9bf7da4396ed23c53ef7014cad83838bd8e1598a450a59bd7aa9405",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "integrations/enterprise.py": "543b2e4e6157690cdbc5c534241403ad52c77dc8e76f7beb96f582a5d397569e",
-            "integrations/ad.py": "aca0dfef1a5e98ed9acfd8cd7116917959f4ad63621ce6d531cee20abf0b3023",
-            "scripts/ad_checks.py": "4ea9e3f6b5ae6e463e1bbd416a191c6f8bc5b50597794418a9c9787bc11bd542",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
-            "backend/core/offboarding.py": "555eb61516ade0880155181f2bf21d056b6c2a7a5d875d48b8a183c394b54fc4",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d",
-            "integrations/fixtures/enterprise-entra-before.json": "a6cb0dd358827aa1cb46e3752648bca549f76f80982be9254c142fd97567aef5",
-            "integrations/fixtures/enterprise-entra-after.json": "85b7ef6f1069b459c7b2a9ff41ede2af4148dec7fff1e1135c9027906494f58c",
-            "integrations/fixtures/enterprise-github-before.json": "4d06533949d8268f4829ef26dc6c91aa15278eccc38741521afb25b0078b493b",
-            "integrations/fixtures/enterprise-github-after.json": "797876450df47c99c24bf91e1e5363c9fe0a8515610f8025c6fbe2fdbcf8361b"
-          }
-        },
-        "limitations": [
-          "Only a uniquely registered synthetic human and suspended sponsored inventory agent are contained.",
-          "Entra/GitHub observations are offline synthetic fixtures; no cloud tenant API or revocation write is measured.",
-          "External owner attestations explicitly document fictional scope exclusions, not completed real tenant operations.",
-          "Administrative closure and immutable packet persistence are measured; universal access termination is not claimed.",
-          "Existing operator/agent token revocation, signing-key rotation, MFA and Microsoft AD are not measured; workforce session revocation has its own suite.",
-          "Terminal fixture inventory, case, statements, requests and audit history are retained.",
-          "Native membership observation is a bounded read-only Keycloak 26.8 profile, not general SCIM conformance or federation coverage.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "offboarding-8aef9a01dc5e7ba8",
-      "name": "Connected offboarding and unbacked access",
-      "scenario": "offboarding",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T16:58:25.413796+00:00",
-      "finishedAt": "2026-10-05T16:59:49.594213+00:00",
-      "summary": "11 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "real operator and independent reviewer OIDC sessions established",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "unique human registered through authenticated API and native SCIM active observed",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "sponsored inventory agent registered suspended and native SCIM inactive observed",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "direct provider membership is observed as drift without adopting a local grant",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "independently approved fixture grant applied and native SCIM membership observed",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "offboarding commits local human containment, grant revocation and sponsored suspension",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "offboarding independently observes native SCIM human active=false",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "sponsored inventory agent remains suspended with native SCIM active=false",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "unique fixture provider membership removed",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        },
-        {
-          "name": "synthetic bob application session logged out",
-          "status": "passed",
-          "detail": "Actual check using authenticated API and native SCIM over verified TLS."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "8aef9a01dc5e7ba8fea48408dd0352368d8c8ae82c908d9d18593fb9d1d49a6a",
-        "counts": {
-          "passed": 11,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "authenticated API and native SCIM over verified TLS",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_offboarding.py": "b786b9abc9bf7da4396ed23c53ef7014cad83838bd8e1598a450a59bd7aa9405",
-            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d"
-          }
-        },
-        "limitations": [
-          "Uses unique synthetic inventory enrolled through the existing operator API.",
-          "Offboarded human, suspended agent, revoked grants, requests and audit history are retained.",
-          "The inventory agent starts suspended and has no machine credential; this does not measure running-agent token revocation.",
-          "No live operator session is linked to this fixture; denial of an old offboarded operator session is not measured.",
-          "IdP-triggered backchannel logout and signing-key rotation are not measured.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "oidc-business-5a304f14758ba9b5",
-      "name": "OIDC login and protected access lifecycle",
-      "scenario": "oidc-business",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T16:58:13.003220+00:00",
-      "finishedAt": "2026-10-05T16:58:23.149164+00:00",
-      "summary": "14 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "operator sign-in stops for a one-time code after a correct password",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "a wrong one-time code is refused and opens no session",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "a request lowered to password-only still cannot open a session",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "three real operator OIDC code+PKCE sessions over verified TLS",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "synthetic lifecycle precondition and request recorded",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "self approval denied by real policy",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "execution without independent approval denied",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "independent approval and SCIM grant observed",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "protected synthetic resource allows active entitlement",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "revocation denies previous successful resource replay immediately",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "SCIM group revoke observed independently",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "synthetic alice application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "synthetic bob application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        },
-        {
-          "name": "synthetic clara application session logged out",
-          "status": "passed",
-          "detail": "Actual check using real HTTP OIDC code+PKCE and authenticated API; no browser UI."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "5a304f14758ba9b53c92c5061e12bd8885be98e72f75c70184ee9e823a821c74",
-        "counts": {
-          "passed": 14,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "real HTTP OIDC code+PKCE and authenticated API; no browser UI",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_oidc.py": "dc88879cf56f3e27b0c7b3900f981c775dc3bcd4348908b98b4c8297f0cd1950",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf",
-            "backend/accessops/settings.py": "a9f931834e2e10f72a91af3bfc475fe449265686684fb4a04988b2dd67cf86cd",
-            "backend/accessops/urls.py": "df29ccd6a218759c3bb70dcfa0cf0c6ebefe3512977ab5e2314d7cbf55a5da51",
-            "backend/core/auth.py": "baa3d402241dade549765b0c3837a4f671ad3d189ab8b69c6eff9dbcfd1e3a4d",
-            "backend/core/audit.py": "5ef4ae2af24e2dcf70dd4dcefca2493bc5e1e958a394fd9ae4275b49f5678f46",
-            "backend/core/enrollment.py": "b3b707f87f521349b261736b78601cf2ca219c728f3e3644218dbb9aaf416029",
-            "backend/core/errors.py": "498bc50925f75d4b0a03fdcc6cd23128b0340dc10fc5660977d155303441fd7f",
-            "backend/core/middleware.py": "560682b6fcfcc95cdafca64e27171085ae33cd2253087a24de80c7955c7104dc",
-            "backend/core/models.py": "407e440f8922c633cbb87cbdd69931bccc8dc827b5c1301fa8046a81a256b048",
-            "backend/core/presentation.py": "5f5efe04622be475bfaf0e2a20ee5fdcd48a25fdda913f56b08cdf83e82239d6",
-            "backend/core/rate_limit.py": "9635ab2351668ca0fc90af5d21bac5ed9a98b6bda8af0921cac7ec9dcc06aeda",
-            "backend/core/serializers.py": "4c921c5b8ff2552c7e84bbd84fdbbae3eba34625ed9575f2d3233cb12cd731c2",
-            "backend/core/services.py": "d3c3c234a0b408cfb555d418235ad5881c3508e5f2df8df86ff52217ac206ed9",
-            "backend/core/views.py": "a0b229bdd9f5603e086f587b94b23952f66a9f9b6d23858dc68bf6746b8a388a",
-            "backend/core/worker.py": "0e98e743b138e5f2125eed73c95e66f4ec109d3c5b82bfc8f5ef7e62fdd5105d"
-          }
-        },
-        "limitations": [
-          "Uses synthetic Clara/Atlas only and requires no active Clara/Atlas grant at the start.",
-          "Leaves synthetic request/audit history and returns Clara/Atlas to a revoked grant state.",
-          "Operators sign in with a password and a time-based one-time code from the lab's generated authenticator secret; phishing-resistant authenticators (WebAuthn) are not configured.",
-          "Local application logout is measured here; signing-key rotation has its own drill.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "protocols-790f3ccc249db563",
-      "name": "Identity and authorization protocols",
-      "scenario": "protocols",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T16:58:09.787080+00:00",
-      "finishedAt": "2026-10-05T16:58:10.782438+00:00",
-      "summary": "18 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "native SCIM discovery",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "SCIM create and read",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "SCIM filter and pagination",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "SCIM group grant observed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "SCIM group revoke observed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "SCIM active=false observed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "connector operators realm denied",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "private_key_jwt and signed token verified",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "live introspection active",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "executor denied SCIM administration",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "workforce SCIM token denied operator realm",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "real AuthZEN allow with exact bundle digest",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "real OPA grant without approval denied",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "real OPA immediate containment allowed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "real OPA cross-project containment denied",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "real AuthZEN unauthorized evaluation denied",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "temporary SCIM group removed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        },
-        {
-          "name": "temporary SCIM user removed",
-          "status": "passed",
-          "detail": "Actual check using live service HTTP over verified TLS."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "790f3ccc249db5639a22b50e050ad93de743b20d591294a547e81f7e9a0e7d30",
-        "counts": {
-          "passed": 18,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "connected",
-        "driver": "live service HTTP over verified TLS",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "730d0e175f43e9764f348800ade357f2d49b1ca50d182cd42ea4494bda6b1913",
-          "files_sha256": {
-            "scripts/live_integrations.py": "c1f7aff82c83931daf796cdd3fb0c0b31b146a94db12fe0ae717bcaf06c19b17",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "integrations/keycloak.py": "a6eeab51d8ac5dc3822682ad59756bcf948203f923cfa9009f19f0c8e85b6d80",
-            "integrations/policy.py": "1a19455b3bb590c71650ad664aafda8908e6a9864d34a8dfa60b454d8755af7b",
-            "integrations/security.py": "ac35f7add907827c6cc9ecff132779b5147cbce737235d39fa1b3d7e0a66b37f",
-            "integrations/transport.py": "d10dcdce456d519b6b8e5b343d9389e388abd16e4ff78feec1f8ce4d1d6aeadf"
-          }
-        },
-        "limitations": [
-          "A bounded interoperability check, not SCIM or AuthZEN conformance certification.",
-          "Provider login-session revocation and real signing-key rotation are not measured.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
-        ]
-      }
-    },
-    {
-      "id": "policy-00eea54349fa1062",
-      "name": "OPA authorization rules",
-      "scenario": "policy",
-      "status": "passed",
-      "origin": "recorded",
-      "startedAt": "2026-10-05T16:58:07.198615+00:00",
-      "finishedAt": "2026-10-05T16:58:08.425734+00:00",
-      "summary": "32 passed, 0 failed, 0 skipped. Actual local verification; see scope and limitations.",
-      "checks": [
-        {
-          "name": "test_service_without_intake_role_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_valid_operator",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_cannot_grant",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_missing_input_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_agent_scoped_tool",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_cross_project_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_agent_no_sponsor_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_containment_no_approval",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_global_offboard_cross_project_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_resource_read_entitlement",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_global_offboard_scope",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_resource_read_revoked_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_unknown_action_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_resource_read_budget_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_resource_read_agent_sponsor_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_departure_cross_scope_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_departure_owner_cannot_close",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_departure_stale_policy_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_opens_departure",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_independent_departure_reviewer",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_expired_approval_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_contains_departure",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_disabled_identity_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_agent_cannot_approve",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_missing_approval_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_stale_policy_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_self_approval_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_cannot_revoke_or_transfer",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_inactive_hr_feed_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_outside_project_denied",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_operator_cannot_use_intake",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        },
-        {
-          "name": "test_hr_feed_cannot_close_approve_request_or_read",
-          "status": "passed",
-          "detail": "Actual check using digest-pinned OPA container; network disabled."
-        }
-      ],
-      "manifest": {
-        "reportSha256": "00eea54349fa106262226dbf69b132cf73598154c64d23f17b5123b9443f1200",
-        "counts": {
-          "passed": 32,
-          "failed": 0,
-          "skipped": 0
-        },
-        "measurementOrigin": "local",
-        "driver": "digest-pinned OPA container; network disabled",
-        "source": {
-          "revision": "unrecorded",
-          "revision_origin": "runtime setting; not an attestation",
-          "expected_policy_bundle_sha256": "unrecorded",
-          "files_sha256": {
-            "scripts/test_policy.py": "8320f0106f54ec1cac74df8f89bc066e1faa4c23d8a9584e789f1c6c789aa2a4",
-            "scripts/check_report.py": "8cb09191ce6c92e66ccda3b53cfac9b17885056e23ab826865e0c8c0e0f7564d",
-            "policies/accessops.rego": "487daef747e92190ca562166ead5a6c4b26094e6ddcdd42039b9f61b25ecb12f",
-            "policies/accessops_test.rego": "d215a42fa235f056b6c6e58e3e5cc509974c9103f3a23810c635201b597e5ba7",
-            "infra/images.lock.json": "bf6da76d0281ff543cd9268e7029ca8bcb18f09c7242276b7ad7a9f7ef258197"
-          }
-        },
-        "limitations": [
-          "Tests local policy source, not live policy adapter interoperability.",
-          "Local workstation measurement; not signed CI provenance or protocol certification."
         ]
       }
     },

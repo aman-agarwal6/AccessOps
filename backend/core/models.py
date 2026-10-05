@@ -258,6 +258,7 @@ class OffboardingCase(models.Model):
     reason = models.CharField(max_length=255)
     bindings = models.JSONField(default=list)
     ad_binding = models.JSONField(default=dict)
+    entra_binding = models.JSONField(default=dict)
     attestations = models.JSONField(default=dict)
     containment_request = models.ForeignKey(ChangeRequest, null=True, on_delete=models.PROTECT)
     # Set when a signed HR feed opened the case; that feed contains it once effective.
@@ -298,6 +299,7 @@ class OffboardingCase(models.Model):
                     "reason",
                     "bindings",
                     "ad_binding",
+                    "entra_binding",
                     "intake_source_id",
                 )
             ):
@@ -376,6 +378,33 @@ class ADEnrollment(models.Model):
     def save(self, *args, **kwargs):
         if not self._state.adding:
             raise ValueError("Directory enrollment is immutable; review a new identity enrollment.")
+        super().save(*args, **kwargs)
+
+
+class EntraEnrollment(models.Model):
+    """Trusted local enrollment of one identity's Entra user and groups, never
+    accepted from a browser. A test user may be enrolled again for a new identity
+    only once every earlier identity bound to it has been offboarded."""
+
+    identity = models.OneToOneField(
+        Principal, primary_key=True, on_delete=models.PROTECT, related_name="entra_enrollment"
+    )
+    tenant_id = models.UUIDField()
+    user_id = models.UUIDField()
+    group_ids = models.JSONField(default=list)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def binding(self):
+        return {
+            "tenantId": str(self.tenant_id),
+            "userId": str(self.user_id),
+            "groupIds": self.group_ids,
+        }
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Entra enrollment is immutable; review a new identity enrollment.")
         super().save(*args, **kwargs)
 
 

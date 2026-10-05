@@ -24,8 +24,11 @@ required task: disable the explicitly enrolled account and remove mapped group
 memberships through verified LDAPS with object-specific delegated permissions.
 New sign-ins and new Kerberos tickets are refused afterwards; connections and
 tickets already held keep working until they close or expire, and the case says
-when that is. Samba results do not establish Microsoft interoperability. Optional Microsoft Graph and GitHub adapters collect
-minimal read-only observations for explicit accounts in an authorized test tenant.
+when that is. Samba results do not establish Microsoft interoperability. An opt-in
+Microsoft Entra connector disables an enrolled test user, removes its group and
+revokes its sessions through Graph in the lab's own test tenant. Optional
+read-only Graph and GitHub collectors gather minimal observations for explicit
+accounts in an authorized tenant.
 No tenant is required: vendor-shaped synthetic fixtures exercise normalization,
 residual-access assessment, action tracking and closure using free local tools.
 Those fixtures are not measurements of Microsoft or GitHub.

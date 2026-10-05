@@ -255,6 +255,15 @@ ports, delete volumes to troubleshoot, or reuse this synthetic setup with
 production records. Database backup and secret rotation are separate operator
 tasks; Keycloak signing-key rotation has the drill below.
 
+### Live Microsoft Entra departure (opt-in)
+
+With a test tenant set up as described in
+[the connector guide](../docs/platform-connectors.md#live-microsoft-entra-connector),
+`./scripts/Test-EntraCase.ps1` restarts the backend and worker with
+`infra/compose.entra.yml`, which mounts `.local/entra/` read-only and adds the
+existing `edge` network for outbound HTTPS to Microsoft. Reports go to
+`output/connected/entra-departure.json` and `.xml`.
+
 ### Signing-key rotation drill
 
 ```powershell

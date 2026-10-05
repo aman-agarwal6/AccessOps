@@ -6,6 +6,7 @@ from .models import (
     Approval,
     AuditEvent,
     ChangeRequest,
+    EntraEnrollment,
     EvidenceRun,
     Grant,
     OutboxJob,
@@ -51,6 +52,9 @@ def identity(p):
     enrollment = ADEnrollment.objects.filter(identity=p).first()
     if enrollment:
         value["directoryBinding"] = enrollment.binding
+    entra = EntraEnrollment.objects.filter(identity=p).first()
+    if entra:
+        value["entraBinding"] = entra.binding
     return value
 
 
@@ -251,7 +255,8 @@ def snapshot(actor):
     cases = visible_cases(actor)
     case_ids = [case["id"] for case in cases]
     directory_jobs = OutboxJob.objects.filter(
-        kind__in=["ad_offboard", "ad_observe"], desired__caseId__in=case_ids
+        kind__in=["ad_offboard", "ad_observe", "entra_offboard", "entra_observe"],
+        desired__caseId__in=case_ids,
     )
     membership_jobs = OutboxJob.objects.filter(
         kind="entitlement_revoke",
