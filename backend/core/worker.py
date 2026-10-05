@@ -362,6 +362,7 @@ def process_one(connector=None):
             if current.attempts != job.attempts or current.status != "running":
                 return True
             current.observed = result.get("observed", {})
+            contained_subject = None
             if job.kind in ("ad_offboard", "ad_observe"):
                 from integrations.ad import verified_result
 
@@ -374,16 +375,21 @@ def process_one(connector=None):
             ):
                 # Remote delivery can overlap a committed local revocation. Do
                 # not claim convergence against an obsolete desired snapshot.
-                fresh_operation, _, _ = desired_operation(current)
+                fresh_operation, fresh_identity, _ = desired_operation(current)
                 if fresh_operation["kind"] in ("grant", "revoke"):
                     result["verified"] = current.observed.get("member") is (
                         fresh_operation["kind"] == "grant"
                     )
                 else:
                     result["verified"] = account_contained(current.observed)
+                    contained_subject = fresh_identity["providerSubject"]
             if job.kind != "assistant":
                 current.observed["observedAt"] = result_read_at
             current.status = "verified" if result.get("verified") is True else "retry"
+            if current.status == "verified" and contained_subject:
+                from . import ssf
+
+                ssf.signal_containment(current, contained_subject)
             if current.status == "retry" and current.attempts >= 5:
                 current.status = "failed"
             current.lease_until = None

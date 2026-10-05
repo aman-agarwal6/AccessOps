@@ -14,6 +14,7 @@ from rest_framework.response import Response
 
 from . import audit
 from . import services as svc
+from .assurance import POST_DEPARTURE_TASK, latest_reading, post_departure_successes
 from .errors import DomainError
 from .models import (
     ADEnrollment,
@@ -541,7 +542,13 @@ def assess(case):
     provider_at = keycloak_reading(case, now)
     directory_at = ad_reading(case, now) if case.ad_binding else None
     tasks, blockers = [], []
-    for key, platform, boundary, title in (*TASKS, *((AD_TASK,) if case.ad_binding else ())):
+    successes = post_departure_successes(case)
+    reading = latest_reading(case)
+    for key, platform, boundary, title in (
+        *TASKS,
+        *((AD_TASK,) if case.ad_binding else ()),
+        *((POST_DEPARTURE_TASK,) if successes else ()),
+    ):
         task = {
             "id": key,
             "platform": platform,
@@ -562,12 +569,27 @@ def assess(case):
                 observedAt=case.containment_request.applied_at.isoformat(),
             )
         elif key == "keycloak-directory" and provider_at:
+            summary = "Fresh Keycloak readings observed the workforce account disabled with no active sessions, and known managed grant memberships absent. Keycloak rejects tokens issued before containment and sent back-channel logout to registered apps; credentials and unknown access paths are separate."
+            if reading and not successes:
+                summary += (
+                    " Since the departure, Keycloak recorded no successful sign-in or token use"
+                    f" and refused {reading.refused} attempt(s) (read {reading.checked_at.isoformat()})."
+                )
             task.update(
                 status="observed",
                 evidenceKind="provider_observation",
-                evidenceSummary="Fresh Keycloak readings observed the workforce account disabled with no active sessions, and known managed grant memberships absent. Keycloak rejects tokens issued before containment and sent back-channel logout to registered apps; credentials and unknown access paths are separate.",
+                evidenceSummary=summary,
                 observedAt=provider_at.isoformat(),
             )
+        elif key == POST_DEPARTURE_TASK[0]:
+            # An investigation statement covers only sign-ins read before it.
+            last = max(item["time"] for item in successes) / 1000
+            if not statement or parse_datetime(statement["completedAt"]).timestamp() <= last:
+                statement = None
+                blockers.append(
+                    f"{len(successes)} successful Keycloak sign-in(s) or token use after departure"
+                    " were read. Contain the account again and record the investigation."
+                )
         elif key == "ad-directory" and directory_at:
             task.update(
                 status="observed",
@@ -608,7 +630,7 @@ def assess(case):
                 completedAt=statement["completedAt"],
                 submittedById=statement["submittedById"],
             )
-        if task["status"] == "pending":
+        if task["status"] == "pending" and key != POST_DEPARTURE_TASK[0]:
             blockers.append(title + ": evidence is missing, incomplete or stale.")
         tasks.append(task)
     if case.effective_at > now:
@@ -669,6 +691,16 @@ def assess(case):
     if case.intake_source_id:
         dto["intakeSourceId"] = str(case.intake_source_id)
     dto["packetHash"] = audit.digest(dto)
+    # Delivery state changes as the SOC acknowledges; it stays outside the hash.
+    dto["signals"] = [
+        {
+            "jti": event.jti,
+            "eventType": event.event_type,
+            "createdAt": event.created_at.isoformat(),
+            "deliveredAt": event.delivered_at.isoformat() if event.delivered_at else None,
+        }
+        for event in case.security_events.order_by("created_at")[:50]
+    ]
     return dto
 
 
@@ -804,7 +836,10 @@ def contain(actor, case):
 
 
 def attest(actor, case, task_id, data):
-    if task_id not in {task[0] for task in TASKS} or task_id in (
+    allowed = {task[0] for task in TASKS}
+    if post_departure_successes(case):
+        allowed.add(POST_DEPARTURE_TASK[0])
+    if task_id not in allowed or task_id in (
         "local-containment",
         "keycloak-directory",
         "ad-directory",
