@@ -9,17 +9,7 @@ Set-Location -LiteralPath $accessopsRoot
 $accessopsPython = Join-Path $accessopsRoot 'backend/.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath '.local/backend.env')) { throw 'No existing lab configuration. Start a new lab with scripts/Start-Lab.ps1 instead.' }
 $accessopsUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$accessopsDocker = @('compose', '-f', 'infra/compose.yml')
-function Invoke-LabCompose {
-    param([string[]]$Arguments)
-    # Compose reports progress on stderr, which Windows PowerShell 5.1 can turn
-    # into a terminating error record. Judge each step by its exit code instead.
-    $accessopsPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try { & docker @accessopsDocker @Arguments 2>&1 | ForEach-Object { "$_" } }
-    finally { $ErrorActionPreference = $accessopsPreference }
-    if ($LASTEXITCODE -ne 0) { throw 'AccessOps Compose operation failed.' }
-}
+. (Join-Path $PSScriptRoot 'LabCompose.ps1')
 function Protect-LocalPath([string]$Path) {
     & icacls $Path /inheritance:r /grant:r "${accessopsUser}:F" 'SYSTEM:F' /Q | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not restrict a local credential path.' }
