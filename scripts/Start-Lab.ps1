@@ -48,27 +48,17 @@ foreach ($accessopsSecretPath in @('tls', 'executor', 'realms', 'backend.env', '
 & $accessopsPython scripts/build_policy.py
 if ($LASTEXITCODE -ne 0) { throw 'Policy bundle generation failed.' }
 # Reuse the selected Docker context and installed plugins. No credential contents are read.
-$accessopsDocker = @('compose', '-f', 'infra/compose.yml')
-function Invoke-LabCompose {
-    param([string[]]$Arguments)
-    & docker @accessopsDocker @Arguments
-    if ($LASTEXITCODE -ne 0) { throw 'AccessOps Compose operation failed.' }
-}
+. (Join-Path $PSScriptRoot 'LabCompose.ps1')
 if (-not $SkipBuild) { Invoke-LabCompose -Arguments @('build') }
 # The edge generates the CA before clients start. Only its public certificate is exported.
 Invoke-LabCompose -Arguments @('up', '-d', 'web')
 $accessopsCopied = $false
-# Compose reports copy progress on stderr. Windows PowerShell 5.1 turns redirected
-# native stderr into an error record, so rely on the exit code inside this loop.
-$accessopsPreference = $ErrorActionPreference
-$ErrorActionPreference = 'Continue'
-try {
-    for ($accessopsAttempt = 0; $accessopsAttempt -lt 20; $accessopsAttempt++) {
-        & docker @accessopsDocker cp web:/data/caddy/pki/authorities/local/root.crt .local/tls/root.crt 2>$null
-        if ($LASTEXITCODE -eq 0) { $accessopsCopied = $true; break }
-        Start-Sleep -Seconds 1
-    }
-} finally { $ErrorActionPreference = $accessopsPreference }
+for ($accessopsAttempt = 0; $accessopsAttempt -lt 20 -and -not $accessopsCopied; $accessopsAttempt++) {
+    try {
+        Invoke-LabCompose -Arguments @('cp', 'web:/data/caddy/pki/authorities/local/root.crt', '.local/tls/root.crt') | Out-Null
+        $accessopsCopied = $true
+    } catch { Start-Sleep -Seconds 1 }
+}
 if (-not $accessopsCopied) { throw 'Public local CA certificate was not generated.' }
 if ($TrustLocalCA) {
     # Explicit switch: trust applies only to the current Windows user, never LocalMachine.
