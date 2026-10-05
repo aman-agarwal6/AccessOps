@@ -4,6 +4,7 @@ import {
   inQueue,
   nextStep,
   phaseTasks,
+  isNative,
   sla,
   taskProvenance,
 } from "./caseflow";
@@ -103,5 +104,28 @@ describe("queue and evidence presentation", () => {
     expect(phaseTasks(contained).flatMap((phase) => phase.tasks)).toHaveLength(
       9,
     );
+  });
+  it("groups a sign-in after departure with containment and lets the owner record it", async () => {
+    const [item] = await initialOffboardingCases(now);
+    const flagged = {
+      ...item,
+      tasks: [
+        ...item.tasks,
+        {
+          ...item.tasks[0],
+          id: "post-departure-access",
+          title: "Investigate sign-in after departure",
+          status: "pending" as const,
+          evidenceKind: "none" as const,
+        },
+      ],
+    };
+    const contain = phaseTasks(flagged).find(
+      (phase) => phase.id === "contain",
+    )!;
+    expect(contain.tasks.map((task) => task.id)).toContain(
+      "post-departure-access",
+    );
+    expect(isNative("post-departure-access")).toBe(false);
   });
 });
