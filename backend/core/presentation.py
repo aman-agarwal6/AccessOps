@@ -216,11 +216,14 @@ def snapshot(actor):
 
     resources = list(Resource.objects.filter(project__in=actor.project_ids))
     resource_ids = [r.pk for r in resources]
-    identities = [
+    principals = [
         p
         for p in Principal.objects.all()
         if p.project_ids and set(p.project_ids).issubset(actor.project_ids)
     ]
+    # Service feeds are named for attribution but are not people or agents.
+    identities = [p for p in principals if p.kind != "service"]
+    services = [{"id": str(p.pk), "name": p.name} for p in principals if p.kind == "service"]
     requests = ChangeRequest.objects.filter(
         Q(resource_id__in=resource_ids)
         | Q(resource__isnull=True, identity_id__in=[p.pk for p in identities])
@@ -281,6 +284,7 @@ def snapshot(actor):
     return {
         "offboardingCases": cases,
         "identities": [identity(p) for p in identities],
+        "services": services,
         "resources": [resource(r) for r in resources],
         "requests": [change(r) for r in requests],
         "grants": [grant(g) for g in Grant.objects.filter(resource_id__in=resource_ids)],

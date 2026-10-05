@@ -1,7 +1,8 @@
 # Concrete application: enterprise departure closure
 
 An IAM analyst receives an HR event: an employee leaves or a contractor's
-engagement expires. Disabling the central account leaves a practical question:
+engagement expires. With the signed HR feed connected, AccessOps opens the case
+and contains access itself, so the analyst starts from a contained case. Disabling the central account leaves a practical question:
 what else can they still access, who owns the remaining work, and what evidence
 supports closing the departure ticket?
 

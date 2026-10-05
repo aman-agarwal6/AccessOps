@@ -6,9 +6,10 @@ When someone leaves, disabling one account is the easy part. AccessOps turns the
 HR departure into a case with an owner, a four-hour target and a required action
 for every system the person could still reach: local grants and the agents they
 sponsor, the workforce directory, Entra sign-in and sessions, GitHub access,
-shared credentials, Microsoft 365 handover and legacy apps. Local access is
-contained immediately. The case closes only when someone other than the owner
-accepts the exact evidence packet.
+shared credentials, Microsoft 365 handover and legacy apps. A signed HR event
+opens the case and contains access within seconds, without waiting for a person.
+The case closes only when someone other than the owner accepts the exact
+evidence packet.
 
 [Live demo](https://aman-agarwal6.github.io/AccessOps/) ·
 [Verification ledger](docs/verification.md) ·
@@ -61,6 +62,7 @@ backend source. Details, failed attempts and limits are in the
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
 | Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
+| Signed HR event → access contained and app signed out | 10 / 10 passed: 2.8 s for an effective departure, 2.6 s after a future one takes effect |
 | Leaver's sessions and tokens before → after containment | 19 / 19 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself still accepts the last one for up to 2 minutes |
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
 | Deployed demo | 17 / 17 checks passed |
@@ -106,6 +108,8 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
   not stand in for removed group memberships.
 - Containment also ends the leaver's Keycloak sessions and sends signed
   back-channel logout to apps, and counts only once no session remains.
+- HR events must carry a valid Standard Webhooks signature. The HR feed is its
+  own identity that can open and contain departures and nothing else.
 - Accounts are matched by immutable IDs, never by name or email.
 - The review assistant can only propose. It cannot approve or apply anything.
 - Every pull request runs CodeQL, dependency review and OSV-Scanner; OpenSSF

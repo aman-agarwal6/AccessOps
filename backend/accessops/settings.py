@@ -87,6 +87,11 @@ WORKFORCE_ISSUER = os.environ.get(
     "WORKFORCE_ISSUER", "https://localhost:8443/realms/accessops-workforce"
 ).rstrip("/")
 POLICY_VERSION = os.environ.get("POLICY_VERSION", "accessops-v1")
+# Signed HR leaver feed (Standard Webhooks HMAC). Without a secret the endpoint
+# refuses every event.
+HR_WEBHOOK_SECRET = os.environ.get("HR_WEBHOOK_SECRET", "")
+HR_INTAKE_ISSUER = "https://hr-intake.accessops.internal"
+HR_INTAKE_SOURCE = "northstar-hr"
 INTERNAL_API_URL = os.environ.get("INTERNAL_API_URL", "https://localhost:8443").rstrip("/")
 LOGGING = {
     "version": 1,

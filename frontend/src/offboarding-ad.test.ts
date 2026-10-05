@@ -61,6 +61,25 @@ describe("optional trusted AD enrollment presentation", () => {
     };
     expect(() => parseSnapshot(snapshot)).toThrow("invalid trusted directory");
   });
+  it("accepts named service feeds and rejects malformed ones", () => {
+    const snapshot = initialSimulation(now).snapshot;
+    const feed = {
+      id: "77777777-7777-4777-8777-777777777777",
+      name: "Northstar HR feed (synthetic)",
+    };
+    expect(parseSnapshot({ ...snapshot, services: [feed] }).services).toEqual([
+      feed,
+    ]);
+    expect(parseSnapshot(snapshot).services).toEqual([]);
+    for (const services of [
+      [{ ...feed, id: "hr-feed" }],
+      [{ ...feed, name: "x".repeat(121) }],
+      { feed },
+    ])
+      expect(() => parseSnapshot({ ...snapshot, services })).toThrow(
+        "invalid service",
+      );
+  });
   it("never permits manual attestation for the directory observation task", async () => {
     const item = await fixture();
     await expect(
@@ -77,6 +96,35 @@ describe("optional trusted AD enrollment presentation", () => {
       "pending",
     );
     expect((await initialOffboardingCases(now))[0].tasks).toHaveLength(9);
+  });
+  it("attributes an HR-feed case to the feed only when the server says so", async () => {
+    const item = await fixture();
+    const snapshot = initialSimulation(now).snapshot;
+    const ws = {
+      connected: true,
+      authenticated: true,
+      data: snapshot,
+      cases: [item],
+      principal: operators[0],
+      now,
+      busy: false,
+      person: () => undefined,
+      resource: () => undefined,
+      name: (id?: string) =>
+        id === "feed-id"
+          ? "Northstar HR feed (synthetic)"
+          : "Synthetic operator",
+      exportPacket: vi.fn(),
+    } as unknown as Workspace;
+    const render = () =>
+      renderToStaticMarkup(
+        createElement(CaseDetail, { ws, item, notice: "", onAction: vi.fn() }),
+      );
+    expect(render()).not.toContain("contained automatically");
+    item.intakeSourceId = "feed-id";
+    expect(render().replace(/<!-- -->/g, "")).toContain(
+      "Opened and contained automatically by Northstar HR feed (synthetic)",
+    );
   });
   it("shows scoped directory refresh without manual completion or editable GUIDs", async () => {
     const item = await fixture();

@@ -194,6 +194,18 @@ def test_departure_closure_is_allowlisted_without_relaxing_action_shape():
         normalize(body)
 
 
+def test_hr_feed_intake_is_allowlisted_and_unknown_subject_kinds_still_fail():
+    body = evaluation()
+    body["action"] = {"name": "departure_intake"}
+    body["subject"]["properties"].update(kind="service", roles=["hr_intake"])
+    normalized = normalize(body)
+    assert normalized["action"] == "departure_intake"
+    assert normalized["subject"]["kind"] == "service"
+    body["subject"]["properties"]["kind"] = "robot"
+    with pytest.raises(ValueError):
+        normalize(body)
+
+
 def test_undefined_opa_response_fails_closed():
     connection = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={})))
     with pytest.raises(RuntimeError):

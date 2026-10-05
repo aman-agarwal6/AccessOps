@@ -89,11 +89,29 @@ def require_policy(actor, action, resource=None, change=None, context=None):
         "reconcile": "operator",
         "approve": "approver",
         "departure_close": "approver",
+        "departure_intake": "hr_intake",
     }.get(action)
     if actor.kind == "agent" and action not in ("agent_tool", "resource_read"):
         raise DomainError(
             "agent_authority_denied", "Agents may only use their approved task tools.", 403
         )
+    if actor.kind == "service":
+        # The HR feed may open a departure and contain it. Statements, approval,
+        # closure and every other change stay with people.
+        if not (
+            action == "departure_intake"
+            or action == "execute"
+            and change is not None
+            and change.payload.get("action") == "offboard"
+        ):
+            raise DomainError(
+                "service_authority_denied",
+                "This service may only open and contain departures.",
+                403,
+            )
+        role = "hr_intake"
+    elif action == "departure_intake":
+        raise DomainError("role_denied", "Departure intake is reserved for the HR feed.", 403)
     owner_role = (
         "resource_owner" in actor.roles
         and resource

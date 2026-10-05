@@ -113,6 +113,7 @@ export default function App() {
   const resource = (id?: string) => data.resources.find((r) => r.id === id);
   const name = (id?: string) =>
     person(id)?.name ??
+    data.services?.find((entry) => entry.id === id)?.name ??
     operators.find((entry) => entry.id === id)?.name ??
     id ??
     "Unassigned";

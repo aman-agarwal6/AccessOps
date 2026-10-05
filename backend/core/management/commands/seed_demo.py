@@ -59,6 +59,20 @@ class Command(BaseCommand):
                     "workforce_identity": employees[employee],
                 },
             )
+        # The signed HR feed: a service identity that may only open and contain
+        # departures. Alice's operator account owns the cases it opens.
+        Principal.objects.get_or_create(
+            id=uid("hr-feed"),
+            defaults={
+                "issuer": settings.HR_INTAKE_ISSUER,
+                "subject": settings.HR_INTAKE_SOURCE,
+                "name": "Northstar HR feed (synthetic)",
+                "kind": "service",
+                "roles": ["hr_intake"],
+                "project_ids": ["Atlas", "Pulse"],
+                "sponsor": Principal.objects.get(pk=uid("operator-alice")),
+            },
+        )
         agent, _ = Principal.objects.get_or_create(
             id=uid("review-assistant"),
             defaults={
