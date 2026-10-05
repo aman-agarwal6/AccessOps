@@ -53,6 +53,32 @@ workforce realm. The executor has no SCIM administration role. Its independent
 role-free confidential API client authenticates introspection using its own
 client secret.
 
+The workforce realm also holds two lab-only clients for Atlas, a small app the
+fictional workforce signs in to so offboarding has real sessions and tokens to
+end: `atlas-app` (confidential, back-channel logout) and `atlas-cli` (public,
+PKCE, may request offline tokens). The Atlas container receives only its own
+client secret from `.local/atlas.env`, never `backend.env`, and is reachable only
+on the private identity network.
+
+### Upgrading a lab created before session revocation
+
+Labs created before the Atlas clients existed need a one-time upgrade. Keycloak
+imports a realm only when it does not exist yet, and the lab has no standing
+administrator, so the script creates a temporary one:
+
+```powershell
+./scripts/Upgrade-Lab.ps1
+```
+
+It backs up the identity database to `.local/backups/` (restore with
+`pg_restore --clean` into the stopped database), stops Keycloak, creates a
+temporary admin service account with `kc.sh bootstrap-admin`, starts Keycloak,
+creates the two Atlas clients or adds any mapper they lack, deletes the temporary
+account and confirms its credential is refused, then rebuilds and restarts the
+backend, worker, edge and Atlas. Only the Atlas clients are changed; users,
+other clients and sessions are untouched. If a step fails, Keycloak is restarted
+and the temporary account is still removed.
+
 ## Verify without changing the operating system
 
 The checks below use the exported public CA certificate with verification
@@ -82,6 +108,7 @@ the front door after the outage probes.
 | `oidc-business.*` | Real HTTP authorization code + PKCE logins, independent grant approval, protected resource access, immediate revoke/replay denial, SCIM observation and local logout |
 | `offboarding.*` | Authenticated inventory registration, unique human/agent provider bindings, live drift without adopting access, independently approved grant, local offboarding and SCIM `active=false` observation |
 | `cases.*` | Real authenticated case creation/import/containment, native SCIM disabled-account observation, synthetic cloud snapshots and owner scope exclusions, independent administrative closure and immutable packet |
+| `sessions.*` | A unique worker signed in to Atlas and its command-line client; before, disable-only control and after containment: Keycloak session count, Atlas session ended by verified back-channel logout, refresh and offline token rejection, Atlas API introspection versus local token validation, refused new sign-in |
 | `host-health.*` | Host loopback HTTPS, exact operator issuer, hidden administration route and rejection of an unconfigured TLS server name |
 | `policy-outage.*`, `identity-outage.*` | Live policy denial and new token issuance failure while the respective dependency is stopped |
 
@@ -116,7 +143,8 @@ their provider accounts remain disabled. Inventory registration gives the agent
 no machine credential, so this check does not demonstrate revocation of a
 running agent token. The suite does not create another privileged operator
 login, measure an old offboarded operator session, trigger provider backchannel
-logout, or rotate the live realm signing key. Boundary tests cover additional
+logout of operators, or rotate the live realm signing key. Workforce session
+revocation has its own suite (`sessions.*`). Boundary tests cover additional
 denials using isolated test inputs. The real-browser check below is separate.
 
 Native SCIM does not expose the configured executor service account as a `Users`

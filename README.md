@@ -61,6 +61,7 @@ backend source. Details, failed attempts and limits are in the
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
 | Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
+| Leaver's sessions and tokens before → after containment | 19 / 19 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself still accepts the last one for up to 2 minutes |
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
 | Deployed demo | 17 / 17 checks passed |
 
@@ -103,6 +104,8 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
 - Case owners and evidence submitters cannot close their own case.
 - Stale, unknown or partial readings keep work open; a disabled account does
   not stand in for removed group memberships.
+- Containment also ends the leaver's Keycloak sessions and sends signed
+  back-channel logout to apps, and counts only once no session remains.
 - Accounts are matched by immutable IDs, never by name or email.
 - The review assistant can only propose. It cannot approve or apply anything.
 - Every pull request runs CodeQL, dependency review and OSV-Scanner; OpenSSF
@@ -114,8 +117,11 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
 This is a reference system with synthetic data, not a production deployment.
 No Microsoft or GitHub tenant was contacted; those platforms appear as offline
 fixtures and owner statements. Samba results do not prove Microsoft AD
-interoperability. Existing sessions and tickets are not revoked. Closure is an
-administrative record, not proof that every copy or session is gone. See the
+interoperability. Keycloak sessions are ended and earlier tokens rejected, but
+an app that checks access tokens itself accepts one already issued until it
+expires (two minutes in the lab); Samba sessions and Kerberos tickets are not
+revoked. Closure is an administrative record, not proof that every copy or
+session is gone. See the
 [threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
 
 ## Documentation

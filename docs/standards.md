@@ -11,8 +11,8 @@ in the verification ledger. Preview features do not define the default lab.
 | [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html), [PKCE RFC 7636](https://www.rfc-editor.org/rfc/rfc7636), [OAuth Security BCP RFC 9700](https://www.rfc-editor.org/rfc/rfc9700) | Authorization code + PKCE, server session, state/nonce validation; no tokens stored in the browser |
 | [JWT assertions RFC 7523](https://www.rfc-editor.org/rfc/rfc7523) | Executor client authentication with private_key_jwt; model never receives the private key or token |
 | [Introspection RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) | Active-token check plus current app grant/sponsor state; introspection failure denies |
-| [OIDC Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html) | Dedicated verified logout-token receiver; invalidate affected local sessions |
-| [SCIM RFC 7643](https://www.rfc-editor.org/rfc/rfc7643), [RFC 7644](https://www.rfc-editor.org/rfc/rfc7644) | Narrow Users/Groups client, PATCH membership and active:false suspension; suspension alone is not token revocation |
+| [OIDC Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html) | Dedicated verified logout-token receivers for the console and the Atlas lab app; containment triggers the workforce realm's logout tokens and the Atlas session ending is measured |
+| [SCIM RFC 7643](https://www.rfc-editor.org/rfc/rfc7643), [RFC 7644](https://www.rfc-editor.org/rfc/rfc7644) | Narrow Users/Groups client, PATCH membership and active:false suspension; suspension alone is not session revocation, so containment adds Keycloak's per-user logout |
 | [AuthZEN Authorization API 1.0 Final](https://openid.net/specs/authorization-api-1_0-final.html) | Single subject/action/resource/context evaluation adapter to OPA; boolean decision required; transport or policy failure denies |
 
 Keycloak [26.8 release](https://www.keycloak.org/2026/10/keycloak-2680-released)

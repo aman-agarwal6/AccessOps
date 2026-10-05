@@ -17,7 +17,8 @@ retention, mailbox/OneDrive handover and legal holds are work to record and revi
 the application does not delete a mailbox or remove a license automatically.
 
 The local system can actually contain its enrolled workforce identity and
-sponsored automation. An optional Samba AD-compatible directory adds a tenth
+sponsored automation, including ending the identity's Keycloak sessions so apps
+registered for back-channel logout sign the person out. An optional Samba AD-compatible directory adds a tenth
 required task: disable the explicitly enrolled account and remove mapped group
 memberships through verified LDAPS with object-specific delegated permissions.
 Its new-login and new-ticket checks are distinct from existing session revocation
