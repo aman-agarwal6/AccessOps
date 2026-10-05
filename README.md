@@ -1,17 +1,18 @@
 # AccessOps
 
-**Employee and contractor offboarding, closed with evidence.**
+**Disabling a leaver's account doesn't end their access. AccessOps does, and proves it.**
 
-When someone leaves, disabling one account is the easy part. AccessOps turns the
-HR departure into a case with an owner, a four-hour target and a required action
-for every system the person could still reach: local grants and the agents they
-sponsor, the workforce directory, Entra sign-in and sessions, GitHub access,
-shared credentials, Microsoft 365 handover and legacy apps. A signed HR event
-opens the case and contains access within seconds, without waiting for a person.
-The case closes only when someone other than the owner accepts the exact
-evidence packet.
+When an employee or contractor leaves, their sessions, tokens, group rights and
+Kerberos tickets can outlive the disabled account. AccessOps starts from a
+signed HR event: it opens a departure case, ends access in Keycloak, Microsoft
+Entra ID and an Active Directory-compatible directory, suspends the automated
+agents the person sponsors, and reads every system back before the work counts.
+What it can't reach (GitHub, shared credentials, Microsoft 365 handover and
+legacy apps) stays open as owned work with a four-hour target. The case closes
+only when someone other than its owner accepts the exact evidence packet.
 
 [Live demo](https://aman-agarwal6.github.io/AccessOps/) ·
+[Case study](https://aman-agarwal6.github.io/projects/accessops.html) ·
 [Verification ledger](docs/verification.md) ·
 [The departure problem](docs/enterprise-application.md) ·
 [Releases](https://github.com/aman-agarwal6/AccessOps/releases)
@@ -20,15 +21,18 @@ evidence packet.
 
 ## What it shows
 
-Measured on a local lab with real Keycloak 26.8, OPA, PostgreSQL and a Samba
-directory, using synthetic people:
+Measured with synthetic people on a local lab with real Keycloak 26.8, OPA,
+PostgreSQL and a Samba directory, and in a free Microsoft Entra test tenant:
 
 - **A signed HR event ends access in 2.6 seconds.** The case opens, the account
   is disabled, every Keycloak session ends, the person is signed out of an app,
   and that app refuses their still-unexpired access token.
-- **Disabled is not done.** Before-and-after checks show what disabling leaves
-  behind (an app session, a group membership, a token an app checks itself) and
-  prove each one closed.
+- **Microsoft Entra is contained for real**: the account disabled, its group
+  removed and its sign-in sessions revoked through Microsoft Graph, then read
+  back before the case counts it.
+- **Disabled is not done.** Live before-and-after checks found six gaps that
+  disabling an account leaves open or key handling exposes. Each one is fixed
+  or stated on the case (below).
 - **Access after departure is caught.** A sign-in after the departure is
   detected 32 seconds after it happened, blocks closure, and reaches the SOC
   as a signed Shared Signals event that
@@ -36,26 +40,23 @@ directory, using synthetic people:
 - **The people who can disable anyone need a second factor**, enforced by the
   identity provider and again by the backend, including against a request
   rewritten to ask for less.
-- **Microsoft Entra is contained for real**, in a test tenant: the account
-  disabled, its group removed and its sign-in sessions revoked through Microsoft
-  Graph, then read back before the case counts it.
 - **Key rotation and a leaked signing key are rehearsed live**, in both realms.
 - **The directory's limits are measured, not assumed.** Kerberos tickets issued
   before offboarding keep working for up to 10 hours, and the case says so.
 
 ## What the live runs caught
 
-Each of these was found by a check that failed, and each failed run stays on the
-demo's evidence page beside the fix.
+Each of these was found by a check that failed against the live services, and
+each failed run stays on the demo's evidence page beside the fix.
 
-| Finding | Change |
-| --- | --- |
-| Disabling the account left a managed group membership behind | Offboarding removes every known managed grant and needs a fresh negative reading for each |
-| Disabling stopped new tokens, but the person stayed signed in to the app and Keycloak kept the session | Containment ends Keycloak sessions and sends back-channel logout; it counts as done only when no session is left |
-| An app that checks tokens itself kept accepting the leaver's token for two more minutes | Each app gets its own stream of signed revocation events; the lab app now refuses the token 3 seconds after containment |
-| Switching to a new signing key at once made that app refuse valid tokens for 30 seconds | Rotation publishes the new key first and waits one key-cache lifetime before signing with it |
-| Keycloak's own introspection accepted a token forged with a published key | Removing a leaked key is the only remedy, so apps now drop removed keys within 60 seconds instead of five minutes |
-| Directory connections and Kerberos tickets from before offboarding kept the removed group's rights | Kerberos has no per-user revocation; the case now states when that access ends at the latest |
+| What survived | Measured before the fix | Now |
+| --- | --- | --- |
+| Group membership | Disabling the account left a managed group membership behind | Offboarding removes every known managed grant and needs a fresh negative reading for each |
+| Signed-in sessions | New tokens stopped, but the person stayed signed in to the app and Keycloak kept the session | Containment ends Keycloak sessions and sends back-channel logout; it counts as done only when no session is left |
+| Tokens an app checks itself | The app kept accepting the leaver's token for two more minutes | Each app gets its own stream of signed revocation events; the lab app refuses the token 3 seconds after containment |
+| A leaked signing key | Keycloak's own introspection accepted a token forged with the published key; apps trusted a removed key for five minutes | Removing a leaked key is the only remedy, so apps drop removed keys within 60 seconds |
+| Key rotation | Switching to a new signing key at once made the app refuse valid tokens for 30 seconds | Rotation publishes the new key first and waits one key-cache lifetime; no valid token is refused |
+| Kerberos tickets | Connections and tickets from before offboarding kept the removed group's rights | Kerberos has no per-user revocation; new tickets are refused and the case states when the old ones expire |
 
 ## Try it
 
@@ -126,6 +127,11 @@ source. Details, every failed attempt and the limits of each check are in the
   flag updates and permissions limited to the exact fixture objects.
 - **Microsoft Entra:** Microsoft Graph with certificate client credentials; the
   connector acts only on listed test objects and refuses administrators.
+- **Standards:** OIDC with PKCE, SCIM 2.0, OIDC Back-Channel Logout, Shared
+  Signals (SSF 1.0, CAEP, RISC), Standard Webhooks and the AuthZEN API. The
+  [control map](docs/control-map.md) ties controls to NIST SP 800-53 (AC-2,
+  AC-5, AC-6, IA-2(1), PS-4, AU-6) and to the tests that exercise them; it is
+  a mapping, not a compliance claim.
 
 ## Security choices
 
