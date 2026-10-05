@@ -60,6 +60,12 @@ PKCE, may request offline tokens). The Atlas container receives only its own
 client secret from `.local/atlas.env`, never `backend.env`, and is reachable only
 on the private identity network.
 
+The HR leaver feed signs events with the secret in `.local/hr-intake.env`, which
+only the backend, the worker and the lab's one-shot test containers load (the
+HR intake check plays the HR system). `Start-Lab.ps1` creates it if it is missing
+and never replaces an existing one. The feed is seeded as a service identity
+whose sponsor, Alice's operator account, owns the cases it opens.
+
 ### Upgrading a lab created before session revocation
 
 Labs created before the Atlas clients existed need a one-time upgrade. Keycloak
@@ -108,6 +114,7 @@ the front door after the outage probes.
 | `oidc-business.*` | Real HTTP authorization code + PKCE logins, independent grant approval, protected resource access, immediate revoke/replay denial, SCIM observation and local logout |
 | `offboarding.*` | Authenticated inventory registration, unique human/agent provider bindings, live drift without adopting access, independently approved grant, local offboarding and SCIM `active=false` observation |
 | `cases.*` | Real authenticated case creation/import/containment, native SCIM disabled-account observation, synthetic cloud snapshots and owner scope exclusions, independent administrative closure and immutable packet |
+| `hr-intake.*` | Signed HR webhook as the lab HR system: forged and stale events refused, effective and future-dated departures contained without a person, timed from the event to zero Keycloak sessions and Atlas sign-out, redelivery and conflicting events |
 | `sessions.*` | A unique worker signed in to Atlas and its command-line client; before, disable-only control and after containment: Keycloak session count, Atlas session ended by verified back-channel logout, refresh and offline token rejection, Atlas API introspection versus local token validation, refused new sign-in |
 | `host-health.*` | Host loopback HTTPS, exact operator issuer, hidden administration route and rejection of an unconfigured TLS server name |
 | `policy-outage.*`, `identity-outage.*` | Live policy denial and new token issuance failure while the respective dependency is stopped |

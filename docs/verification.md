@@ -6,7 +6,9 @@ requirements. All runs used synthetic records on a personal workstation; no
 employer, production identity provider, Microsoft tenant or GitHub organization
 was contacted. Local reports are unsigned; signed CI evidence is listed separately.
 
-## Next release: workforce session revocation
+## Next release: session revocation and automated leaver intake
+
+### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce
 account, calls Keycloak's per-user logout and counts sessions back; the Keycloak
@@ -52,6 +54,39 @@ lifetime in the lab).
 Not run for this change: the Samba directory case, the dependency-outage suite
 and `Test-Lab.ps1` end to end (each stage ran separately), and the local
 PostgreSQL runner (CI runs that suite).
+
+### Automated leaver intake
+
+Local runs on 5 October 2026 (UTC). A signed HR event (Standard Webhooks HMAC)
+opens the departure case and contains access without a person: in the same
+request when the departure is already effective, or through the worker once a
+future departure takes effect. The HR feed is a service identity that can only
+open and contain departures; its sponsor, an operator, owns each case.
+
+Measured with unique synthetic workers signed in to Atlas (`hr-intake.json`, 10
+checks passed; each time below is a check's own duration, polled every half
+second, so it is an upper bound):
+
+| From the HR event to | First passing run | Final run |
+| --- | --- | --- |
+| Local containment committed (the HTTP answer) | 0.19 s | 0.19 s |
+| Keycloak account disabled with zero sessions, case evidence recorded, Atlas signed out | 3.7 s | 2.8 s |
+| The same for a future-dated departure, measured from when it took effect | 2.7 s | 2.6 s |
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| HR intake, live | 10 passed | Forged, unsigned, stale and altered events refused with no case opened; redelivery returns the original answer with one case; a reused event ID for a different departure refused; case owned by the feed's operator and the containment request attributed to the feed; future event scheduled, with access unchanged when checked before it took effect |
+| Existing live suites on the changed policy and gate | Protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 19 passed | Written to a separate folder |
+| Host HTTPS boundary and runtime source | 5 passed; source matches | 78 Python files in the running image match the checkout; 9 services |
+| Console in a real browser | Passed | The PR #9 journey |
+| OPA policy | 32 passed | Includes nine HR feed cases: it may open and contain, and cannot grant, revoke, transfer, approve, close, request, read or act outside its projects |
+| Backend on host test settings | 147 passed, 1 skipped | Includes 33 intake tests: signatures, rotation, replay, conflicts, unknown or non-human workers, owner rules, scheduled containment and refusals recorded once |
+| Integration boundaries | 180 passed | Includes the policy adapter accepting only the new action and service kind |
+| Console unit and browser tests | 45 and 33 passed | Includes the snapshot's service list and the case's HR-feed attribution |
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| `hr-intake-attempt-1`, `-attempt-2` | Forged events were refused, but the signed event was refused too: the policy adapter rejected the new action and subject kind and answered `policy_unavailable`, failing closed | The adapter allowlists `departure_intake` and the `service` kind; any other kind still fails |
 
 ## v0.2: departure cases, directory lab and console redesign
 
