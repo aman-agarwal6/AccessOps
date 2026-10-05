@@ -10,6 +10,10 @@ x-backend: &backend
     - ../.local/policy-runtime.env
     - path: ../.local/hr-intake.env
       required: false
+    - path: ../.local/keycloak-events.env
+      required: false
+    - path: ../.local/ssf-receiver.env
+      required: false
   environment:
     ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt
     REQUESTS_CA_BUNDLE: /run/accessops-ca/root.crt
@@ -19,6 +23,7 @@ x-backend: &backend
   volumes:
     - ../.local/tls:/run/accessops-ca:ro
     - ../.local/executor:/run/executor:ro
+    - ../.local/ssf:/run/ssf:ro
   networks: [app, identity, policy]
   read_only: true
   tmpfs: [/tmp]

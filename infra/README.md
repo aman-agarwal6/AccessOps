@@ -60,6 +60,13 @@ PKCE, may request offline tokens). The Atlas container receives only its own
 client secret from `.local/atlas.env`, never `backend.env`, and is reachable only
 on the private identity network.
 
+The post-departure watch reads Keycloak events with a separate read-only client
+(`accessops-events`, `view-events` only, secret in `.local/keycloak-events.env`)
+through the private observe route. Leaver signals are signed with the key in
+`.local/ssf/signing.pem`, and the SOC receiver's poll token is in
+`.local/ssf-receiver.env`; `Start-Lab.ps1` creates both if missing. Labs created
+before the events client existed need `Upgrade-Lab.ps1` once more.
+
 The HR leaver feed signs events with the secret in `.local/hr-intake.env`, which
 only the backend, the worker and the lab's one-shot test containers load (the
 HR intake check plays the HR system). `Start-Lab.ps1` creates it if it is missing
@@ -115,6 +122,7 @@ the front door after the outage probes.
 | `offboarding.*` | Authenticated inventory registration, unique human/agent provider bindings, live drift without adopting access, independently approved grant, local offboarding and SCIM `active=false` observation |
 | `cases.*` | Real authenticated case creation/import/containment, native SCIM disabled-account observation, synthetic cloud snapshots and owner scope exclusions, independent administrative closure and immutable packet |
 | `hr-intake.*` | Signed HR webhook as the lab HR system: forged and stale events refused, effective and future-dated departures contained without a person, timed from the event to zero Keycloak sessions and Atlas sign-out, redelivery and conflicting events |
+| `leaver-assurance.*` | Acts as the SOC receiver (RFC 8936 polling): verifies signed containment signals, a counted refused sign-in, and a sign-in after an outside re-enable that is detected, signalled and blocks the case until investigated |
 | `sessions.*` | A unique worker signed in to Atlas and its command-line client; before, disable-only control and after containment: Keycloak session count, Atlas session ended by verified back-channel logout, refresh and offline token rejection, Atlas API introspection versus local token validation, refused new sign-in |
 | `host-health.*` | Host loopback HTTPS, exact operator issuer, hidden administration route and rejection of an unconfigured TLS server name |
 | `policy-outage.*`, `identity-outage.*` | Live policy denial and new token issuance failure while the respective dependency is stopped |
