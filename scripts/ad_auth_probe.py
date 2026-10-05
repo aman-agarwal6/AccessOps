@@ -79,7 +79,7 @@ def main():
             "skipped": 0,
         },
         "limitations": [
-            "Only this unique synthetic user is tested; no existing session or ticket revocation is measured.",
+            "Only this unique synthetic user is tested; sessions and tickets held from before offboarding are measured by ad_session_probe.py.",
             "Samba AD-compatible lab behavior, not Microsoft AD interoperability.",
         ],
     }

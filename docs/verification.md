@@ -79,6 +79,43 @@ What the drill changed:
 | First drill (its report was overwritten by the rerun; results from the console) | Activating a new key at once made Atlas refuse tokens signed with it for 30 s: Atlas had just refreshed Keycloak's key set, and unknown-key refreshes are limited to one per 30 seconds. The leaked-key step then failed on its own expectation: Keycloak's introspection accepted the forged token, because Keycloak 26 accepts a token without a session ID when a realm key signs it | Planned rotation now publishes the new key first and waits one key-cache lifetime. The rehearsal now expects introspection to accept a forgery while the key is published: removing a leaked key is the only remedy, so its speed is what matters |
 | Key cache lifetime | Keycloak's keys were cached for 300 s, so a removed key could stay trusted for five minutes | Cut to 60 s (`KEY_CACHE_SECONDS`), measured above at 60 s |
 
+### Directory sessions and tickets held from before offboarding
+
+Local runs on 5 October 2026 (UTC) against the Samba 4.19 lab domain, fresh
+fixture `2a882426c8f1`. A new probe holds, for the whole case, what a person
+already signed in would have: an LDAPS connection opened with the password, a
+ticket-granting ticket, an LDAP service ticket and an LDAP connection opened
+with that ticket (`ad-held-sessions-2a882426c8f1.json`, 6 passed).
+
+| Held from before offboarding | After the account is disabled and the group removed |
+| --- | --- |
+| Ticket-granting ticket asking for a new service ticket | Refused by the domain controller |
+| LDAPS connection opened with the password | Still answers; its security token still lists the removed group |
+| LDAP connection opened with Kerberos | Still answers, with the removed group |
+| A new connection using the earlier LDAP service ticket | Accepted, with the removed group (the old membership travels in the ticket) |
+| Ticket lifetime | 10 hours from issue |
+
+Kerberos has no per-user revocation, so this access ends only when a connection
+closes or a ticket expires. The directory task's evidence now names that time,
+10 hours after the observation at the latest (`ACCESSOPS_AD_TICKET_HOURS`), and
+the case limitation says what disabling does not stop.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Directory case | 28 passed | Unchanged suite on the new evidence wording |
+| New logins before → after | 2 passed → 2 passed | LDAPS and Kerberos |
+| Held sessions | 6 passed | The table above; the "residual" checks assert today's behavior so a change shows up as a failure to review |
+| Backend directory tests | 27 passed | Includes the stated latest expiry time |
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| `ad-held-sessions-c5f2964d7916` | The probe stopped before holding anything: Samba's Python credentials take the ticket cache arguments positionally | Corrected; the case itself passed 28 of 28 in that run |
+| `ad-held-sessions-1bc29c6400b3`, exploratory | Recorded the behavior above without asserting it | The final probe asserts it |
+
+The directory probes now run in an opt-in `directory-probe` Compose service
+(the directory image with only its public CA) instead of a separate
+`docker run`, and `Test-ADCase.ps1` judges each Docker step by its exit code.
+
 ### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce

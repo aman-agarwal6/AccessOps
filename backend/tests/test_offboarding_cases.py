@@ -16,6 +16,7 @@ from core.models import (
 )
 from core.offboarding import TASKS, assess
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 pytestmark = pytest.mark.django_db
 PREFIX = "/api/v1/offboarding-cases"
@@ -817,6 +818,20 @@ def test_directory_binding_is_server_enrolled_and_containment_job_is_frozen(org,
     enrollment.group_guids = []
     with pytest.raises(ValueError, match="immutable"):
         enrollment.save()
+
+
+def test_directory_evidence_states_when_earlier_tickets_expire(org, client_for, settings):
+    settings.AD_TICKET_HOURS = 10
+    owner = client_for(org["alice"])
+    enroll_directory(org)
+    case = complete_case(org, owner)
+    observed_directory(case)
+    task = directory_task(case)
+    observed = parse_datetime(task["observedAt"])
+    latest = (observed + timedelta(hours=10)).strftime("%Y-%m-%d %H:%M")
+    assert task["status"] == "observed"
+    assert "new Kerberos service tickets are refused" in task["evidenceSummary"]
+    assert f"by {latest} UTC at the latest" in task["evidenceSummary"]
 
 
 @pytest.mark.parametrize(
