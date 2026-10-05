@@ -117,7 +117,7 @@ no machine credential, so this check does not demonstrate revocation of a
 running agent token. The suite does not create another privileged operator
 login, measure an old offboarded operator session, trigger provider backchannel
 logout, or rotate the live realm signing key. Boundary tests cover additional
-denials using isolated test inputs. Browser UI checks are separate.
+denials using isolated test inputs. The real-browser check below is separate.
 
 Native SCIM does not expose the configured executor service account as a `Users`
 resource. Reconciliation must record that observation as unavailable, retain
@@ -150,6 +150,33 @@ editor when a password is needed. Do not paste it into chat, commands, reports,
 source control, screenshots, or a public artifact. The live tests mount that file
 read-only only into their one-shot test container; application services do not
 mount operator passwords.
+
+## Real-browser check of the console
+
+With the lab running and `npm ci --ignore-scripts` done in `frontend`, this
+drives the connected console in Firefox through a whole departure case:
+Keycloak sign-in as `alice`, register a new synthetic employee, wait for real
+provisioning, open a case, contain, wait for the provider observations, record
+owner statements, confirm the owner cannot close, then sign in as `bob` in a
+separate browser profile, close and export the packet. axe runs on the live
+pages.
+
+```powershell
+docker compose -f infra/compose.yml -f infra/compose.browser.yml run --rm browser-tests
+```
+
+It needs no host changes. The pinned Playwright image joins the lab's existing
+internal networks, so the lab hostnames resolve inside Docker and no new network
+is created. A Firefox enterprise policy adds only the lab CA
+(`.local/tls/root.crt`) to the browser's trust, so chain and hostname
+verification stay on. Status polls run as same-origin fetches inside the page,
+so a failed poll does not echo session or CSRF headers into the report; traces
+stay in the container's temporary memory and are discarded. The container runs
+as a non-root user with a read-only root filesystem, no capabilities and
+memory/process limits. Each run registers a new uniquely named worker; before
+starting, it contains any worker an interrupted earlier run left active. The
+JUnit report and two screenshots go to `output/connected/` (`console-live.xml`,
+`console-live-case.png`, `console-live-closed.png`).
 
 ## Restart, update, and stop
 

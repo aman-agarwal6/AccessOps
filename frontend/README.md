@@ -29,6 +29,11 @@ first; without it the suite is skipped. Transport is intercepted and only the
 session and snapshot reads are allowed, so it checks rendering and data
 compatibility, not authentication or provider behavior.
 
+`playwright.live.config.ts` and `e2e-live/` drive the real connected console in
+Firefox against the running lab. They run only inside the `browser-tests`
+compose service; see "Real-browser check of the console" in
+[infra/README.md](../infra/README.md).
+
 ## Design system
 
 Tokens live in `src/styles/tokens.css`: a dark graphite theme (default) and a

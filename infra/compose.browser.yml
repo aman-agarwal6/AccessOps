@@ -1,0 +1,34 @@
+# Opt-in real-browser check of the connected console against the running lab.
+#   docker compose -f infra/compose.yml -f infra/compose.browser.yml run --rm browser-tests
+# The browser joins the lab's existing internal networks (no new networks, no
+# internet egress) and adds only the lab's CA certificate through a Firefox
+# policy, so certificate chain and hostname verification stay on. No host DNS or OS
+# trust store is changed. Test logins arrive through a read-only mount.
+services:
+  browser-tests:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+    profiles: [browser-tests]
+    user: pwuser
+    working_dir: /work/frontend
+    command: [node, node_modules/@playwright/test/cli.js, test, -c, playwright.live.config.ts]
+    environment:
+      ACCESSOPS_LIVE_LOGINS: /run/test-logins.json
+      ACCESSOPS_LIVE_REPORTS: /reports
+      PLAYWRIGHT_FIREFOX_POLICIES_JSON: /run/lab-ca/firefox-policies.json
+      CI: "1"
+    volumes:
+      - ../frontend:/work/frontend:ro
+      - ../output/connected:/reports
+      - ../.local/operator-logins.json:/run/test-logins.json:ro
+      - ../.local/tls/root.crt:/run/lab-ca/root.crt:ro
+      - ./browser/firefox-policies.json:/run/lab-ca/firefox-policies.json:ro
+    networks: [app, identity]
+    read_only: true
+    tmpfs:
+      - /tmp:uid=1001,gid=1001,mode=0700
+      - /home/pwuser:uid=1001,gid=1001,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 2g
+    pids_limit: 512
+    ipc: private
