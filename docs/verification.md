@@ -6,11 +6,24 @@ requirements. All runs used synthetic records on a personal workstation; no
 employer, production identity provider, Microsoft tenant or GitHub organization
 was contacted. Local reports are unsigned; signed CI evidence is listed separately.
 
-## Next release: session revocation, automated intake and leaver assurance
+## v0.3.0: closing what disabling leaves behind (5 October 2026)
 
-The demo's evidence index lists 35 recorded runs from these suites and the
-earlier ones: 23 passed and 12 failed attempts kept. The core suites in it are
-from the full `Test-Lab.ps1` run of 5 October.
+This release adds signed HR intake, session and token revocation, monitoring
+for access after departure with signed SOC signals, operator MFA, a live
+signing-key rotation drill and measurements of directory sessions held from
+before offboarding. Each section below records its own runs and retained
+failures; the latest results are:
+
+| Suite (latest run, 5 October UTC) | Result |
+| --- | --- |
+| Full `Test-Lab.ps1` on the rotated keys | Policy 32, protocols 18, OIDC with MFA 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5: all passed |
+| Signing-key rotation drill | 13 passed |
+| Samba directory case, fixture `2a882426c8f1` | Case 28 passed; new logins 2 → 2 denied; held sessions 6 passed |
+| Console in a real browser | Passed, with one-time codes |
+| Backend and integrations, host test settings | 371 passed, 1 skipped |
+
+The demo's evidence index lists 48 recorded runs: 35 passed and 13 failed
+attempts kept beside their fixes.
 
 ### Tokens refused by apps that check them locally
 

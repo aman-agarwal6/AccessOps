@@ -13,9 +13,46 @@ evidence packet.
 
 [Live demo](https://aman-agarwal6.github.io/AccessOps/) ·
 [Verification ledger](docs/verification.md) ·
-[How it is built](docs/enterprise-application.md)
+[The departure problem](docs/enterprise-application.md) ·
+[Releases](https://github.com/aman-agarwal6/AccessOps/releases)
 
 ![A departure case: next step, required actions grouped by phase, and the evidence source of each action](docs/assets/offboarding.png)
+
+## What it shows
+
+Measured on a local lab with real Keycloak 26.8, OPA, PostgreSQL and a Samba
+directory, using synthetic people:
+
+- **A signed HR event ends access in 2.6 seconds.** The case opens, the account
+  is disabled, every Keycloak session ends, the person is signed out of an app,
+  and that app refuses their still-unexpired access token.
+- **Disabled is not done.** Before-and-after checks show what disabling leaves
+  behind (an app session, a group membership, a token an app checks itself) and
+  prove each one closed.
+- **Access after departure is caught.** A sign-in after the departure is
+  detected in about 30 seconds, blocks closure, and reaches the SOC as a signed
+  Shared Signals event that [SignalBridge](https://github.com/aman-agarwal6/signalbridge)
+  turns into a case.
+- **The people who can disable anyone need a second factor**, enforced by the
+  identity provider and again by the backend, including against a request
+  rewritten to ask for less.
+- **Key rotation and a leaked signing key are rehearsed live**, in both realms.
+- **The directory's limits are measured, not assumed.** Kerberos tickets issued
+  before offboarding keep working for up to 10 hours, and the case says so.
+
+## What the live runs caught
+
+Each of these was found by a check that failed, and each failed run stays on the
+demo's evidence page beside the fix.
+
+| Finding | Change |
+| --- | --- |
+| Disabling the account left a managed group membership behind | Offboarding removes every known managed grant and needs a fresh negative reading for each |
+| Disabling stopped new tokens, but the person stayed signed in to the app and Keycloak kept the session | Containment ends Keycloak sessions and sends back-channel logout; it counts as done only when no session is left |
+| An app that checks tokens itself kept accepting the leaver's token for two more minutes | Each app gets its own stream of signed revocation events; the lab app now refuses the token 3 seconds after containment |
+| Switching to a new signing key at once made that app refuse valid tokens for 30 seconds | Rotation publishes the new key first and waits one key-cache lifetime before signing with it |
+| Keycloak's own introspection accepted a token forged with a published key | Removing a leaked key is the only remedy, so apps now drop removed keys within 60 seconds instead of five minutes |
+| Directory connections and Kerberos tickets from before offboarding kept the removed group's rights | Kerberos has no per-user revocation; the case now states when that access ends at the latest |
 
 ## Try it
 
@@ -48,31 +85,70 @@ Every action carries one of these labels, and a label never upgrades itself.
 
 ## Verified results
 
-Measured on 3–4 October 2026 against the local lab (Django, PostgreSQL 17,
-Keycloak 26.8, OPA 1.9 and a Samba AD-compatible directory) on the current
-backend source. Details, failed attempts and limits are in the
+Local lab runs on 5 October 2026 with synthetic records, on the current backend
+source. Details, every failed attempt and the limits of each check are in the
 [verification ledger](docs/verification.md).
 
 | Check | Result |
 | --- | --- |
-| Departure case, end to end through real Keycloak | 18 / 18 passed |
-| Departure case with a Samba directory account | 28 / 28 passed |
-| New LDAPS and Kerberos logins before → after offboarding | allowed → denied (2 / 2 each) |
-| Directory sessions and tickets held from before offboarding | 6 / 6 passed: new service tickets refused; open connections and earlier service tickets keep the removed group until they close or expire (10 h), and the case states that time |
-| Operator sign-in requires a second factor | 14 / 14 OIDC checks: password then one-time code; a wrong code and a request lowered to password-only are both refused; sessions audited at the `mfa` level |
-| Live signing-key rotation drill, both realms | 13 / 13 passed: publish-first rotation with no refused tokens; a leaked key's forged token was refused by Keycloak at once and by an app that checks tokens itself 60 s after removal |
-| Protocol, offboarding, OPA and HTTPS boundary suites | 18, 11, 32 and 5 passed |
-| Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
-| Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
-| Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
-| Sign-in after departure detected, signalled to the SOC and blocking closure | 7 / 7 passed: detected 32 s after the sign-in; signed CAEP/RISC events verified by a polling receiver |
-| Signed HR event → access contained, app signed out and its token refused | 10 / 10 passed: 2.6 s for an effective departure, 2.3 s after a future one takes effect |
-| Leaver's sessions and tokens before → after containment | 22 / 22 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself refused the unexpired token 3.0 s after containment, from a signed revocation event |
-| Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
-| Deployed demo | 17 / 17 checks passed |
+| Signed HR event → case, containment, sessions ended, app signed out, token refused | 10 / 10 passed: 2.6 s, or 2.3 s after a future-dated departure takes effect |
+| Leaver's sessions and tokens before → after containment | 22 / 22 passed: back-channel logout; refresh, offline and introspection rejected; a locally checked token refused 3.0 s after containment |
+| Sign-in after departure detected, blocking closure, signalled to the SOC | 7 / 7 passed: detected 32 s after the sign-in |
+| Operator sign-in with a second factor | 14 / 14 passed: wrong code and password-only request refused |
+| Signing-key rotation and leaked-key drill, both realms | 13 / 13 passed: no token refused during rotation; a forged token refused by Keycloak at once and by the app 60 s after the key's removal |
+| Departure case end to end through real Keycloak | 18 / 18 passed |
+| Departure case with a Samba directory account | 28 / 28 passed; new LDAPS and Kerberos logins allowed → denied (2 / 2 each) |
+| Directory sessions and tickets held from before offboarding | 6 / 6 passed: no new service tickets; earlier ones keep working until they expire (10 h) |
+| Full lab suite (`Test-Lab.ps1`) | All passed: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 7, HTTPS 5 |
+| Console in real Firefox against the lab | Full departure case passed, with one-time codes |
+| Backend and integration tests | 371 passed, 1 skipped on the host; CI runs them on PostgreSQL 17 |
 
-The demo's evidence page publishes these reports, including twelve failed
-attempts kept on record beside the fixes they led to.
+## How it is built
+
+- **Console:** React, TypeScript and Vite, with Radix dialogs. Dark and light
+  themes from one token set, a 16px type scale, keyboard-first navigation.
+- **Backend:** Django and PostgreSQL. Server sessions with OIDC code flow and
+  PKCE; no tokens in the browser. CSRF on every mutation.
+- **Identity and policy:** Keycloak keeps operator login (with a second factor)
+  separate from workforce provisioning (SCIM). Every action is checked by OPA
+  through an AuthZEN request, and policy failure denies.
+- **Execution:** a durable outbox applies remote changes, reads before retrying
+  and records actual observation times.
+- **Signals:** a Shared Signals transmitter (SSF 1.0, CAEP, RISC) with a
+  separate poll stream (RFC 8936) per receiver: the SOC, and apps that check
+  tokens themselves.
+- **Directory:** LDAPS with verified TLS, immutable GUID targets, atomic account
+  flag updates and permissions limited to the exact fixture objects.
+
+## Security choices
+
+- Independent approval, bound to the exact change and policy version, expiring
+  after 15 minutes. Case owners cannot close their own case.
+- Operators sign in with a password and a one-time code; the backend refuses any
+  session the identity provider did not mark as multi-factor.
+- Stale, unknown or partial readings keep work open; a disabled account does
+  not stand in for removed group memberships or ended sessions.
+- HR events must carry a valid Standard Webhooks signature. The HR feed is its
+  own identity that can open and contain departures and nothing else.
+- For a day after each departure, AccessOps reads the account's sign-ins. Any
+  successful one blocks closure until investigated.
+- Accounts are matched by immutable IDs, never by name or email.
+- The review assistant can only propose. It cannot approve or apply anything.
+- `main` accepts only pull requests that pass tests, CodeQL and dependency
+  review; OpenSSF Scorecard rates the repository weekly. Releases are signed
+  with build provenance and an SBOM.
+
+## Limits
+
+This is a reference system with synthetic data, not a production deployment.
+No Microsoft or GitHub tenant was contacted; those platforms appear as offline
+fixtures and owner statements. Samba results do not prove Microsoft AD
+interoperability. An app that checks access tokens itself refuses a leaver's
+token early only if it follows AccessOps' revocation signals, as the lab app
+does. In the directory, connections and Kerberos tickets from before
+containment keep working until they close or expire. Closure is an
+administrative record, not proof that every copy or session is gone. See the
+[threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
 
 ## Run it
 
@@ -89,63 +165,17 @@ The full local lab uses Docker Desktop and PowerShell; follow
 [directory lab](docs/directory-lab.md) adds a real Samba directory without a
 Microsoft tenant. Secrets are generated under `.local/` and never committed.
 
-## How it is built
-
-- **Console:** React, TypeScript and Vite, with Radix dialogs. Dark and light
-  themes from one token set, a 16px type scale, keyboard-first navigation.
-- **Backend:** Django and PostgreSQL. Server sessions with OIDC code flow and
-  PKCE; no tokens in the browser. CSRF on every mutation.
-- **Identity and policy:** Keycloak keeps operator login separate from workforce
-  provisioning (SCIM). Every action is checked by OPA through an AuthZEN request,
-  and policy failure denies.
-- **Execution:** a durable outbox applies remote changes, reads before retrying
-  and records actual observation times.
-- **Directory:** LDAPS with verified TLS, immutable GUID targets, atomic account
-  flag updates and permissions limited to the exact fixture objects.
-
-## Security choices
-
-- Independent approval, bound to the exact change and policy version, expiring
-  after 15 minutes.
-- Case owners and evidence submitters cannot close their own case.
-- Stale, unknown or partial readings keep work open; a disabled account does
-  not stand in for removed group memberships.
-- Containment also ends the leaver's Keycloak sessions and sends signed
-  back-channel logout to apps, and counts only once no session remains.
-- HR events must carry a valid Standard Webhooks signature. The HR feed is its
-  own identity that can open and contain departures and nothing else.
-- For a day after each departure, AccessOps reads the account's sign-ins. Any
-  successful one blocks closure until investigated, and the SOC receives signed
-  Shared Signals events for containment and for that sign-in.
-- Accounts are matched by immutable IDs, never by name or email.
-- The review assistant can only propose. It cannot approve or apply anything.
-- Every pull request runs CodeQL, dependency review and OSV-Scanner; OpenSSF
-  Scorecard rates the repository weekly. See the
-  [maintenance guide](docs/maintenance.md) for how findings are handled.
-
-## Limits
-
-This is a reference system with synthetic data, not a production deployment.
-No Microsoft or GitHub tenant was contacted; those platforms appear as offline
-fixtures and owner statements. Samba results do not prove Microsoft AD
-interoperability. Keycloak sessions are ended and earlier tokens rejected; an app
-that checks access tokens itself refuses earlier ones only if it follows
-AccessOps' revocation signals, as the Atlas lab app does. In the directory, new
-sign-ins and new Kerberos service tickets are refused, but connections and
-service tickets from before containment keep working until they close or expire
-(up to 10 hours): Kerberos has no per-user revocation. Closure is an administrative record, not proof that every copy or
-session is gone. See the
-[threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
-
 ## Documentation
 
 [Case contract](contracts/offboarding.md) ·
 [API contract](contracts/README.md) ·
+[Leaver signals](contracts/leaver-signals.md) ·
 [Platform connectors](docs/platform-connectors.md) ·
+[Threat model](docs/threat-model.md) ·
 [Control-to-test map](docs/control-map.md) ·
+[Standards](docs/standards.md) ·
 [Evidence verification](docs/evidence.md) ·
-[Maintenance](docs/maintenance.md) ·
-[Build plan](docs/approved-plan.md)
+[Maintenance](docs/maintenance.md)
 
 AccessOps was built with AI coding assistance under my direction and review.
 Licensed under Apache-2.0. Report security issues as described in
