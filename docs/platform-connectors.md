@@ -3,8 +3,10 @@
 AccessOps can assess Entra and GitHub observations without a paid service or a
 test tenant. The included vendor-response fixtures are synthetic and work
 offline. The optional collector performs bounded, read-only API requests in a
-user-owned tenant. This release has **no live Entra or GitHub tenant measurement**
-and performs no vendor revocation writes.
+user-owned tenant. A separate, opt-in [live Entra connector](#live-microsoft-entra-connector)
+contains an enrolled test user in the lab's own tenant; until its first live run
+is recorded in the verification ledger, there is **no live Entra or GitHub
+tenant measurement**.
 
 A snapshot can identify an enabled Entra account or observed GitHub membership
 as residual access. It cannot independently prove complete departure handling.
@@ -149,6 +151,49 @@ Invitations, additional organizations, team details, deploy keys, personal
 tokens, OAuth grants, existing sessions, local clones, and downstream data copies
 are outside the collected scope. The collector does not remove memberships,
 revoke credentials, or alter repositories.
+
+## Live Microsoft Entra connector
+
+Opt-in, for a test tenant you own. On containment, the worker disables the
+enrolled Entra user, removes it from its mapped groups and revokes its sign-in
+sessions through Microsoft Graph v1.0, then reads all three back. The case's
+Entra task counts only that reading: account disabled, every mapped membership
+absent, no directory role, and `signInSessionsValidFromDateTime` at or after the
+departure. An owner statement cannot replace it.
+
+It signs in as a single-tenant app registration with a certificate (client
+credentials with a signed JWT assertion); the private key stays in
+`.local/entra/` and only the backend and worker mount it, read-only. Least
+privileged Graph application permissions for these calls:
+
+| Call | Permission |
+| --- | --- |
+| Tenant check, `GET /organization` | `Organization.Read.All` |
+| User state and direct memberships, `GET /users/{id}` and `memberOf` | `User.Read.All` |
+| Disable, `PATCH /users/{id}` with `accountEnabled: false` | `User.EnableDisableAccount.All` |
+| Remove membership, `DELETE /groups/{id}/members/{id}/$ref` | `GroupMember.ReadWrite.All` |
+| Revoke sessions, `POST /users/{id}/revokeSignInSessions` | `User.RevokeSessions.All` |
+
+On Entra ID Free these permissions apply to the whole tenant, so the connector
+itself is the scope boundary. It acts only on the test users and group listed in
+`.local/entra/lab.json`, refuses any object in `protected_object_ids` (the
+tenant administrator), refuses a user who holds any directory role, and refuses
+to run until `admin_consent_granted_at` records the administrator's consent. It
+never enables an account or adds a membership. Enrollment is server-local
+(`manage.py enroll_entra`) and requires an enabled test user in every mapped
+group; a test user can be enrolled again for a new identity only after every
+earlier identity bound to it is offboarded.
+
+Revoking sign-in sessions invalidates refresh tokens and browser sessions; an
+access token already issued stays valid until it expires (about an hour by
+default) unless the app uses continuous access evaluation, and app-owned
+sessions are separate. Sign-in logs need Entra ID P1, so access after departure
+is still watched in Keycloak only.
+
+Run it with `scripts/Test-EntraCase.ps1` after the tenant administrator has
+uploaded `connector-cert.cer` to the app registration, added the permissions
+above, granted admin consent and recorded it in `lab.json`. The harness, not
+AccessOps, re-enables the test user afterwards for the next run.
 
 ## Bounds and failure behavior
 

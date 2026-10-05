@@ -13,6 +13,7 @@ from .models import (
     ADEnrollment,
     AssistantTask,
     ChangeRequest,
+    EntraEnrollment,
     EvidenceRun,
     Grant,
     OffboardingCase,
@@ -300,6 +301,37 @@ def directory_job_binding(job):
     return binding
 
 
+ENTRA_KINDS = ("entra_offboard", "entra_observe")
+
+
+def entra_job_binding(job):
+    """Like directory_job_binding, for the Entra enrollment frozen on the case.
+    Returns the binding and the departure time that session revocation must follow."""
+    from integrations.entra import normalize_binding
+
+    desired = job.desired
+    if (
+        job.request_id is not None
+        or not isinstance(desired, dict)
+        or set(desired) != {"caseId", "identityId", "binding"}
+    ):
+        raise RuntimeError("entra_job_invalid")
+    binding = normalize_binding(desired["binding"])
+    case = OffboardingCase.objects.select_related("identity").get(pk=desired["caseId"])
+    enrollment = EntraEnrollment.objects.get(identity_id=case.identity_id)
+    if (
+        str(case.identity_id) != desired["identityId"]
+        or case.identity.status != "offboarded"
+        or case.containment_request_id is None
+        or case.effective_at > timezone.now()
+        or case.closed_at is not None
+        or case.entra_binding != binding
+        or enrollment.binding != binding
+    ):
+        raise RuntimeError("entra_job_binding_changed")
+    return binding, case.effective_at
+
+
 def process_one(connector=None):
     job = claim_job()
     if not job:
@@ -321,6 +353,23 @@ def process_one(connector=None):
                 result = {"verified": verified_result(binding, observed), "observed": observed}
             else:
                 result = connector.offboard(binding)
+        elif job.kind in ENTRA_KINDS:
+            from integrations.entra import EntraConnector
+            from integrations.entra import verified_result as entra_verified
+
+            with transaction.atomic():
+                policy_state(lock=True)
+                binding, departed_at = entra_job_binding(job)
+            if connector is None:
+                connector, owned_connector = EntraConnector(), True
+            if job.kind == "entra_observe":
+                observed = connector.validate_binding(binding)
+                result = {
+                    "verified": entra_verified(binding, observed, departed_at),
+                    "observed": observed,
+                }
+            else:
+                result = connector.offboard(binding, departed_at)
         else:
             if connector is None:
                 from integrations.keycloak import KeycloakConnector
@@ -369,8 +418,21 @@ def process_one(connector=None):
                 result["verified"] = verified_result(
                     directory_job_binding(current), current.observed
                 )
+            if job.kind in ENTRA_KINDS:
+                from integrations.entra import verified_result as entra_verified
+
+                binding, departed_at = entra_job_binding(current)
+                result["verified"] = entra_verified(binding, current.observed, departed_at)
             if (
-                job.kind not in ("assistant", "reconcile", "enroll", "ad_offboard", "ad_observe")
+                job.kind
+                not in (
+                    "assistant",
+                    "reconcile",
+                    "enroll",
+                    "ad_offboard",
+                    "ad_observe",
+                    *ENTRA_KINDS,
+                )
                 and job.desired.get("action") != "department_transfer"
             ):
                 # Remote delivery can overlap a committed local revocation. Do
@@ -428,7 +490,7 @@ def process_one(connector=None):
             )
     finally:
         if owned_connector:
-            if job.kind in ("ad_offboard", "ad_observe"):
+            if job.kind in ("ad_offboard", "ad_observe", *ENTRA_KINDS):
                 connector.close()
             else:
                 connector.http.close()

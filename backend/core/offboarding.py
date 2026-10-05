@@ -19,6 +19,7 @@ from .errors import DomainError
 from .models import (
     ADEnrollment,
     AuditEvent,
+    EntraEnrollment,
     Grant,
     OffboardingCase,
     OutboxJob,
@@ -51,6 +52,7 @@ TASKS = (
     ("m365-handover", "m365", "data", "Review Microsoft 365 data retention, handover and licenses"),
     ("legacy-scope", "legacy", "legacy", "Confirm AD and legacy application coverage"),
 )
+ENTRA_JOBS = ["entra_offboard", "entra_observe"]
 AD_TASK = (
     "ad-directory",
     "legacy",
@@ -444,9 +446,16 @@ def keycloak_reading(case, now):
 
 
 def ad_reading(case, now):
-    jobs = OutboxJob.objects.filter(
-        kind__in=["ad_offboard", "ad_observe"], desired__caseId=str(case.pk)
-    )
+    return directory_reading(case, now, ["ad_offboard", "ad_observe"], ad_job_reading)
+
+
+def entra_reading(case, now):
+    return directory_reading(case, now, ENTRA_JOBS, entra_job_reading)
+
+
+def directory_reading(case, now, kinds, job_reading):
+    """The latest completed directory job's reading, if it proves containment."""
+    jobs = OutboxJob.objects.filter(kind__in=kinds, desired__caseId=str(case.pk))
     if jobs.filter(status__in=["pending", "running", "retry"]).exists():
         return None
     candidates = []
@@ -478,8 +487,29 @@ def ad_reading(case, now):
         return None
     latest_at = max(at for at, _, _ in candidates)
     latest_candidates = [(job, event) for at, job, event in candidates if at == latest_at]
-    proofs = [ad_job_reading(case, now, job, event) for job, event in latest_candidates]
+    proofs = [job_reading(case, now, job, event) for job, event in latest_candidates]
     return min(proofs) if proofs and all(proofs) else None
+
+
+def entra_job_reading(case, now, latest, event):
+    from integrations.entra import verified_result
+    from integrations.errors import ConnectorError
+
+    if (
+        not latest
+        or latest.status != "verified"
+        or latest.desired.get("binding") != case.entra_binding
+        or not isinstance(latest.observed, dict)
+    ):
+        return None
+    observed = {key: value for key, value in latest.observed.items() if key != "observedAt"}
+    try:
+        if not verified_result(case.entra_binding, observed, case.effective_at):
+            return None
+    except ConnectorError:
+        return None
+    at = fresh_read(latest.observed.get("observedAt"), case, now)
+    return at if event.action == "provider.verified" and at and at <= event.at else None
 
 
 def ad_job_reading(case, now, latest, event):
@@ -541,6 +571,7 @@ def assess(case):
     )
     provider_at = keycloak_reading(case, now)
     directory_at = ad_reading(case, now) if case.ad_binding else None
+    entra_at = entra_reading(case, now) if case.entra_binding else None
     tasks, blockers = [], []
     successes = post_departure_successes(case)
     reading = latest_reading(case)
@@ -604,6 +635,20 @@ def assess(case):
                 ),
                 observedAt=directory_at.isoformat(),
             )
+        elif key == "entra-directory" and case.entra_binding:
+            if entra_at:
+                task.update(
+                    status="observed",
+                    evidenceKind="provider_observation",
+                    evidenceSummary=(
+                        "Microsoft Graph read back the exact enrolled Entra account disabled, every"
+                        " mapped group membership absent and sign-in sessions revoked after the"
+                        " departure. Refresh tokens and browser sessions issued earlier stop"
+                        " working; an access token already issued lasts until it expires (about an"
+                        " hour by default) unless the app uses continuous access evaluation."
+                    ),
+                    observedAt=entra_at.isoformat(),
+                )
         elif key == "entra-directory":
             account_readings = [
                 o
@@ -628,6 +673,7 @@ def assess(case):
             task["status"] == "pending"
             and statement
             and key not in ("local-containment", "keycloak-directory", "ad-directory")
+            and not (key == "entra-directory" and case.entra_binding)
         ):
             task.update(
                 status="attested",
@@ -695,6 +741,8 @@ def assess(case):
         dto["containmentRequestId"] = str(case.containment_request_id)
     if case.ad_binding:
         dto["adBinding"] = case.ad_binding
+    if case.entra_binding:
+        dto["entraBinding"] = case.entra_binding
     if case.intake_source_id:
         dto["intakeSourceId"] = str(case.intake_source_id)
     dto["packetHash"] = audit.digest(dto)
@@ -748,6 +796,7 @@ def create(request):
         ).exists():
             raise DomainError("departure_exists", "This HR event already has a case.", 409)
         enrollment = ADEnrollment.objects.filter(identity_id=identity.pk).first()
+        entra = EntraEnrollment.objects.filter(identity_id=identity.pk).first()
         case = OffboardingCase.objects.create(
             identity=identity,
             owner=a,
@@ -759,6 +808,7 @@ def create(request):
             reason=data["reason"],
             bindings=data["bindings"],
             ad_binding=enrollment.binding if enrollment else {},
+            entra_binding=entra.binding if entra else {},
         )
         audit.append(
             a,
@@ -831,26 +881,27 @@ def contain(actor, case):
     )
     change = svc.execute(actor, change)
     case.containment_request = change
-    if case.ad_binding:
-        OutboxJob.objects.create(
-            kind="ad_offboard",
-            desired={
-                "caseId": str(case.pk),
-                "identityId": str(case.identity_id),
-                "binding": case.ad_binding,
-            },
-            available_at=timezone.now(),
-        )
+    for kind, binding in (("ad_offboard", case.ad_binding), ("entra_offboard", case.entra_binding)):
+        if binding:
+            OutboxJob.objects.create(
+                kind=kind,
+                desired={
+                    "caseId": str(case.pk),
+                    "identityId": str(case.identity_id),
+                    "binding": binding,
+                },
+                available_at=timezone.now(),
+            )
 
 
 def attest(actor, case, task_id, data):
     allowed = {task[0] for task in TASKS}
     if post_departure_successes(case):
         allowed.add(POST_DEPARTURE_TASK[0])
-    if task_id not in allowed or task_id in (
-        "local-containment",
-        "keycloak-directory",
-        "ad-directory",
+    if (
+        task_id not in allowed
+        or task_id in ("local-containment", "keycloak-directory", "ad-directory")
+        or (task_id == "entra-directory" and case.entra_binding)
     ):
         raise DomainError(
             "observation_required", "This task requires its actual local/provider observation.", 409
@@ -960,7 +1011,7 @@ def action(request, case_id, operation, task_id=None):
             attest(a, current, task_id, data)
         elif operation == "observe-directory":
             if (
-                not current.ad_binding
+                not (current.ad_binding or current.entra_binding)
                 or not current.containment_request_id
                 or current.effective_at > timezone.now()
             ):
@@ -969,17 +1020,25 @@ def action(request, case_id, operation, task_id=None):
                     "Directory evidence refresh requires an effective, locally contained and enrolled departure.",
                     409,
                 )
-            if not OutboxJob.objects.filter(
-                kind__in=["ad_offboard", "ad_observe"],
-                desired__caseId=str(current.pk),
-                status__in=["pending", "running", "retry"],
-            ).exists():
+            for kinds, binding in (
+                (["ad_offboard", "ad_observe"], current.ad_binding),
+                (ENTRA_JOBS, current.entra_binding),
+            ):
+                if (
+                    not binding
+                    or OutboxJob.objects.filter(
+                        kind__in=kinds,
+                        desired__caseId=str(current.pk),
+                        status__in=["pending", "running", "retry"],
+                    ).exists()
+                ):
+                    continue
                 job = OutboxJob.objects.create(
-                    kind="ad_observe",
+                    kind=kinds[1],
                     desired={
                         "caseId": str(current.pk),
                         "identityId": str(current.identity_id),
-                        "binding": current.ad_binding,
+                        "binding": binding,
                     },
                     available_at=timezone.now(),
                 )

@@ -30,7 +30,7 @@ from rest_framework.response import Response
 from . import audit, rate_limit
 from . import services as svc
 from .errors import DomainError
-from .models import ADEnrollment, AuditEvent, OffboardingCase, Principal
+from .models import ADEnrollment, AuditEvent, EntraEnrollment, OffboardingCase, Principal
 from .offboarding import UTCField, contain, json_value
 from .serializers import StrictSerializer, validate
 
@@ -168,6 +168,7 @@ def receive(request):
                 "departure_open", "An open departure case already covers this person.", 409
             )
         enrollment = ADEnrollment.objects.filter(identity_id=identity.pk).first()
+        entra = EntraEnrollment.objects.filter(identity_id=identity.pk).first()
         case = OffboardingCase.objects.create(
             identity=identity,
             owner=owner_for(feed, identity),
@@ -180,6 +181,7 @@ def receive(request):
             reason=data["reason"],
             bindings=[],
             ad_binding=enrollment.binding if enrollment else {},
+            entra_binding=entra.binding if entra else {},
         )
         audit.append(
             feed,

@@ -1,0 +1,18 @@
+# Opt-in only: the live Microsoft Entra connector for the lab's own test tenant.
+#   docker compose -f infra/compose.yml -f infra/compose.entra.yml ...
+# The backend and worker get the connector's configuration and private key
+# read-only, and the existing edge network for outbound HTTPS to Microsoft
+# (login.microsoftonline.com and graph.microsoft.com). No new network.
+services:
+  backend:
+    environment:
+      ACCESSOPS_ENTRA_CONFIG_FILE: /run/accessops-entra/lab.json
+    volumes:
+      - ../.local/entra:/run/accessops-entra:ro
+    networks: [app, identity, policy, edge]
+  worker:
+    environment:
+      ACCESSOPS_ENTRA_CONFIG_FILE: /run/accessops-entra/lab.json
+    volumes:
+      - ../.local/entra:/run/accessops-entra:ro
+    networks: [app, identity, policy, edge]
