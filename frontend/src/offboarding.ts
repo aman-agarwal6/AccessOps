@@ -69,6 +69,8 @@ export type OffboardingCase = {
   revision: number;
   policyVersion?: string;
   containmentRequestId?: string;
+  /** Set when a signed HR feed opened the case and contains it automatically. */
+  intakeSourceId?: string;
   bindings: Binding[];
   adBinding?: DirectoryBinding;
   tasks: OffboardingTask[];

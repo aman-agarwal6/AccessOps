@@ -117,6 +117,16 @@ export function parseSnapshot(value: unknown): Snapshot {
   )
     throw new Error("The server returned invalid offboarding cases.");
   if (value.offboardingCases === undefined) value.offboardingCases = [];
+  if (
+    value.services !== undefined &&
+    (!Array.isArray(value.services) ||
+      value.services.length > 100 ||
+      !value.services.every(
+        (item) => object(item) && guid(item.id) && boundedText(item.name, 120),
+      ))
+  )
+    throw new Error("The server returned invalid service data.");
+  if (value.services === undefined) value.services = [];
   return value as Snapshot;
 }
 function csrf(): string {

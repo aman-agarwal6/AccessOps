@@ -124,6 +124,8 @@ export type Health = {
 export type Snapshot = {
   offboardingCases?: OffboardingCase[];
   identities: Identity[];
+  /** Service feeds (such as the HR feed), named for attribution only. */
+  services?: { id: string; name: string }[];
   resources: Resource[];
   requests: AccessRequest[];
   grants: Grant[];

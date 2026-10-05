@@ -15,6 +15,7 @@ import {
   TriangleAlert,
   Upload,
   UserRound,
+  Webhook,
 } from "lucide-react";
 import {
   isNative,
@@ -152,6 +153,13 @@ export function CaseDetail({
               <UserRound size={15} aria-hidden="true" />
               Owner {ownerName}
             </span>
+            {item.intakeSourceId && (
+              <span>
+                <Webhook size={15} aria-hidden="true" />
+                Opened and contained automatically by{" "}
+                {ws.name(item.intakeSourceId)}
+              </span>
+            )}
             <span className="muted">
               {item.hrSource} · revision {item.revision}
             </span>
