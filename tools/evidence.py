@@ -29,7 +29,7 @@ SOURCE_DIRS = (
 ROOT_INPUTS = (
     "README.md",
     "SECURITY.md",
-    "AGENTS.md",
+    "CONTRIBUTING.md",
     "LICENSE",
     "ruff.toml",
     ".gitignore",
