@@ -30,9 +30,9 @@ directory, using synthetic people:
   behind (an app session, a group membership, a token an app checks itself) and
   prove each one closed.
 - **Access after departure is caught.** A sign-in after the departure is
-  detected in about 30 seconds, blocks closure, and reaches the SOC as a signed
-  Shared Signals event that [SignalBridge](https://github.com/aman-agarwal6/signalbridge)
-  turns into a case.
+  detected 32 seconds after it happened, blocks closure, and reaches the SOC
+  as a signed Shared Signals event that
+  [SignalBridge](https://github.com/aman-agarwal6/signalbridge) turns into a case.
 - **The people who can disable anyone need a second factor**, enforced by the
   identity provider and again by the backend, including against a request
   rewritten to ask for less.
