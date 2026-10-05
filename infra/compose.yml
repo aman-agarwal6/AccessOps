@@ -8,6 +8,8 @@ x-backend: &backend
   env_file:
     - ../.local/backend.env
     - ../.local/policy-runtime.env
+    - path: ../.local/hr-intake.env
+      required: false
   environment:
     ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt
     REQUESTS_CA_BUNDLE: /run/accessops-ca/root.crt

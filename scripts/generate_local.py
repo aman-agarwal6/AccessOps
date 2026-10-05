@@ -139,6 +139,11 @@ def workforce_apps(atlas_secret):
     return [web, cli]
 
 
+def hr_webhook_secret():
+    """Standard Webhooks signing secret shared with the (synthetic) HR system."""
+    return "whsec_" + base64.b64encode(secrets.token_bytes(32)).decode()
+
+
 def realm(name):
     return {
         "realm": name,
@@ -237,6 +242,7 @@ def main():
     env_file("keycloak.env", {"KC_DB_USERNAME": "accessops_identity", "KC_DB_PASSWORD": id_pass})
     env_file("policy.env", {"AUTHZEN_TOKEN": authzen_token})
     env_file("atlas.env", {"ATLAS_CLIENT_SECRET": atlas_secret})
+    env_file("hr-intake.env", {"HR_WEBHOOK_SECRET": hr_webhook_secret()})
     env_file(
         "backend.env",
         {

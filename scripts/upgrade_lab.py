@@ -10,7 +10,10 @@ realm  (container)  Using a temporary bootstrap admin service account, create th
                     Atlas lab clients are touched; other clients, users and
                     sessions are not.
 
-scripts/Upgrade-Lab.ps1 runs both steps with a database backup first.
+hr     (host)       Create .local/hr-intake.env with an HR webhook signing secret
+                    if it is missing. Start-Lab.ps1 runs it on every start.
+
+scripts/Upgrade-Lab.ps1 runs local and realm with a database backup first.
 """
 
 import json
@@ -64,6 +67,18 @@ def local():
             }
         )
     )
+
+
+def hr():
+    from generate_local import LOCAL, hr_webhook_secret
+
+    env = LOCAL / "hr-intake.env"
+    if env.exists():
+        print(json.dumps({"hrIntakeEnv": "present"}))
+        return
+    with env.open("x", encoding="utf-8", newline="\n") as target:
+        target.write("HR_WEBHOOK_SECRET=" + hr_webhook_secret() + "\n")
+    print(json.dumps({"hrIntakeEnv": "created"}))
 
 
 def realm():
@@ -157,7 +172,7 @@ def realm():
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    commands = {"local": local, "realm": realm}
+    commands = {"local": local, "realm": realm, "hr": hr}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        raise SystemExit("usage: upgrade_lab.py local|realm")
+        raise SystemExit("usage: upgrade_lab.py local|realm|hr")
     commands[sys.argv[1]]()
