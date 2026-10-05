@@ -20,6 +20,7 @@ ACTIONS = {
     "agent_tool",
     "resource_read",
     "departure_close",
+    "departure_intake",
 }
 
 
@@ -52,7 +53,7 @@ def normalize(body):
         "request": context.get("request"),
         "context": {k: v for k, v in context.items() if k != "request"},
     }
-    if result["subject"].get("kind") not in ("human", "agent") or result["subject"].get(
+    if result["subject"].get("kind") not in ("human", "agent", "service") or result["subject"].get(
         "status"
     ) not in ("active", "suspended", "offboarded"):
         raise ValueError("Invalid subject state")

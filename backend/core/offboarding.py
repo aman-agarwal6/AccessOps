@@ -666,6 +666,8 @@ def assess(case):
         dto["containmentRequestId"] = str(case.containment_request_id)
     if case.ad_binding:
         dto["adBinding"] = case.ad_binding
+    if case.intake_source_id:
+        dto["intakeSourceId"] = str(case.intake_source_id)
     dto["packetHash"] = audit.digest(dto)
     return dto
 

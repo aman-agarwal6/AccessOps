@@ -12,7 +12,9 @@ class Principal(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT
     )
     name = models.CharField(max_length=120)
-    kind = models.CharField(max_length=10, choices=[("human", "human"), ("agent", "agent")])
+    kind = models.CharField(
+        max_length=10, choices=[("human", "human"), ("agent", "agent"), ("service", "service")]
+    )
     department = models.CharField(max_length=80, blank=True)
     email = models.EmailField(blank=True)
     status = models.CharField(max_length=16, default="active")
@@ -258,6 +260,10 @@ class OffboardingCase(models.Model):
     ad_binding = models.JSONField(default=dict)
     attestations = models.JSONField(default=dict)
     containment_request = models.ForeignKey(ChangeRequest, null=True, on_delete=models.PROTECT)
+    # Set when a signed HR feed opened the case; that feed contains it once effective.
+    intake_source = models.ForeignKey(
+        Principal, null=True, on_delete=models.PROTECT, related_name="intake_departures"
+    )
     revision = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -292,6 +298,7 @@ class OffboardingCase(models.Model):
                     "reason",
                     "bindings",
                     "ad_binding",
+                    "intake_source_id",
                 )
             ):
                 raise ValueError("Departure intent is immutable; create a new event.")

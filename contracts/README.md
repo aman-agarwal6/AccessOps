@@ -6,7 +6,7 @@ All time fields are UTC ISO-8601 strings. IDs are opaque strings. Synthetic org:
 Northstar Systems, departments Engineering and Operations, projects Atlas/Pulse.
 
 GET /api/v1/session: {authenticated, principal?: {id,name,roles}, mode:'connected', csrfToken}
-GET /api/v1/snapshot: {identities,resources,requests,grants,reviews,runs,audit,policies,health}
+GET /api/v1/snapshot: {identities,services,resources,requests,grants,reviews,runs,audit,policies,health}
 GET /api/v1/health: minimal liveness, no internal details.
 POST /api/v1/requests: {identityId,resourceId,action:'grant'|'revoke'|'offboard'|'transfer',reason,permission?,newSponsorId?}
 POST /api/v1/requests/{id}/approve: {} with Idempotency-Key, server principal supplies approver.
@@ -22,6 +22,7 @@ POST /api/v1/resources/{id}/read: {} with Idempotency-Key; actual protected synt
 POST /api/v1/agent/tasks/{id}/tools: {tool:'list_entitlements'|'read_evidence'|'create_draft',resourceId?}; executor token, current task, fixed scope and budget required.
 GET /auth/login, GET /auth/callback, POST /auth/logout: OIDC code+PKCE server flow.
 POST /auth/backchannel-logout: verified OIDC logout token only.
+POST /api/v1/hr-events: signed HR leaver event, no session (see below).
 
 Mutations return {result:<domain object>, snapshot?:<snapshot>}.
 Errors: {error:{code,message}} with correct non-2xx status; never credentials.
@@ -72,6 +73,19 @@ Domain fields (extensions allowed):
 - audit: id,at,actorId,action,targetId,detail,hash
 - policy: id,name,version,description,rules:[string]
 - health: [{name,status healthy|pending|unavailable,detail}]
+
+HR leaver intake accepts `{type:'worker.departed',eventId,workerId,employmentType,
+effectiveAt,reason}` signed per Standard Webhooks: `webhook-id`,
+`webhook-timestamp` (within five minutes) and `webhook-signature`
+(`v1,<base64 HMAC-SHA256 of id.timestamp.body>`). The webhook ID is the
+idempotency key; a redelivery returns the original answer, and a reused event ID
+with a different departure returns 409. `workerId` is the AccessOps identity ID;
+names and emails are never matched. The feed is a service principal that may
+only open and contain departures; its sponsor, an active operator, owns the case.
+An effective event is contained in the same transaction; a future one is
+contained by the worker once effective. The answer is only
+`{result:{caseId,state:'contained'|'scheduled',effectiveAt}}`. Every
+authentication failure returns 401 `signature_invalid`.
 
 Revocation is immediate in AccessOps within a DB transaction. Provider effects
 are durable jobs, with observed state separate from approval/application. Token

@@ -116,6 +116,27 @@ allow if {
     version_matches
 }
 
+# The signed HR feed is a service identity: it may open a departure case and
+# contain it, nothing else.
+allow if {
+    active
+    input.subject.kind == "service"
+    input.action == "departure_intake"
+    has_role("hr_intake")
+    in_project
+    version_matches
+}
+
+allow if {
+    active
+    input.subject.kind == "service"
+    input.action == "execute"
+    has_role("hr_intake")
+    in_project
+    input.request.action == "offboard"
+    version_matches
+}
+
 reason := "allowed" if { allow } else := "policy_denied"
 
 allow if {
