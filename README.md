@@ -105,7 +105,7 @@ source. Details, every failed attempt and the limits of each check are in the
 | Directory sessions and tickets held from before offboarding | 6 / 6 passed: no new service tickets; earlier ones keep working until they expire (10 h) |
 | Full lab suite (`Test-Lab.ps1`) | All passed: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 7, HTTPS 5 |
 | Console in real Firefox against the lab | Full departure case passed, with one-time codes |
-| Signed [v0.3.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.3.0) (GitHub CI) | 372 / 372 backend and integration cases on PostgreSQL 17; provenance and SBOM attestations verified |
+| Signed [v0.4.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.4.0) (GitHub CI) | 401 / 401 backend and integration cases on PostgreSQL 17; provenance and SBOM attestations verified |
 | Deployed demo | 17 / 17 checks passed |
 
 ## How it is built
