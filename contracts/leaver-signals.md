@@ -74,11 +74,13 @@ and immutable ID; tokens carry no names, emails or IP addresses.
 
 ## Suggested detection
 
-Treat a subject as departed from its `account-disabled` event. Any
-`session-established` for that subject with a later `event_timestamp`, or any
-authentication by that `iss` and `sub` in the receiver's own telemetry, is
-access after departure and deserves a high-severity case. AccessOps already
-blocks closure of that departure until its owner records an investigation.
+AccessOps sends `session-established` only for a sign-in after the departure's
+effective time, including one before containment finished, so every such event
+is access after departure and deserves a high-severity case. Also treat a
+subject as departed from its `account-disabled` event: any authentication by
+that `iss` and `sub` in the receiver's own telemetry after that
+`event_timestamp` is access after departure too. AccessOps already blocks
+closure of the departure until its owner records an investigation.
 
 ## Producing test signals
 
