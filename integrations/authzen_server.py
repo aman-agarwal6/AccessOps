@@ -4,6 +4,8 @@ import hashlib
 import hmac
 import json
 import os
+import signal
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -160,4 +162,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if len(os.environ.get("AUTHZEN_TOKEN", "")) < 32:
         raise SystemExit("AUTHZEN_TOKEN must be configured")
+    # As a container's PID 1 the process ignores SIGTERM unless it handles it,
+    # so "docker compose stop" would otherwise wait and kill it.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     ThreadingHTTPServer(("0.0.0.0", 8182), Handler).serve_forever()

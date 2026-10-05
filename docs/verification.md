@@ -122,6 +122,14 @@ time and containment counts as access after departure.
 | Events client, first upgrade | Keycloak answered 403: the client held `view-events` but, as in this realm's SCIM client, a role only reaches the token through a scope mapping and a role mapper | The upgrade adds both, and only for that role |
 | `leaver-assurance-attempt-1` | Signals passed, but the refused-sign-in check timed out: the test had backdated the departure by five seconds, so the worker's own Atlas sign-in just before it correctly counted as access after departure | The test sets the effective time after the sign-in; the behaviour is documented above |
 
+### Full lab run after the restart (5 October 2026, UTC)
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| `Test-Lab.ps1` end to end | All stages passed in 4 min 23 s | OPA policy 32, protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 19, HR intake 10, leaver assurance 7, host HTTPS 5; runtime source matches the checkout (83 files, 9 services). The first run of every suite in one invocation, through the shared exit-code helper with all output captured |
+| `Start-Lab.ps1` and `Stop-Lab.ps1` with output captured | Both completed | Before the fix, a stop with captured output reported an error after Docker had stopped every container |
+| Container stop | Atlas and the policy adapter exit 0 in about 1 s | Before: both were killed (exit 137), because as PID 1 they ignored SIGTERM |
+
 ## v0.2: departure cases, directory lab and console redesign
 
 Local runs on 3–4 October 2026 (UTC). The backend source was unchanged between
