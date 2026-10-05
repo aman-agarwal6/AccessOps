@@ -67,7 +67,7 @@ export function Sidebar({
           </svg>
         </span>
         AccessOps
-        <small>v0.2</small>
+        <small>v0.3</small>
       </a>
       <div className={`mode-card ${connected ? "connected" : ""}`}>
         <strong>
