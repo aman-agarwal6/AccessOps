@@ -379,7 +379,7 @@ def realm(name):
 def main():
     if (LOCAL / "backend.env").exists():
         raise SystemExit("Local configuration already exists; no credentials were changed.")
-    if not (ROOT / "AGENTS.md").is_file():
+    if not (ROOT / "CONTRIBUTING.md").is_file():
         raise SystemExit("Wrong repository")
     for subdir in ("tls", "executor", "realms", "docker", "ssf"):
         (LOCAL / subdir).mkdir(parents=True, exist_ok=True)

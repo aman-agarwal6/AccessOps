@@ -191,6 +191,5 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
 [Evidence verification](docs/evidence.md) ·
 [Maintenance](docs/maintenance.md)
 
-AccessOps was built with AI coding assistance under my direction and review.
 Licensed under Apache-2.0. Report security issues as described in
 [SECURITY.md](SECURITY.md).
