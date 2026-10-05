@@ -63,8 +63,8 @@ backend source. Details, failed attempts and limits are in the
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
 | Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
 | Sign-in after departure detected, signalled to the SOC and blocking closure | 7 / 7 passed: detected 32 s after the sign-in; signed CAEP/RISC events verified by a polling receiver |
-| Signed HR event → access contained and app signed out | 10 / 10 passed: 2.8 s for an effective departure, 2.6 s after a future one takes effect |
-| Leaver's sessions and tokens before → after containment | 19 / 19 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself still accepts the last one for up to 2 minutes |
+| Signed HR event → access contained, app signed out and its token refused | 10 / 10 passed: 2.6 s for an effective departure, 2.3 s after a future one takes effect |
+| Leaver's sessions and tokens before → after containment | 22 / 22 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself refused the unexpired token 3.0 s after containment, from a signed revocation event |
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
 | Deployed demo | 17 / 17 checks passed |
 
@@ -125,10 +125,10 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
 This is a reference system with synthetic data, not a production deployment.
 No Microsoft or GitHub tenant was contacted; those platforms appear as offline
 fixtures and owner statements. Samba results do not prove Microsoft AD
-interoperability. Keycloak sessions are ended and earlier tokens rejected, but
-an app that checks access tokens itself accepts one already issued until it
-expires (two minutes in the lab); Samba sessions and Kerberos tickets are not
-revoked. Closure is an administrative record, not proof that every copy or
+interoperability. Keycloak sessions are ended and earlier tokens rejected; an app
+that checks access tokens itself refuses earlier ones only if it follows
+AccessOps' revocation signals, as the Atlas lab app does. Samba sessions and
+Kerberos tickets are not revoked. Closure is an administrative record, not proof that every copy or
 session is gone. See the
 [threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
 

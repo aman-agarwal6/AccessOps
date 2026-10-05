@@ -306,6 +306,7 @@ def main():
     env_file("hr-intake.env", {"HR_WEBHOOK_SECRET": hr_webhook_secret()})
     env_file("keycloak-events.env", {"EVENTS_CLIENT_SECRET": events_secret})
     env_file("ssf-receiver.env", {"SSF_RECEIVER_TOKEN": secret()})
+    env_file("atlas-signals.env", {"ATLAS_SIGNAL_TOKEN": secret()})
     write(LOCAL / "ssf/signing.pem", ssf_signing_key())
     env_file(
         "backend.env",

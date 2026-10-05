@@ -1,10 +1,24 @@
-# Leaver signals for a SOC receiver
+# Leaver signals for a SOC receiver and for apps
 
 AccessOps tells a security operations tool when a departing person's access has
-been contained, and when that person's account is used after the departure. The
-signals are Security Event Tokens (RFC 8417) in the Shared Signals Framework
-1.0 format, delivered by polling (RFC 8936). The receiver pulls; AccessOps never
-connects out.
+been contained, and when that person's account is used after the departure. It
+tells apps that check tokens themselves when to stop trusting the person's
+tokens. The signals are Security Event Tokens (RFC 8417) in the Shared Signals
+Framework 1.0 format, delivered by polling (RFC 8936). Receivers pull; AccessOps
+never connects out.
+
+## Streams
+
+Each receiver has its own stream: its own poll token, audience, event types and
+delivery state. Acknowledging an event on one stream never affects another.
+
+| Stream | Audience (`aud`) | Event types | Poll token |
+| --- | --- | --- | --- |
+| SOC | `urn:accessops:soc-receiver` | account-disabled, session-revoked, session-established | `SSF_RECEIVER_TOKEN` in `.local/ssf-receiver.env` |
+| Atlas lab app | `urn:accessops:atlas` | account-disabled, session-revoked | `ATLAS_SIGNAL_TOKEN` in `.local/atlas-signals.env` |
+
+The rest of this document describes the SOC stream; the Atlas stream uses the
+same endpoints and token format with its own audience.
 
 ## Endpoints
 
@@ -90,8 +104,20 @@ another receiver is polling: it then leaves every signal queued, including a
 `session-established` for a sign-in after departure, and checks them on the case
 instead. Its `Test-Lab.ps1` form drains the queue, so don't run both at once.
 
+## Apps that check tokens themselves
+
+An app that verifies access tokens locally (signature and expiry, without
+asking Keycloak) would otherwise accept a contained person's token until it
+expires. The Atlas lab app shows the alternative: it polls its stream once a
+second and refuses any token whose `iat` is at or before the latest
+`event_timestamp` of an account-disabled or session-revoked event for that
+`sub`. If it has not read the stream in the last ten seconds, or a token was
+issued before the app started (so revocations could have been missed), it asks
+Keycloak instead of trusting the token. In the lab this refuses a contained
+person's unexpired token about three seconds after the containment request.
+
 ## Limits
 
-There is no SSF stream-management API: one receiver, one stream, configured by
-the lab. Events are kept until acknowledged. The lab's Keycloak keeps sign-in
+There is no SSF stream-management API: the lab configures both streams. Events
+are kept until acknowledged. The lab's Keycloak keeps sign-in
 events for one day, so AccessOps reads them for 24 hours after a departure.

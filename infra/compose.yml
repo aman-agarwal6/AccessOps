@@ -14,6 +14,8 @@ x-backend: &backend
       required: false
     - path: ../.local/ssf-receiver.env
       required: false
+    - path: ../.local/atlas-signals.env
+      required: false
   environment:
     ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt
     REQUESTS_CA_BUNDLE: /run/accessops-ca/root.crt
@@ -155,6 +157,8 @@ services:
     command: [python, /app/scripts/atlas_app.py]
     env_file:
       - path: ../.local/atlas.env
+        required: false
+      - path: ../.local/atlas-signals.env
         required: false
     environment:
       ACCESSOPS_CA_FILE: /run/accessops-ca/root.crt

@@ -11,8 +11,8 @@ realm  (container)  Using a temporary bootstrap admin service account, create th
                     clients, users and sessions are not.
 hr     (host)       Create .local/hr-intake.env with an HR webhook signing secret
                     if it is missing.
-ssf    (host)       Create the security event signing key and the receiver's
-                    poll token if they are missing.
+ssf    (host)       Create the security event signing key and the poll tokens
+                    of the SOC and Atlas signal streams if they are missing.
 
 Start-Lab.ps1 runs hr and ssf on every start. scripts/Upgrade-Lab.ps1 runs local
 and realm with a database backup first.
@@ -121,11 +121,15 @@ def ssf():
     _, token_created = ensure_secret(
         LOCAL / "ssf-receiver.env", "SSF_RECEIVER_TOKEN", lambda: secrets.token_urlsafe(36)
     )
+    _, atlas_created = ensure_secret(
+        LOCAL / "atlas-signals.env", "ATLAS_SIGNAL_TOKEN", lambda: secrets.token_urlsafe(36)
+    )
     print(
         json.dumps(
             {
                 "ssfSigningKey": "created" if key_created else "present",
                 "ssfReceiverToken": "created" if token_created else "present",
+                "atlasSignalToken": "created" if atlas_created else "present",
             }
         )
     )

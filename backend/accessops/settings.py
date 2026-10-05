@@ -99,6 +99,10 @@ SSF_ISSUER = os.environ.get("SSF_ISSUER", "https://accessops.test:8443")
 SSF_AUDIENCE = os.environ.get("SSF_AUDIENCE", "urn:accessops:soc-receiver")
 SSF_SIGNING_KEY_FILE = os.environ.get("SSF_SIGNING_KEY_FILE", "/run/ssf/signing.pem")
 SSF_RECEIVER_TOKEN = os.environ.get("SSF_RECEIVER_TOKEN", "")
+# A second stream for the Atlas lab app, which refuses tokens issued before a
+# revocation instead of trusting them until they expire.
+SSF_ATLAS_AUDIENCE = "urn:accessops:atlas"
+SSF_ATLAS_TOKEN = os.environ.get("ATLAS_SIGNAL_TOKEN", "")
 INTERNAL_API_URL = os.environ.get("INTERNAL_API_URL", "https://localhost:8443").rstrip("/")
 LOGGING = {
     "version": 1,

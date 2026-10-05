@@ -18,6 +18,7 @@ from integrations.errors import ConnectorError
 
 pytestmark = pytest.mark.django_db
 TOKEN = "synthetic-receiver-token-" + "x" * 24
+ATLAS_TOKEN = "synthetic-atlas-token-" + "y" * 24
 CAEP = "https://schemas.openid.net/secevent/caep/event-type/"
 RISC = "https://schemas.openid.net/secevent/risc/event-type/"
 
@@ -32,6 +33,7 @@ def signer(settings, tmp_path):
     (tmp_path / "signing.pem").write_bytes(key)
     settings.SSF_SIGNING_KEY_FILE = str(tmp_path / "signing.pem")
     settings.SSF_RECEIVER_TOKEN = TOKEN
+    settings.SSF_ATLAS_TOKEN = ""
     ssf.signing_key.cache_clear()
     yield
     ssf.signing_key.cache_clear()
@@ -57,10 +59,10 @@ def keycloak_task(case, key="keycloak-directory"):
     return next((t for t in assess(case)["tasks"] if t["id"] == key), None)
 
 
-def verify(token):
+def verify(token, audience="urn:accessops:soc-receiver"):
     key = jwt.PyJWK.from_dict(APIClient().get("/api/v1/ssf/jwks").json()["keys"][0])
     assert jwt.get_unverified_header(token)["typ"] == "secevent+jwt"
-    return jwt.decode(token, key.key, algorithms=["ES256"], audience="urn:accessops:soc-receiver")
+    return jwt.decode(token, key.key, algorithms=["ES256"], audience=audience)
 
 
 def poll(body=None, token=TOKEN):
@@ -237,9 +239,53 @@ def test_watch_is_off_without_an_events_client_secret(org, client_for, settings)
 
 
 def test_session_signal_ids_are_unique(org, signer):
-    first = ssf.emit("session-revoked", "s", "ref:" + secrets.token_hex(4))
-    second = ssf.emit("session-revoked", "s", "ref:" + secrets.token_hex(4))
+    (first,) = ssf.emit("session-revoked", "s", "ref:" + secrets.token_hex(4))
+    (second,) = ssf.emit("session-revoked", "s", "ref:" + secrets.token_hex(4))
     assert first.jti != second.jti and len(first.jti) == 32
+
+
+def test_atlas_stream_gets_only_revocations_with_its_own_audience(org, settings, signer):
+    settings.SSF_ATLAS_TOKEN = ATLAS_TOKEN
+    ssf.emit("account-disabled", "worker", "test:disabled")
+    ssf.emit("session-revoked", "worker", "test:revoked")
+    ssf.emit("session-established", "worker", "test:established")
+    ssf.emit("session-revoked", "worker", "test:revoked")
+    rows = SecurityEvent.objects.values_list("receiver", "event_type")
+    assert sorted(rows) == [
+        ("atlas", "account-disabled"),
+        ("atlas", "session-revoked"),
+        ("soc", "account-disabled"),
+        ("soc", "session-established"),
+        ("soc", "session-revoked"),
+    ]
+    sets = poll(token=ATLAS_TOKEN).json()["sets"]
+    assert len(sets) == 2
+    for token in sets.values():
+        claims = verify(token, audience="urn:accessops:atlas")
+        assert claims["sub_id"]["sub"] == "worker"
+        with pytest.raises(jwt.InvalidAudienceError):
+            verify(token)
+
+
+def test_each_receiver_polls_and_acknowledges_only_its_own_stream(org, settings, signer):
+    settings.SSF_ATLAS_TOKEN = ATLAS_TOKEN
+    ssf.emit("session-revoked", "worker", "test:revoked")
+    atlas = poll(token=ATLAS_TOKEN).json()["sets"]
+    soc = poll().json()["sets"]
+    assert len(atlas) == len(soc) == 1 and atlas.keys() != soc.keys()
+    # Acknowledging the SOC's event through Atlas's stream changes nothing.
+    assert poll({"ack": list(soc)}, token=ATLAS_TOKEN).json()["sets"].keys() == atlas.keys()
+    assert poll().json()["sets"].keys() == soc.keys()
+    poll({"ack": list(atlas)}, token=ATLAS_TOKEN)
+    assert poll(token=ATLAS_TOKEN).json()["sets"] == {}
+    assert poll().json()["sets"].keys() == soc.keys()
+
+
+def test_atlas_stream_is_off_until_its_token_is_set(org, settings, signer):
+    settings.SSF_ATLAS_TOKEN = "too-short"
+    ssf.emit("session-revoked", "worker", "test:revoked")
+    assert list(SecurityEvent.objects.values_list("receiver", flat=True)) == ["soc"]
+    assert poll(token="too-short").status_code == 401
 
 
 def test_worker_emits_signals_when_containment_is_verified(org, client_for, signer):
