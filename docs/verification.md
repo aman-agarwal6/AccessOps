@@ -7,7 +7,7 @@ employer or production identity provider or GitHub organization was contacted;
 Microsoft Entra was used only in the lab's own free test tenant with synthetic
 users. Local reports are unsigned; signed CI evidence is listed separately.
 
-## Next release: live Microsoft Entra containment
+## v0.4.0: live Microsoft Entra containment (5 October 2026)
 
 ### Live Microsoft Entra departure
 
