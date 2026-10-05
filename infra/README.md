@@ -252,5 +252,22 @@ Python and JavaScript dependencies have separate lockfiles. Review upgrades
 deliberately, rebuild, rerun the affected denial paths, and collect new reports.
 Do not use broad automatic fixes, change sibling project services, expose debug
 ports, delete volumes to troubleshoot, or reuse this synthetic setup with
-production records. Database backup and secret/key rotation are separate
-operator tasks; this local reference does not automate them.
+production records. Database backup and secret rotation are separate operator
+tasks; Keycloak signing-key rotation has the drill below.
+
+### Signing-key rotation drill
+
+```powershell
+./scripts/Test-KeyRotation.ps1
+```
+
+It backs up the identity database, creates a temporary Keycloak admin (Keycloak
+restarts once), and rotates the RS256 signing key of both realms the way a
+planned rotation should go: the new key is published as passive first, the
+drill waits one key-cache lifetime (60 s) so every app that checks tokens
+locally has read it, then it becomes the signing key and the previous one is
+removed. It also rehearses a leaked key: it publishes a key it generated,
+forges an Atlas token with it, removes the key and measures how long Keycloak
+and Atlas keep trusting the forgery. The drill user and the temporary admin are
+deleted at the end; the lab keeps running on the new keys. Reports go to
+`output/connected/key-rotation.json` and `.xml`.

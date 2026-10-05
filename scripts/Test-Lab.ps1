@@ -34,4 +34,4 @@ if (Test-Path -LiteralPath '.local/atlas.env') {
 }
 Invoke-LabNative -Command $accessopsPython -Arguments @('scripts/host_health.py', '--report', "$accessopsReports/host-health.json", '--junit', "$accessopsReports/host-health.xml") -Failure 'Verified host loopback TLS checks failed.'
 Invoke-LabNative -Command $accessopsPython -Arguments @('scripts/record_runtime.py', '--output', "$accessopsReports/runtime-source.json") -Failure 'Running backend source differs from this checkout; rebuild the lab before recording evidence.'
-Write-Host 'Sanitized, timestamped JSON and JUnit reports are in output/connected. Browser UI, dependency outages and key rotation have separate coverage.'
+Write-Host 'Sanitized, timestamped JSON and JUnit reports are in output/connected. The browser journey, dependency outages and the key rotation drill (Test-KeyRotation.ps1) run separately.'

@@ -15,6 +15,11 @@ from .transport import checked_url, client, json_response
 _keys = {}
 _refresh_attempt = {}
 _lock = threading.Lock()
+# How long fetched signing keys are trusted before Keycloak's key set is read
+# again. A key removed from the realm (say, after it leaked) stops being trusted
+# within this time; a planned rotation publishes the new key at least this long
+# before it signs anything.
+KEY_CACHE_SECONDS = 60
 
 
 def _issuer(name):
@@ -63,7 +68,7 @@ def _decode(token, issuer, audience, *, http=None, logout=False):
                         or any(not isinstance(k, dict) for k in jwks["keys"])
                     ):
                         raise ValueError("Invalid JWKS")
-                    cached = (time.monotonic() + 300, jwks["keys"])
+                    cached = (time.monotonic() + KEY_CACHE_SECONDS, jwks["keys"])
                     _keys[issuer] = cached
                 finally:
                     if http is None:
