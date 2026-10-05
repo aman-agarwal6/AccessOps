@@ -324,10 +324,11 @@ class ActivityCheck(models.Model):
 
 
 class SecurityEvent(models.Model):
-    """A signed Security Event Token waiting for, or acknowledged by, the receiver."""
+    """A signed Security Event Token waiting for, or acknowledged by, one receiver."""
 
     jti = models.CharField(max_length=64, primary_key=True)
-    source_ref = models.CharField(max_length=200, unique=True)
+    receiver = models.CharField(max_length=20, default="soc")
+    source_ref = models.CharField(max_length=200)
     event_type = models.CharField(max_length=40)
     subject = models.CharField(max_length=255)
     case = models.ForeignKey(
@@ -337,6 +338,13 @@ class SecurityEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     delivered_at = models.DateTimeField(null=True)
     receiver_error = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["receiver", "source_ref"], name="one_signal_per_fact_per_receiver"
+            )
+        ]
 
 
 class ADEnrollment(models.Model):

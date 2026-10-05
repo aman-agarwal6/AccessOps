@@ -191,9 +191,13 @@ def main():
             "session-established": CAEP + "session-established",
         }
 
+        def soc_signals():
+            # The case also lists the Atlas app's stream; this suite is the SOC.
+            return [s for s in (case() or {}).get("signals", []) if s["receiver"] == "soc"]
+
         def kinds():
             if args.external_receiver:
-                return {uris[item["eventType"]] for item in (case() or {}).get("signals", [])}
+                return {uris[item["eventType"]] for item in soc_signals()}
             return receiver.kinds(subject)
 
         with report.case("containment sends signed account-disabled and session-revoked events"):
@@ -214,7 +218,7 @@ def main():
             for claims in receiver.received:
                 if claims["sub_id"] != {"format": "iss_sub", "iss": WORKFORCE, "sub": subject}:
                     raise AssertionError("Signal subject is not the leaver's account")
-            signals = until(lambda: case().get("signals"), "case signal record", 10)
+            signals = until(soc_signals, "case signal record", 10)
             if not args.external_receiver and not all(item["deliveredAt"] for item in signals):
                 raise AssertionError("Acknowledged signals are not shown as delivered")
 

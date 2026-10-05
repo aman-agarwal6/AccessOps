@@ -20,7 +20,7 @@ function Protect-LocalPath([string]$Path) {
 if ($LASTEXITCODE -ne 0) { throw 'Local upgrade failed.' }
 & $accessopsPython scripts/upgrade_lab.py ssf
 if ($LASTEXITCODE -ne 0) { throw 'Security event key generation failed.' }
-foreach ($accessopsSecret in @('atlas.env', 'keycloak-events.env', 'ssf-receiver.env', 'ssf/signing.pem')) {
+foreach ($accessopsSecret in @('atlas.env', 'keycloak-events.env', 'ssf-receiver.env', 'atlas-signals.env', 'ssf/signing.pem')) {
     Protect-LocalPath (Join-Path $accessopsRoot ".local/$accessopsSecret")
 }
 

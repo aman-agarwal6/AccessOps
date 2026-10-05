@@ -2,9 +2,10 @@
 
 Plays the HR system: signs Standard Webhooks events with the lab secret and
 sends them to the real front door. Unique synthetic workers sign in to the
-Atlas lab app first, so each timed check runs from the HR event to the moment
-Keycloak lists no session, the case shows provider evidence and Atlas has
-signed the person out. A check's duration is that measured time.
+Atlas lab app and its command-line client first, so each timed check runs from
+the HR event to the moment Keycloak lists no session, the case shows provider
+evidence, Atlas has signed the person out and Atlas's local token check refuses
+the person's unexpired access token. A check's duration is that measured time.
 
 Mount .local/operator-logins.json read-only at /run/test-logins.json into a
 one-shot test container only. Secrets and passwords are never reported.
@@ -25,7 +26,7 @@ import httpx
 from check_report import CheckReport, report_arguments
 from live_offboarding import offboard, wait_binding
 from live_oidc import APP, BACKEND_FILES, close_sessions, login, post, snapshot, wait_observed
-from live_sessions import ADMIN, atlas_me, sign_in_atlas
+from live_sessions import ADMIN, atlas_api, atlas_me, cli_tokens, sign_in_atlas
 
 from integrations.keycloak import KeycloakConnector
 from integrations.transport import client
@@ -85,7 +86,9 @@ def main():
             "scripts/live_sessions.py",
             "scripts/live_oidc.py",
             "scripts/check_report.py",
+            "scripts/atlas_app.py",
             "backend/core/intake.py",
+            "backend/core/ssf.py",
             "backend/core/offboarding.py",
             "integrations/keycloak.py",
             "policies/accessops.rego",
@@ -93,7 +96,7 @@ def main():
         + BACKEND_FILES,
     )
     sessions, connector, workers, contained, hr = {}, None, {}, set(), None
-    browsers = {}
+    browsers, tokens = {}, {}
     secret = os.environ.get("HR_WEBHOOK_SECRET", "")
     try:
         with report.case("operator session established and HR signing secret present"):
@@ -137,7 +140,11 @@ def main():
                 raise AssertionError("Fixture password could not be set")
             browsers[label] = client(timeout=10)
             sign_in_atlas(browsers[label], connector.get_user(subject)["userName"], password)
-            if atlas_me(browsers[label])[0] != 200:
+            tokens[label] = cli_tokens(browsers[label], "openid")["access_token"]
+            if (
+                atlas_me(browsers[label])[0] != 200
+                or atlas_api(browsers[label], tokens[label], "local")[0] != 200
+            ):
                 raise AssertionError("Worker is not signed in to Atlas")
 
         def case_for(worker_id):
@@ -162,6 +169,9 @@ def main():
                     401,
                     {"signedIn": False, "reason": "backchannel_logout"},
                 )
+                # Refused by the signal, not by expiry: the token is still unexpired.
+                and atlas_api(browsers[label], tokens[label], "local")
+                == (401, {"active": False, "reason": "revoked_by_signal"})
             )
 
         with report.case("unique synthetic workers enrolled and signed in to Atlas"):
@@ -187,7 +197,7 @@ def main():
                 raise AssertionError("A refused event opened a case")
 
         with report.case(
-            "effective HR event: case, containment, zero sessions and Atlas sign-out within 60 s"
+            "effective HR event: case, containment, zero sessions, Atlas sign-out and token refused within 60 s"
         ):
             body, headers = signed(event, secret=secret, message_id="msg_" + now_suffix)
             started = time.monotonic()
@@ -202,7 +212,8 @@ def main():
             contained.add("now")
             print(
                 f"HR event answered (local containment committed) in {answered:.2f} s; "
-                f"provider-verified with Atlas sign-out after {time.monotonic() - started:.1f} s"
+                "provider-verified with Atlas sign-out and its token refused after "
+                f"{time.monotonic() - started:.1f} s"
             )
         with report.case("the case is owned by a person and attributed to the HR feed"):
             item = case_for(now_id)
@@ -246,11 +257,12 @@ def main():
                 person["status"] != "active"
                 or case_for(later_id).get("containmentRequestId")
                 or atlas_me(browsers["later"])[0] != 200
+                or atlas_api(browsers["later"], tokens["later"], "local")[0] != 200
             ):
                 raise AssertionError("Access changed before the departure took effect")
         until(lambda: datetime.now(UTC) >= effective, "effective time", 40)
         with report.case(
-            "at the effective time the feed contains it: zero sessions and Atlas sign-out within 30 s"
+            "at the effective time the feed contains it: zero sessions, sign-out and token refused within 30 s"
         ):
             until(lambda: fully_contained("later"), "scheduled containment", 30)
             contained.add("later")

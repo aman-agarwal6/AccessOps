@@ -12,6 +12,28 @@ The demo's evidence index lists 35 recorded runs from these suites and the
 earlier ones: 23 passed and 12 failed attempts kept. The core suites in it are
 from the full `Test-Lab.ps1` run of 5 October.
 
+### Tokens refused by apps that check them locally
+
+Local runs on 5 October 2026 (UTC). The session table below ended with one
+gap: an app that verifies tokens itself kept accepting the leaver's access token
+until it expired. AccessOps now keeps a separate signal stream per receiver, and
+the Atlas lab app follows its own: it polls for CAEP session-revoked and RISC
+account-disabled events once a second and refuses any token issued at or before
+a revocation of its subject. If it has not read the stream in ten seconds, or a
+token predates the app's own start, it asks Keycloak rather than trust the
+token. The SOC stream is unchanged.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Session revocation before → after | 22 passed | The 19 earlier checks plus Atlas reading its stream, and two new ones: from the containment request, Atlas's local check refused the worker's unexpired token in 3.0 s (114 s of its lifetime left), and the refusal came from the signal, not expiry. The disable-only control still shows local acceptance, because disabling alone sends no signal |
+| HR intake | 10 passed | The timed checks now also require the token refusal: 2.6 s from the HR event to case, containment, zero sessions, Atlas sign-out and the existing token refused; 2.3 s after a future departure took effect |
+| Leaver assurance | 7 passed | The SOC stream's signals and acknowledgements are unaffected by Atlas's stream |
+| Backend and integrations, host test settings | 366 passed, 1 skipped | Includes per-stream audience, event types, polling and acknowledgement isolation, and Atlas's signal rules: real ES256 signatures, wrong audience, issuer or type refused, stale stream or older tokens referred to Keycloak, unreadable keys never reported as invalid events |
+| Full `Test-Lab.ps1` | All passed in 3 min 54 s | Policy 32, protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5; the running source matched the checkout across 9 services |
+
+Not run for this change: the Samba directory case and the real-browser journey,
+neither of which touches token checks or signal streams.
+
 ### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce

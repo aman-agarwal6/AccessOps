@@ -58,13 +58,16 @@ fictional workforce signs in to so offboarding has real sessions and tokens to
 end: `atlas-app` (confidential, back-channel logout) and `atlas-cli` (public,
 PKCE, may request offline tokens). The Atlas container receives only its own
 client secret from `.local/atlas.env`, never `backend.env`, and is reachable only
-on the private identity network.
+on the private identity network. It also polls its own leaver signal stream with
+the token in `.local/atlas-signals.env`, so it can refuse tokens issued before a
+revocation.
 
 The post-departure watch reads Keycloak events with a separate read-only client
 (`accessops-events`, `view-events` only, secret in `.local/keycloak-events.env`)
 through the private observe route. Leaver signals are signed with the key in
 `.local/ssf/signing.pem`, and the SOC receiver's poll token is in
-`.local/ssf-receiver.env`; `Start-Lab.ps1` creates both if missing. Labs created
+`.local/ssf-receiver.env`; Atlas's stream token is in `.local/atlas-signals.env`.
+`Start-Lab.ps1` creates all three if missing. Labs created
 before the events client existed need `Upgrade-Lab.ps1` once more.
 
 The HR leaver feed signs events with the secret in `.local/hr-intake.env`, which

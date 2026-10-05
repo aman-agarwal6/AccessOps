@@ -3,7 +3,8 @@
 A unique synthetic worker signs in to the Atlas lab app and its command-line
 client through the real workforce realm. The suite measures what still works
 before containment, after only disabling the account (what earlier versions
-did), and after AccessOps containment ends the worker's sessions.
+did), and after AccessOps containment ends the worker's sessions and signals
+the revocation to Atlas, which checks tokens locally.
 
 Mount .local/operator-logins.json read-only at /run/test-logins.json into a
 one-shot test container only. The worker's one-time password is random, held in
@@ -14,6 +15,7 @@ import base64
 import hashlib
 import json
 import secrets
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -140,6 +142,17 @@ def atlas_api(http, token, validation):
     return response.status_code, response.json()
 
 
+def atlas_signals(http):
+    """Atlas's view of its signal stream: current, stale or off."""
+    response = http.get(ATLAS + "/health")
+    return response.json().get("signals") if response.status_code == 200 else None
+
+
+def unexpired(token):
+    claims = jwt.decode(token, options={"verify_signature": False})
+    return claims["exp"] - time.time()
+
+
 def main():
     args = report_arguments(__doc__).parse_args()
     report = CheckReport(
@@ -149,7 +162,7 @@ def main():
             "Only a uniquely registered synthetic worker is contained. Its one-time password is random, held in memory and never reported.",
             "The harness sets that password over the private identity network with the SCIM service account's existing manage-users role; AccessOps has no route for it.",
             "Atlas is a lab app registered for back-channel logout. A real application's sessions end only if it implements and registers back-channel logout or checks tokens with Keycloak.",
-            "An access token already issued stays valid to an app that verifies it locally until it expires; the residual check measures that window in Atlas's local-validation mode rather than closing it.",
+            "Atlas closes the local-validation window by polling AccessOps' signal stream once a second. An app that checks tokens locally without following such a stream still accepts an issued token until it expires (two minutes in the lab), as the disable-only control shows.",
             "Keycloak 26.8 lab behavior only. MFA, federation, external identity providers and Microsoft Entra sessions are not measured.",
             "The terminal fixture identity, case and audit history are retained.",
         ],
@@ -157,6 +170,7 @@ def main():
             "scripts/live_sessions.py",
             "scripts/atlas_app.py",
             "scripts/live_oidc.py",
+            "backend/core/ssf.py",
             "scripts/check_report.py",
             "integrations/keycloak.py",
             "integrations/security.py",
@@ -225,6 +239,9 @@ def main():
                 tokens[kind] = body  # Refresh tokens rotate; keep the newest.
             return status, body
 
+        with report.case("Atlas is reading its leaver signal stream"):
+            if atlas_signals(worker) != "current":
+                raise AssertionError("Atlas is not reading its signal stream")
         with report.case("before: Keycloak lists the worker's session"):
             if connector.count_sessions(subject) < 1:
                 raise AssertionError("No session before containment")
@@ -262,7 +279,7 @@ def main():
                     "Disable-only token behavior differs from the measured baseline"
                 )
 
-        with report.case("AccessOps containment ends the worker's sessions and observes none left"):
+        with report.case("AccessOps departure case opened for the worker"):
             case = post(
                 alice,
                 acsrf,
@@ -281,7 +298,17 @@ def main():
                 expected=201,
             )["result"]
             path = "/api/v1/offboarding-cases/" + case["id"]
+        # Timed: from the containment request to the moment Atlas's local check,
+        # which never asks Keycloak, refuses the worker's unexpired access token.
+        with report.case("containment: Atlas's local check refuses the existing token within 30 s"):
+            access = tokens["online"]["access_token"]
             case = post(alice, acsrf, path + "/contain", {})["result"]
+            deadline = time.monotonic() + 30
+            while atlas_api(worker, access, "local")[0] != 401:
+                if time.monotonic() > deadline:
+                    raise AssertionError("Atlas still accepts the token locally")
+                time.sleep(0.25)
+        with report.case("AccessOps containment ends the worker's sessions and observes none left"):
             wait_observed(alice, case["containmentRequestId"])
             contained = True
             item = next(c for c in snapshot(alice)["offboardingCases"] if c["id"] == case["id"])
@@ -312,12 +339,14 @@ def main():
                 if str(final.url).startswith(ATLAS) or atlas_me(fresh)[0] != 401:
                     raise AssertionError("A disabled worker signed in again")
         with report.case(
-            "residual: the Atlas API in local-validation mode still accepts it until expiry (at most 120 s)"
+            "after: Atlas's local check refuses the unexpired access token from the revocation signal"
         ):
-            status, body = atlas_api(worker, tokens["online"]["access_token"], "local")
-            if status != 200 or not 0 < body["expiresIn"] <= 120:
-                raise AssertionError("Unexpected residual access-token behavior")
-            print(f"residual local acceptance: {body['expiresIn']} s left")
+            access = tokens["online"]["access_token"]
+            status, body = atlas_api(worker, access, "local")
+            left = unexpired(access)
+            if status != 401 or body.get("reason") != "revoked_by_signal" or left <= 0:
+                raise AssertionError("Atlas refused the token for another reason")
+            print(f"refused with {left:.0f} s of the token's lifetime left")
     except Exception as error:
         report.record_error(error)
     finally:

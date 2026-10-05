@@ -60,7 +60,7 @@ AD_TASK = (
 LIMITATIONS = [
     "Administrative closure records reviewed evidence; it does not prove every remote access path ended.",
     "Imported snapshots are not authenticated live observations made by this application.",
-    "Keycloak session revocation ends the sessions Keycloak holds and rejects earlier tokens when apps ask Keycloak; an app that validates access tokens itself accepts one already issued until it expires (2 minutes in the lab).",
+    "Keycloak session revocation ends the sessions Keycloak holds and rejects earlier tokens when apps ask Keycloak. An app that validates access tokens itself refuses earlier ones only if it follows AccessOps' revocation signals, as the Atlas lab app does; otherwise it accepts one until it expires (2 minutes in the lab).",
     "Entra directory state does not prove application-owned sessions or guest home-tenant sessions ended.",
     "GitHub removal does not erase clones, unknown repositories or every token/key.",
     "Data retention, licensing and legacy actions are owner attestations, not automatic platform writes.",
@@ -691,10 +691,11 @@ def assess(case):
     if case.intake_source_id:
         dto["intakeSourceId"] = str(case.intake_source_id)
     dto["packetHash"] = audit.digest(dto)
-    # Delivery state changes as the SOC acknowledges; it stays outside the hash.
+    # Delivery state changes as receivers acknowledge; it stays outside the hash.
     dto["signals"] = [
         {
             "jti": event.jti,
+            "receiver": event.receiver,
             "eventType": event.event_type,
             "createdAt": event.created_at.isoformat(),
             "deliveredAt": event.delivered_at.isoformat() if event.delivered_at else None,
