@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 import jwt
 import pytest
 import requests
+from core.models import AuditEvent
 from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from rest_framework.test import APIClient
@@ -62,8 +63,10 @@ def provider(org, monkeypatch):
                 "accessops_roles": ["operator"],
                 "accessops_projects": ["Atlas"],
                 "sid": "synthetic-oidc-session",
+                "acr": "mfa",
                 **state["claims_change"],
             }
+            claims = {key: value for key, value in claims.items() if value is not None}
             encoded = jwt.encode(claims, key, algorithm="RS256", headers={"kid": jwk["kid"]})
             data = {
                 "access_token": "synthetic-access-token",
@@ -89,6 +92,7 @@ def begin(provider):
     assert query["response_type"] == ["code"]
     assert query["code_challenge_method"] == ["S256"]
     assert query["redirect_uri"] == [settings.OIDC_REDIRECT_URI]
+    assert query["acr_values"] == ["mfa"]
     provider["nonce"] = query["nonce"][0]
     provider["challenge"] = query["code_challenge"][0]
     return client, query["state"][0]
@@ -103,6 +107,8 @@ def test_real_authlib_code_pkce_nonce_signature_flow(org, provider):
     assert client.get("/api/v1/session").json()["authenticated"] is True
     assert provider["token_calls"] == 1
     assert not any(k in client.session for k in ("access_token", "refresh_token", "id_token"))
+    created = AuditEvent.objects.filter(action="session.created").latest("sequence")
+    assert created.detail["acr"] == "mfa"
 
 
 @pytest.mark.parametrize(
@@ -113,6 +119,9 @@ def test_real_authlib_code_pkce_nonce_signature_flow(org, provider):
         {"nonce": "wrong-nonce"},
         {"exp": 1},
         {"nonce_supported": False},
+        {"acr": "password"},
+        {"acr": "1"},
+        {"acr": None},
     ],
 )
 def test_signed_but_invalid_oidc_claims_cannot_create_session(org, provider, change):

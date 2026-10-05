@@ -34,6 +34,30 @@ token. The SOC stream is unchanged.
 Not run for this change: the Samba directory case and the real-browser journey,
 neither of which touches token checks or signal streams.
 
+### Operator sign-in with a second factor
+
+Local runs on 5 October 2026 (UTC). The people who can disable anyone now need a
+second factor. Keycloak's operator browser flow asks for a password (level
+`password`) and then a time-based one-time code (level `mfa`); the console
+client requires `mfa` as its default and minimum level. The backend requests
+`mfa`, refuses any ID token whose `acr` is anything else, and records the level
+on each session in the audit log. Existing labs get the flow, the client
+settings and one authenticator per operator from `Upgrade-Lab.ps1`; new labs get
+them in the generated realm import.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Upgrade of the running lab | Passed | Flow, required level, `acr` mapper and three authenticators added through a temporary admin, which was then deleted and its credential refused; identity database backed up first |
+| OIDC suite | 14 passed | Three new: a correct password stops at the code form; a wrong code is refused with no session; a request rewritten to ask for `password` only still stops at the code form (Keycloak enforced the client's minimum level). The three operator sessions then sign in with real codes |
+| Sessions recorded at `mfa` | Passed | The audit log's `session.created` events for those sign-ins carry `acr: mfa` |
+| Full `Test-Lab.ps1` | All passed in 5 min 3 s | Every suite signs in with codes; a shared step file means no code is offered twice, so a few sign-ins waited for the next 30-second step |
+| Console in a real browser | Passed | The PR #9 journey, with Alice and Bob entering one-time codes in Firefox |
+| Fresh-lab realm import | Passed | Realms generated from scratch, with the MFA flow and authenticators, imported by Keycloak 26.8 into a throwaway in-container database; the lab's own database was not used |
+| Backend, host test settings | 31 passed in the OIDC and security tests | The login request carries `acr_values=mfa`; ID tokens at `password`, `1` or with no `acr` cannot open a session; the level is audited |
+
+Not run: phishing-resistant authenticators (WebAuthn). The authenticator is a
+software TOTP secret held in the lab's protected login file.
+
 ### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce

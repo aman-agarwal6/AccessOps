@@ -77,6 +77,10 @@ if (Test-Path -LiteralPath '.local/atlas.env') {
 } else {
     Write-Host 'This lab predates session revocation. Run scripts/Upgrade-Lab.ps1 once to add the Atlas lab app.'
 }
+# Operators need a second factor; labs created before that need one upgrade.
+if (-not (Get-Content -LiteralPath '.local/operator-logins.json' -Raw | ConvertFrom-Json).totp) {
+    Write-Warning 'Operator sign-in now requires a one-time code. Run scripts/Upgrade-Lab.ps1 once to add authenticators to this lab.'
+}
 Write-Host 'AccessOps services are ready at https://accessops.test:8443.'
 Write-Host 'Windows hosts must resolve accessops.test and id.accessops.test to 127.0.0.1. See scripts/Configure-Hosts.ps1.'
 Write-Host 'Credentials are local-only in .local/operator-logins.json. Do not share or commit that file.'

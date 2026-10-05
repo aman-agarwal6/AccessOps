@@ -26,8 +26,10 @@ the [verification ledger](verification.md) separately records actual execution.
 | Interface readability (October 2026) | Rebuilt console: dark and light themes from one token set, 16px type scale, urgency-ranked queue, one next step per case with role explanations, phase-grouped actions and fixed provenance labels. See [approved-plan.md](approved-plan.md). |
 
 New agent inventory has no credential or privilege; sponsor transfer leaves it
-suspended; v1 grants are read-only. Password-only synthetic operator login does
-not establish MFA or a NIST assurance level. Production enrollment, automated
+suspended; v1 grants are read-only. Operator sign-in requires a password and a
+time-based one-time code, enforced by Keycloak and again by the backend; a
+software authenticator is not phishing-resistant and does not establish a NIST
+assurance level. Production enrollment, automated
 recovery, multi-tenancy and arbitrary delegation are outside this release.
 
 Future profiles need actual provider evidence and non-expansion/replay tests.
