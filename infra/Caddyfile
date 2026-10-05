@@ -72,3 +72,38 @@ https://keycloak-observe.accessops.internal:8184 {
 		respond "Not found" 404
 	}
 }
+
+# Workforce session containment, private Docker networks only: per-user logout
+# (POST) and session listing (GET). No host publication; all else denies.
+https://keycloak-sessions.accessops.internal:8185 {
+	tls internal
+	request_body {
+		max_size 1KB
+	}
+	@logout {
+		method POST
+		path_regexp logout ^/admin/realms/accessops-workforce/users/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/logout$
+	}
+	@list {
+		method GET
+		path_regexp list ^/admin/realms/accessops-workforce/users/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/sessions$
+	}
+	handle @logout {
+		reverse_proxy keycloak:8080
+	}
+	handle @list {
+		reverse_proxy keycloak:8080
+	}
+	handle {
+		respond "Not found" 404
+	}
+}
+
+# Lab-only Atlas app that workforce users sign in to, private Docker networks only.
+https://atlas.accessops.internal:8186 {
+	tls internal
+	request_body {
+		max_size 16KB
+	}
+	reverse_proxy atlas-app:8090
+}

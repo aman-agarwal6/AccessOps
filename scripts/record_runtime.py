@@ -15,7 +15,17 @@ from check_report import utc_now
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose", "-f", "infra/compose.yml"]
-SERVICES = {"app-db", "identity-db", "keycloak", "opa", "policy", "backend", "worker", "web"}
+SERVICES = {
+    "app-db",
+    "identity-db",
+    "keycloak",
+    "opa",
+    "policy",
+    "backend",
+    "worker",
+    "atlas-app",
+    "web",
+}
 
 
 def command(arguments):

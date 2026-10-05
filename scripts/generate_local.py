@@ -22,6 +22,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCAL = ROOT / ".local"
 ID_ORIGIN = "https://id.accessops.test:8443"
 APP_ORIGIN = "https://accessops.test:8443"
+# Lab-only apps a workforce user signs in to, so offboarding has real sessions to end.
+ATLAS_ORIGIN = "https://atlas.accessops.internal:8186"
+ATLAS_CLI_REDIRECT = "http://127.0.0.1:8765/callback"
 
 
 def uid(slug):
@@ -79,6 +82,63 @@ def base_client(name):
     }
 
 
+def workforce_apps(atlas_secret):
+    """Atlas web app (confidential, back-channel logout) and its command-line client
+    (public, PKCE, may request offline tokens). Both are lab fixtures."""
+    web = base_client("atlas-app")
+    web.update(
+        {
+            "name": "Atlas workspace (lab app)",
+            "secret": atlas_secret,
+            "clientAuthenticatorType": "client-secret",
+            "standardFlowEnabled": True,
+            "serviceAccountsEnabled": False,
+            "redirectUris": [ATLAS_ORIGIN + "/callback"],
+        }
+    )
+    web["attributes"].update(
+        {
+            "pkce.code.challenge.method": "S256",
+            "post.logout.redirect.uris": ATLAS_ORIGIN + "/",
+            "backchannel.logout.url": ATLAS_ORIGIN + "/backchannel-logout",
+            "backchannel.logout.session.required": "true",
+            "backchannel.logout.revoke.offline.tokens": "true",
+        }
+    )
+    cli = base_client("atlas-cli")
+    cli.update(
+        {
+            "name": "Atlas command line (lab app)",
+            "publicClient": True,
+            "standardFlowEnabled": True,
+            "serviceAccountsEnabled": False,
+            "redirectUris": [ATLAS_CLI_REDIRECT],
+            "optionalClientScopes": ["offline_access"],
+            # The Atlas API is the resource server for these tokens; Keycloak only
+            # introspects for clients in a token's audience. Realms imported with
+            # their own scopes lack "basic", so the subject is mapped directly.
+            "protocolMappers": [
+                mapper(
+                    "atlas-audience",
+                    "oidc-audience-mapper",
+                    {
+                        "included.client.audience": "atlas-app",
+                        "access.token.claim": "true",
+                        "id.token.claim": "false",
+                    },
+                ),
+                mapper(
+                    "atlas-sub",
+                    "oidc-sub-mapper",
+                    {"access.token.claim": "true", "introspection.token.claim": "true"},
+                ),
+            ],
+        }
+    )
+    cli["attributes"]["pkce.code.challenge.method"] = "S256"
+    return [web, cli]
+
+
 def realm(name):
     return {
         "realm": name,
@@ -116,8 +176,8 @@ def main():
     def secret():
         return secrets.token_urlsafe(36)
 
-    app_pass, id_pass, oidc_secret, scim_secret, authzen_token, api_secret = [
-        secret() for _ in range(6)
+    app_pass, id_pass, oidc_secret, scim_secret, authzen_token, api_secret, atlas_secret = [
+        secret() for _ in range(7)
     ]
     operator_passwords = {name: secret() for name in ("alice", "bob", "clara")}
     private = rsa.generate_private_key(public_exponent=65537, key_size=3072)
@@ -176,6 +236,7 @@ def main():
     )
     env_file("keycloak.env", {"KC_DB_USERNAME": "accessops_identity", "KC_DB_PASSWORD": id_pass})
     env_file("policy.env", {"AUTHZEN_TOKEN": authzen_token})
+    env_file("atlas.env", {"ATLAS_CLIENT_SECRET": atlas_secret})
     env_file(
         "backend.env",
         {
@@ -369,7 +430,7 @@ def main():
             "serviceAccountsEnabled": False,
         }
     )
-    workforce["clients"] = [scim, executor, api_client]
+    workforce["clients"] = [scim, executor, api_client, *workforce_apps(atlas_secret)]
     workforce["clientScopeMappings"] = {
         "realm-management": [{"client": "accessops-scim", "roles": ["manage-users"]}]
     }
