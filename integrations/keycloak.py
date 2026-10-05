@@ -2,7 +2,9 @@
 
 This connector never administers the operators realm, clients, or policy. Its
 manage-users credential is workforce-wide, not a claim of per-project FGAP.
-AccessOps performs project authorization before calling it.
+AccessOps performs project authorization before calling it. Native admin calls go
+only through two private edge routes: group membership reads, and per-user
+session logout and listing.
 """
 
 import json
@@ -22,12 +24,23 @@ GROUP = "urn:ietf:params:scim:schemas:core:2.0:Group"
 PATCH = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
 LIST = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
 MEMBERSHIP_ORIGIN = "https://keycloak-observe.accessops.internal:8184"
+# Private route allowing only per-user logout (POST) and session listing (GET).
+SESSIONS_ORIGIN = "https://keycloak-sessions.accessops.internal:8185"
 
 
 def identifier(value):
     if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", value):
         raise ConnectorError("Invalid provider identifier")
     return quote(value, safe="")
+
+
+def user_uuid(value):
+    try:
+        if str(uuid.UUID(value)) != value:
+            raise ValueError
+    except (ValueError, TypeError, AttributeError):
+        raise ConnectorError("Native user binding invalid") from None
+    return value
 
 
 class KeycloakConnector:
@@ -245,6 +258,59 @@ class KeycloakConnector:
         except (httpx.HTTPError, IntegrationError, ValueError):
             raise ConnectorError("Membership observation unavailable") from None
 
+    def _sessions_url(self, user_id, operation):
+        return (
+            SESSIONS_ORIGIN
+            + "/admin/realms/accessops-workforce/users/"
+            + user_uuid(user_id)
+            + "/"
+            + operation
+        )
+
+    def count_sessions(self, user_id):
+        """Read the account's active Keycloak sessions; any doubt stays unknown."""
+        url = self._sessions_url(user_id, "sessions")
+        try:
+            response = self.http.get(
+                url,
+                headers={"Authorization": "Bearer " + self._token(), "Accept": "application/json"},
+                follow_redirects=False,
+            )
+            if response.status_code != 200 or str(response.url) != url:
+                raise ConnectorError("Session observation unavailable")
+            records = json_response(response, limit=131072)
+            if not isinstance(records, list) or len(records) > 500:
+                raise ConnectorError("Session observation incomplete")
+            ids = set()
+            for record in records:
+                value = record.get("id") if isinstance(record, dict) else None
+                if (
+                    not isinstance(value, str)
+                    or not 1 <= len(value) <= 128
+                    or value in ids
+                    or record.get("userId") != user_id
+                ):
+                    raise ConnectorError("Session observation incomplete")
+                ids.add(value)
+            return len(ids)
+        except (httpx.HTTPError, IntegrationError):
+            raise ConnectorError("Session observation unavailable") from None
+
+    def end_sessions(self, user_id):
+        """Keycloak's per-user logout: ends every session, rejects tokens issued
+        before now (not-before) and sends back-channel logout to registered apps."""
+        url = self._sessions_url(user_id, "logout")
+        try:
+            response = self.http.post(
+                url,
+                headers={"Authorization": "Bearer " + self._token()},
+                follow_redirects=False,
+            )
+            if response.status_code != 204:
+                raise ConnectorError(f"Session logout failed (HTTP {response.status_code})")
+        except httpx.HTTPError:
+            raise ConnectorError("Session logout unavailable") from None
+
     def observe_membership(self, identity, resource):
         user_id = identity.get("providerSubject")
         identifier(user_id)
@@ -299,12 +365,16 @@ class KeycloakConnector:
                 "verified": actual == expected,
             }
         if kind == "offboard":
+            # Disable first so no new session can start, then end existing ones.
+            # Both steps are idempotent, so every delivery repeats them.
             self.patch_user(user_id, [{"op": "replace", "path": "active", "value": False}])
+            self.end_sessions(user_id)
             actual = self.get_user(user_id)
+            sessions = self.count_sessions(user_id)
             return {
-                "desired": {"active": False},
-                "observed": {"active": actual.get("active")},
-                "verified": actual.get("active") is False,
+                "desired": {"active": False, "sessions": 0},
+                "observed": {"active": actual.get("active"), "sessions": sessions},
+                "verified": actual.get("active") is False and sessions == 0,
             }
         if kind == "transfer":
             # Sponsor is exclusively an AccessOps server record, not an OIDC act claim.
@@ -318,8 +388,12 @@ class KeycloakConnector:
     def reconcile(self, identity, resource=None):
         observed = self.get_user(identity.get("providerSubject"))
         desired_active = identity.get("status") == "active"
-        result = {"active": observed.get("active")}
-        drift = observed.get("active") is not desired_active
+        sessions = self.count_sessions(identity.get("providerSubject"))
+        result = {"active": observed.get("active"), "sessions": sessions}
+        # A contained account must be disabled and hold no live session.
+        drift = observed.get("active") is not desired_active or (
+            not desired_active and sessions != 0
+        )
         if resource and resource.get("providerGroup"):
             result["member"] = self.observe_membership(identity, resource)["observed"]["member"]
             if "desiredMember" in resource:

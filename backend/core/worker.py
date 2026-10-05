@@ -23,6 +23,16 @@ from .models import (
 from .services import policy_state
 
 
+def account_contained(observed):
+    """A contained workforce account is disabled and holds no Keycloak session."""
+    return (
+        isinstance(observed, dict)
+        and observed.get("active") is False
+        and type(observed.get("sessions")) is int
+        and observed["sessions"] == 0
+    )
+
+
 def claim_job():
     with transaction.atomic():
         policy_state(lock=True)
@@ -168,6 +178,8 @@ def run_reconcile(job, connector):
                     not isinstance(observed, dict)
                     or type(result.get("drift")) is not bool
                     or type(observed.get("active")) is not bool
+                    or type(observed.get("sessions")) is not int
+                    or observed["sessions"] < 0
                     or resource.provider_group
                     and type(observed.get("member")) is not bool
                 ):
@@ -193,7 +205,9 @@ def run_reconcile(job, connector):
                     "status": "observed",
                     "drift": result["drift"],
                     "observed": {
-                        key: observed[key] for key in ("active", "member") if key in observed
+                        key: observed[key]
+                        for key in ("active", "sessions", "member")
+                        if key in observed
                     },
                     "observedAt": observed_at,
                 }
@@ -326,22 +340,19 @@ def process_one(connector=None):
                 with transaction.atomic():
                     policy_state(lock=True)
                     operation, identity, resource = desired_operation(job)
-                # Every delivery, especially an ambiguous retry, reads first.
-                observed = (
-                    connector.observe_membership(identity, resource)
-                    if operation["kind"] in ("grant", "revoke")
-                    else connector.reconcile(identity, resource)
-                )
-                satisfied = (
-                    observed.get("observed", {}).get("member") is (operation["kind"] == "grant")
-                    if operation["kind"] in ("grant", "revoke")
-                    else observed.get("observed", {}).get("active") is False
-                )
-                result = (
-                    {"verified": True, "observed": observed["observed"]}
-                    if satisfied
-                    else connector.apply(operation, identity, resource)
-                )
+                if operation["kind"] in ("grant", "revoke"):
+                    # Every delivery, especially an ambiguous retry, reads first.
+                    observed = connector.observe_membership(identity, resource)
+                    result = (
+                        {"verified": True, "observed": observed["observed"]}
+                        if observed.get("observed", {}).get("member")
+                        is (operation["kind"] == "grant")
+                        else connector.apply(operation, identity, resource)
+                    )
+                else:
+                    # Containment always re-applies: disabling and ending sessions
+                    # are idempotent, and a disabled account can still hold sessions.
+                    result = connector.apply(operation, identity, resource)
         # Capture the reading before waiting for the database serialization gate.
         # The later audit timestamp records completion, not provider freshness.
         result_read_at = timezone.now().isoformat()
@@ -369,7 +380,7 @@ def process_one(connector=None):
                         fresh_operation["kind"] == "grant"
                     )
                 else:
-                    result["verified"] = current.observed.get("active") is False
+                    result["verified"] = account_contained(current.observed)
             if job.kind != "assistant":
                 current.observed["observedAt"] = result_read_at
             current.status = "verified" if result.get("verified") is True else "retry"

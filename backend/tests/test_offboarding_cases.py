@@ -76,7 +76,8 @@ def complete_case(org, client, **extra):
     case.refresh_from_db()
     # Isolated test of the persisted observation gate, not a live Keycloak run.
     OutboxJob.objects.filter(request=case.containment_request).update(
-        status="verified", observed={"active": False, "observedAt": timezone.now().isoformat()}
+        status="verified",
+        observed={"active": False, "sessions": 0, "observedAt": timezone.now().isoformat()},
     )
     job = OutboxJob.objects.get(request=case.containment_request)
     audit.append("worker", "provider.verified", case.containment_request_id, {"jobId": str(job.pk)})
@@ -200,7 +201,7 @@ def test_directory_account_proof_cannot_replace_membership_removal_and_reconcili
                     "resourceId": str(org["pulse"].pk),
                     "status": "observed",
                     "observedAt": timezone.now().isoformat(),
-                    "observed": {"active": False, "member": False},
+                    "observed": {"active": False, "sessions": 0, "member": False},
                 }
             ]
         },
@@ -234,7 +235,7 @@ def test_second_departure_cannot_hide_unresolved_previously_revoked_membership(o
     native = OutboxJob.objects.get(request=second.containment_request)
     native.status, native.observed = (
         "verified",
-        {"active": False, "observedAt": timezone.now().isoformat()},
+        {"active": False, "sessions": 0, "observedAt": timezone.now().isoformat()},
     )
     native.save()
     audit.append(
@@ -312,6 +313,50 @@ def test_service_account_membership_revoke_does_not_depend_on_user_visibility(or
     assert job.status == "verified" and len(writes) == 1
 
 
+@pytest.mark.parametrize("left", [0, 1])
+def test_containment_ends_sessions_even_when_the_account_is_already_disabled(org, client_for, left):
+    import httpx
+    from core.worker import process_one
+
+    from integrations.keycloak import SESSIONS_ORIGIN, KeycloakConnector
+
+    client = client_for(org["alice"])
+    case = create_case(org, client)
+    assert post(client, f"{PREFIX}/{case.pk}/contain").status_code == 200
+    case.refresh_from_db()
+    job = OutboxJob.objects.get(request=case.containment_request)
+    OutboxJob.objects.exclude(pk=job.pk).update(status="cancelled")
+    subject = case.identity.subject
+    base = SESSIONS_ORIGIN + "/admin/realms/accessops-workforce/users/" + subject
+    # Isolated provider double: disabled earlier, yet still signed in twice.
+    state, calls = {"active": False, "sessions": 2}, []
+
+    def call(method, path, **kwargs):
+        assert path == "/Users/" + subject
+        calls.append("SCIM " + method)
+        return {"id": subject, "active": state["active"]}
+
+    def handle(request):
+        calls.append(request.method + " " + str(request.url).removeprefix(base))
+        if request.method == "POST":
+            state["sessions"] = left
+            return httpx.Response(204)
+        return httpx.Response(
+            200, json=[{"id": f"s{i}", "userId": subject} for i in range(state["sessions"])]
+        )
+
+    connector = KeycloakConnector(
+        http=httpx.Client(transport=httpx.MockTransport(handle)),
+        issuer="https://id.accessops.test/realms/accessops-workforce",
+    )
+    connector._call, connector._token = call, lambda: "synthetic-placeholder"
+    assert process_one(connector)
+    job.refresh_from_db()
+    assert calls == ["SCIM PATCH", "POST /logout", "SCIM GET", "GET /sessions"]
+    assert job.observed["active"] is False and job.observed["sessions"] == left
+    assert job.status == ("verified" if left == 0 else "retry")
+
+
 @pytest.mark.parametrize("unsafe", ["positive", "missing", "unknown", "tie"])
 def test_latest_pair_unknown_positive_or_conflicting_tie_reopens_membership_gate(
     org, client_for, unsafe
@@ -326,7 +371,7 @@ def test_latest_pair_unknown_positive_or_conflicting_tie_reopens_membership_gate
         "resourceId": str(org["pulse"].pk),
         "status": "unavailable" if unsafe == "unknown" else "observed",
         "observedAt": at,
-        "observed": {"active": False},
+        "observed": {"active": False, "sessions": 0},
     }
     if unsafe in ("positive", "tie"):
         row["observed"]["member"] = True
@@ -635,7 +680,7 @@ def test_keycloak_proof_expires_and_later_unknown_or_positive_reopens(org, clien
                     "resourceId": str(org["pulse"].pk),
                     "status": "observed",
                     "observedAt": timezone.now().isoformat(),
-                    "observed": {"active": False, "member": False},
+                    "observed": {"active": False, "sessions": 0, "member": False},
                 },
                 {
                     "identityId": "different-unavailable-identity",
@@ -658,7 +703,7 @@ def test_keycloak_proof_expires_and_later_unknown_or_positive_reopens(org, clien
     job.observed["observations"][0] = {
         "identityId": str(case.identity_id),
         "status": "observed",
-        "observed": {"active": True},
+        "observed": {"active": True, "sessions": 0},
     }
     job.save()
     audit.append("worker", "provider.failed", job.pk, {"jobId": str(job.pk)})
@@ -666,7 +711,7 @@ def test_keycloak_proof_expires_and_later_unknown_or_positive_reopens(org, clien
     job.observed["observations"][0] = {
         "identityId": str(case.identity_id),
         "status": "observed",
-        "observed": {"active": False},
+        "observed": {"active": False, "sessions": 0},
     }
     job.save()
     audit.append("worker", "job.failed", job.pk, {"jobId": str(job.pk)})
@@ -832,6 +877,19 @@ def keycloak_task(case):
     return next(t for t in assess(case)["tasks"] if t["id"] == "keycloak-directory")
 
 
+@pytest.mark.parametrize(
+    "observed",
+    [{"active": False}, {"active": False, "sessions": 1}, {"active": False, "sessions": False}],
+)
+def test_keycloak_proof_requires_a_counted_zero_sessions(org, client_for, observed):
+    case = complete_case(org, client_for(org["alice"]))
+    assert keycloak_task(case)["status"] == "observed"
+    job = OutboxJob.objects.get(request=case.containment_request)
+    job.observed = {**observed, "observedAt": job.observed["observedAt"]}
+    job.save()
+    assert keycloak_task(case)["status"] == "pending"
+
+
 @pytest.mark.parametrize("tie", [False, True])
 def test_newer_positive_or_unsafe_tie_cannot_be_hidden_by_late_old_completion(org, client_for, tie):
     case = complete_case(org, client_for(org["alice"]))
@@ -852,7 +910,7 @@ def test_newer_positive_or_unsafe_tie_cannot_be_hidden_by_late_old_completion(or
                     "resourceId": str(org["atlas"].pk),
                     "status": "observed",
                     "observedAt": later_at.isoformat(),
-                    "observed": {"active": True},
+                    "observed": {"active": True, "sessions": 0},
                 }
             ]
         },
@@ -891,7 +949,7 @@ def test_late_audit_completion_does_not_refresh_an_expired_provider_read(org, cl
                     "resourceId": str(org[resource].pk),
                     "status": "observed",
                     "observedAt": timezone.now().isoformat(),
-                    "observed": {"active": False, "member": False},
+                    "observed": {"active": False, "sessions": 0, "member": False},
                 }
                 for resource in ("atlas", "pulse")
             ]
