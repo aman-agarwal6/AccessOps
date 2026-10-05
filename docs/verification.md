@@ -8,6 +8,10 @@ was contacted. Local reports are unsigned; signed CI evidence is listed separate
 
 ## Next release: session revocation, automated intake and leaver assurance
 
+The demo's evidence index lists 35 recorded runs from these suites and the
+earlier ones: 23 passed and 12 failed attempts kept. The core suites in it are
+from the full `Test-Lab.ps1` run of 5 October.
+
 ### Workforce session revocation
 
 Local runs on 5 October 2026 (UTC). Containment now disables the workforce
