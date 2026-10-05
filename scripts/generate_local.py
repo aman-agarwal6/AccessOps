@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import secrets
+import string
 import uuid
 from pathlib import Path
 
@@ -178,6 +179,157 @@ EVENTS_SERVICE_USER = {
 }
 
 
+# Operator sign-in needs a second factor. Keycloak's step-up flow names the
+# levels: "password" (level 1) and "mfa" (level 2, password then a one-time code).
+# The console client requires "mfa", and the backend refuses any other level.
+OPERATORS = ("alice", "bob", "clara")
+OPERATOR_FLOW = "operator browser with mfa"
+OPERATOR_ACR = "mfa"
+OPERATOR_MFA_REALM = {
+    "browserFlow": OPERATOR_FLOW,
+    "otpPolicyType": "totp",
+    "otpPolicyAlgorithm": "HmacSHA1",
+    "otpPolicyDigits": 6,
+    "otpPolicyPeriod": 30,
+    "otpPolicyLookAheadWindow": 1,
+    "otpPolicyCodeReusable": False,
+}
+OPERATOR_ACR_MAP = json.dumps({"password": 1, OPERATOR_ACR: 2})
+CONSOLE_ACR_ATTRIBUTES = {"default.acr.values": OPERATOR_ACR, "minimum.acr.value": OPERATOR_ACR}
+OTP_LABEL = "Lab authenticator"
+
+
+def console_acr_mapper():
+    return mapper(
+        "acr loa level",
+        "oidc-acr-mapper",
+        {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+        },
+    )
+
+
+def operator_flows():
+    """Realm-import form of the operator browser flow and its level conditions."""
+
+    def execution(priority, requirement, authenticator=None, flow=None, config=None):
+        item = {
+            "requirement": requirement,
+            "priority": priority,
+            "autheticatorFlow": flow is not None,
+            "userSetupAllowed": False,
+        }
+        item.update({"flowAlias": flow} if flow else {"authenticator": authenticator})
+        if config:
+            item["authenticatorConfig"] = config
+        return item
+
+    def flow(alias, description, executions, top=False):
+        return {
+            "alias": alias,
+            "description": description,
+            "providerId": "basic-flow",
+            "topLevel": top,
+            "builtIn": False,
+            "authenticationExecutions": executions,
+        }
+
+    def level(alias, number, authenticator):
+        return flow(
+            alias,
+            f"Level {number} of operator sign-in",
+            [
+                execution(
+                    10,
+                    "REQUIRED",
+                    "conditional-level-of-authentication",
+                    config=f"operator-level-{number}",
+                ),
+                execution(20, "REQUIRED", authenticator),
+            ],
+        )
+
+    flows = [
+        flow(
+            OPERATOR_FLOW,
+            "Operator browser sign-in: a password, then a one-time code",
+            [
+                execution(10, "ALTERNATIVE", "auth-cookie"),
+                execution(20, "ALTERNATIVE", flow="operator sign-in"),
+            ],
+            top=True,
+        ),
+        flow(
+            "operator sign-in",
+            "Levels of operator sign-in",
+            [
+                execution(10, "CONDITIONAL", flow="operator password"),
+                execution(20, "CONDITIONAL", flow="operator one-time code"),
+            ],
+        ),
+        level("operator password", 1, "auth-username-password-form"),
+        level("operator one-time code", 2, "auth-otp-form"),
+    ]
+    configs = [
+        {
+            "alias": "operator-level-1",
+            "config": {"loa-condition-level": "1", "loa-max-age": "36000"},
+        },
+        {
+            "alias": "operator-level-2",
+            "config": {"loa-condition-level": "2", "loa-max-age": "1800"},
+        },
+    ]
+    return flows, configs
+
+
+def totp_secret():
+    """A lab authenticator secret. Keycloak keys the TOTP HMAC with its UTF-8 bytes."""
+    return "".join(secrets.choice(string.ascii_uppercase + "234567") for _ in range(32))
+
+
+def otp_credential(secret):
+    return {
+        "type": "otp",
+        "userLabel": OTP_LABEL,
+        "secretData": json.dumps({"value": secret}),
+        "credentialData": json.dumps(
+            {"subType": "totp", "digits": 6, "counter": 0, "period": 30, "algorithm": "HmacSHA1"}
+        ),
+    }
+
+
+def add_operator_mfa(realm_data, totp):
+    """Apply operator MFA to a stored operators realm import (new or upgraded)."""
+    flows, configs = operator_flows()
+    realm_data.update(OPERATOR_MFA_REALM)
+    realm_data["attributes"] = {**realm_data.get("attributes", {}), "acr.loa.map": OPERATOR_ACR_MAP}
+    realm_data["authenticationFlows"] = [
+        item
+        for item in realm_data.get("authenticationFlows", [])
+        if item["alias"] not in {flow["alias"] for flow in flows}
+    ] + flows
+    realm_data["authenticatorConfig"] = [
+        item
+        for item in realm_data.get("authenticatorConfig", [])
+        if item["alias"] not in {config["alias"] for config in configs}
+    ] + configs
+    for client in realm_data.get("clients", []):
+        if client["clientId"] == "accessops-console":
+            client["attributes"] = {**client.get("attributes", {}), **CONSOLE_ACR_ATTRIBUTES}
+            mappers = client.setdefault("protocolMappers", [])
+            if not any(item["name"] == "acr loa level" for item in mappers):
+                mappers.append(console_acr_mapper())
+    for user in realm_data.get("users", []):
+        if user["username"] in totp:
+            user["credentials"] = [
+                item for item in user.get("credentials", []) if item["type"] != "otp"
+            ] + [otp_credential(totp[user["username"]])]
+    return realm_data
+
+
 def ssf_signing_key():
     """EC P-256 key that signs AccessOps security event tokens (PKCS#8 PEM)."""
     from cryptography.hazmat.primitives.asymmetric import ec
@@ -245,7 +397,8 @@ def main():
         atlas_secret,
         events_secret,
     ) = [secret() for _ in range(8)]
-    operator_passwords = {name: secret() for name in ("alice", "bob", "clara")}
+    operator_passwords = {name: secret() for name in OPERATORS}
+    operator_totp = {name: totp_secret() for name in OPERATORS}
     private = rsa.generate_private_key(public_exponent=65537, key_size=3072)
     now = dt.datetime.now(dt.timezone.utc)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "accessops-executor")])
@@ -551,11 +704,15 @@ def main():
         },
         {"id": uid("events-service"), **EVENTS_SERVICE_USER},
     ]
+    add_operator_mfa(operators, operator_totp)
     for data in (operators, workforce):
         write(LOCAL / "realms" / (data["realm"] + "-realm.json"), json.dumps(data, indent=2) + "\n")
     write(
         LOCAL / "operator-logins.json",
-        json.dumps({"origin": APP_ORIGIN, "passwords": operator_passwords}, indent=2) + "\n",
+        json.dumps(
+            {"origin": APP_ORIGIN, "passwords": operator_passwords, "totp": operator_totp}, indent=2
+        )
+        + "\n",
     )
     print(
         "Generated ignored local configuration and per-user credentials. No secret values were printed."

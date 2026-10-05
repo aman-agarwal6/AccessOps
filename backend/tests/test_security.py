@@ -305,6 +305,7 @@ def test_oidc_rejects_unenrolled_wrong_issuer_and_never_stores_tokens(org, monke
             "accessops_roles": ["operator"],
             "accessops_projects": ["Atlas"],
             "sid": "synthetic-session",
+            "acr": "mfa",
         },
         "id_token": mock_id,
         "access_token": "NONFUNCTIONAL_TEST_TOKEN",

@@ -3,12 +3,16 @@
 local  (host)       Create missing Atlas and events-reader client secrets and
                     write the current lab-added client definitions into the
                     stored workforce realm import.
+mfa    (host)       Add a one-time-code secret for each lab operator to
+                    .local/operator-logins.json, keeping existing ones, and write
+                    operator MFA into the stored operators realm import.
 realm  (container)  Using a temporary bootstrap admin service account, create the
                     lab-added clients in the running workforce realm, or add any
-                    protocol mapper, client scope or role they lack, then delete
-                    that temporary account and prove its credential fails. Only
-                    the Atlas clients and the events reader are touched; other
-                    clients, users and sessions are not.
+                    protocol mapper, client scope or role they lack; in the
+                    operators realm, add the MFA sign-in flow, the console's
+                    required level and each operator's authenticator. Then delete
+                    that temporary account and prove its credential fails. Other
+                    clients, users and sessions are not touched.
 hr     (host)       Create .local/hr-intake.env with an HR webhook signing secret
                     if it is missing.
 ssf    (host)       Create the security event signing key and the poll tokens
@@ -23,8 +27,10 @@ import os
 import secrets
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 REALM = "accessops-workforce"
+OPERATORS_REALM = "accessops-operators"
 TOKEN_URL = "https://id.accessops.test:8443/realms/master/protocol/openid-connect/token"
 # Keycloak's admin API is never published. Only this one-shot container reaches
 # it, over the private identity network.
@@ -100,6 +106,146 @@ def local():
             }
         )
     )
+
+
+def mfa():
+    from generate_local import LOCAL, OPERATORS, add_operator_mfa, totp_secret
+
+    logins_file = LOCAL / "operator-logins.json"
+    logins = json.loads(logins_file.read_text(encoding="utf-8"))
+    totp = logins.setdefault("totp", {})
+    created = [name for name in OPERATORS if not totp.get(name)]
+    for name in created:
+        totp[name] = totp_secret()
+    if created:
+        staged = logins_file.with_suffix(".json.upgrade")
+        staged.write_text(json.dumps(logins, indent=2) + "\n", encoding="utf-8", newline="\n")
+        os.replace(staged, logins_file)
+    realm_file = LOCAL / "realms" / (OPERATORS_REALM + "-realm.json")
+    data = json.loads(realm_file.read_text(encoding="utf-8"))
+    updated = add_operator_mfa(json.loads(json.dumps(data)), totp)
+    if updated != data:
+        staged = realm_file.with_suffix(".json.upgrade")
+        staged.write_text(json.dumps(updated, indent=2) + "\n", encoding="utf-8", newline="\n")
+        os.replace(staged, realm_file)
+    print(json.dumps({"authenticatorsCreated": created, "operatorsRealmImport": "current"}))
+
+
+def operator_mfa(admin, require, result):
+    """Operators realm: MFA flow, required level, and each operator's authenticator."""
+    from generate_local import (
+        CONSOLE_ACR_ATTRIBUTES,
+        OPERATOR_ACR_MAP,
+        OPERATOR_FLOW,
+        OPERATOR_MFA_REALM,
+        OTP_LABEL,
+        console_acr_mapper,
+        operator_flows,
+        otp_credential,
+    )
+
+    base = f"/{OPERATORS_REALM}"
+    flows, configs = operator_flows()
+    by_alias = {item["alias"]: item for item in flows}
+    configs = {item["alias"]: item for item in configs}
+    present = {
+        item["alias"]: item["id"]
+        for item in require(admin.get(base + "/authentication/flows"), 200).json()
+    }
+    bound = require(admin.get(base), 200).json().get("browserFlow")
+
+    def build(alias):
+        # Executions are appended in order; each new one is the last at level 0.
+        for item in by_alias[alias]["authenticationExecutions"]:
+            path = f"{base}/authentication/flows/{quote(alias)}/executions"
+            if item["autheticatorFlow"]:
+                child = by_alias[item["flowAlias"]]
+                body = {
+                    "alias": child["alias"],
+                    "description": child["description"],
+                    "type": "basic-flow",
+                    "provider": "registration-page-form",
+                }
+                require(admin.post(path + "/flow", json=body), 201)
+            else:
+                require(
+                    admin.post(path + "/execution", json={"provider": item["authenticator"]}), 201
+                )
+            added = [e for e in require(admin.get(path), 200).json() if e["level"] == 0][-1]
+            added["requirement"] = item["requirement"]
+            require(admin.put(path, json=added), 202, 204)
+            if item.get("authenticatorConfig"):
+                require(
+                    admin.post(
+                        f"{base}/authentication/executions/{added['id']}/config",
+                        json=configs[item["authenticatorConfig"]],
+                    ),
+                    201,
+                )
+            if item["autheticatorFlow"]:
+                build(item["flowAlias"])
+
+    if OPERATOR_FLOW in present and bound != OPERATOR_FLOW:
+        # A flow left by an interrupted upgrade is rebuilt rather than trusted.
+        require(admin.delete(f"{base}/authentication/flows/{present.pop(OPERATOR_FLOW)}"), 204)
+    if OPERATOR_FLOW not in present:
+        top = by_alias[OPERATOR_FLOW]
+        require(
+            admin.post(
+                base + "/authentication/flows",
+                json={
+                    key: top[key]
+                    for key in ("alias", "description", "providerId", "topLevel", "builtIn")
+                },
+            ),
+            201,
+        )
+        build(OPERATOR_FLOW)
+        result["updated"].append("operators flow " + OPERATOR_FLOW)
+    realm = require(admin.get(base), 200).json()
+    attributes = {**realm.get("attributes", {}), "acr.loa.map": OPERATOR_ACR_MAP}
+    if any(realm.get(key) != value for key, value in OPERATOR_MFA_REALM.items()) or (
+        realm.get("attributes", {}).get("acr.loa.map") != OPERATOR_ACR_MAP
+    ):
+        require(admin.put(base, json={**OPERATOR_MFA_REALM, "attributes": attributes}), 204)
+        result["updated"].append("operators realm MFA settings")
+
+    console = require(admin.get(base + "/clients", params={"clientId": "accessops-console"}), 200)
+    console = console.json()[0]
+    if any(console["attributes"].get(k) != v for k, v in CONSOLE_ACR_ATTRIBUTES.items()):
+        console["attributes"].update(CONSOLE_ACR_ATTRIBUTES)
+        require(admin.put(f"{base}/clients/{console['id']}", json=console), 204)
+        result["updated"].append("accessops-console required level")
+    mappers = require(admin.get(f"{base}/clients/{console['id']}/protocol-mappers/models"), 200)
+    if not any(item["name"] == "acr loa level" for item in mappers.json()):
+        require(
+            admin.post(
+                f"{base}/clients/{console['id']}/protocol-mappers/models", json=console_acr_mapper()
+            ),
+            201,
+        )
+        result["updated"].append("accessops-console mapper acr loa level")
+
+    totp = json.loads(Path("/run/operator-logins.json").read_text(encoding="utf-8"))["totp"]
+    for name, secret in sorted(totp.items()):
+        found = require(
+            admin.get(base + "/users", params={"username": name, "exact": "true"}), 200
+        ).json()
+        if len(found) != 1:
+            raise RuntimeError("Operator account not found")
+        user = f"{base}/users/{found[0]['id']}"
+        held = require(admin.get(user + "/credentials"), 200).json()
+        if any(item["type"] == "otp" and item.get("userLabel") == OTP_LABEL for item in held):
+            continue
+        for item in held:
+            if item["type"] == "otp":  # An authenticator this lab did not issue.
+                require(admin.delete(f"{user}/credentials/{item['id']}"), 204)
+        current = require(admin.get(user), 200).json()
+        require(admin.put(user, json={**current, "credentials": [otp_credential(secret)]}), 204)
+        held = require(admin.get(user + "/credentials"), 200).json()
+        if not any(item["type"] == "otp" for item in held):
+            raise RuntimeError("Operator authenticator was not stored")
+        result["updated"].append("operator authenticator " + name)
 
 
 def hr():
@@ -230,6 +376,7 @@ def realm():
                 client_id = ensure(app)
                 if app["clientId"] == "accessops-events":
                     grant_view_events(client_id)
+            operator_mfa(admin, require, result)
         finally:
             # Always remove the temporary admin, even after a failed step. The
             # refused-token check below is what decides success.
@@ -253,7 +400,7 @@ def realm():
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    commands = {"local": local, "realm": realm, "hr": hr, "ssf": ssf}
+    commands = {"local": local, "realm": realm, "mfa": mfa, "hr": hr, "ssf": ssf}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        raise SystemExit("usage: upgrade_lab.py local|realm|hr|ssf")
+        raise SystemExit("usage: upgrade_lab.py local|realm|mfa|hr|ssf")
     commands[sys.argv[1]]()

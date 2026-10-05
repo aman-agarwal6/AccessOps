@@ -76,9 +76,10 @@ HR intake check plays the HR system). `Start-Lab.ps1` creates it if it is missin
 and never replaces an existing one. The feed is seeded as a service identity
 whose sponsor, Alice's operator account, owns the cases it opens.
 
-### Upgrading a lab created before session revocation
+### Upgrading an existing lab
 
-Labs created before the Atlas clients existed need a one-time upgrade. Keycloak
+Labs created before the Atlas clients or operator MFA existed need a one-time
+upgrade (`Start-Lab.ps1` warns when operator authenticators are missing). Keycloak
 imports a realm only when it does not exist yet, and the lab has no standing
 administrator, so the script creates a temporary one:
 
@@ -89,10 +90,12 @@ administrator, so the script creates a temporary one:
 It backs up the identity database to `.local/backups/` (restore with
 `pg_restore --clean` into the stopped database), stops Keycloak, creates a
 temporary admin service account with `kc.sh bootstrap-admin`, starts Keycloak,
-creates the two Atlas clients or adds any mapper they lack, deletes the temporary
-account and confirms its credential is refused, then rebuilds and restarts the
-backend, worker, edge and Atlas. Only the Atlas clients are changed; users,
-other clients and sessions are untouched. If a step fails, Keycloak is restarted
+creates the two Atlas clients or adds any mapper they lack, adds the operator
+MFA flow, the console's required level and one authenticator per operator
+(secrets are added to `.local/operator-logins.json` first, keeping existing
+ones), deletes the temporary account and confirms its credential is refused,
+then rebuilds and restarts the backend, worker, edge and Atlas. Other users,
+clients and sessions are untouched. If a step fails, Keycloak is restarted
 and the temporary account is still removed.
 
 ## Verify without changing the operating system
@@ -191,11 +194,16 @@ curl's Schannel behavior can differ from Python/OpenSSL for a locally generated
 CA; use the verified host check for repeatable automated measurement.
 
 The fictional usernames are `alice` (operator), `bob` (independent approver), and
-`clara` (resource owner/auditor). Open `.local/operator-logins.json` locally in an
-editor when a password is needed. Do not paste it into chat, commands, reports,
-source control, screenshots, or a public artifact. The live tests mount that file
+`clara` (resource owner/auditor). Operators sign in with a password and then a
+six-digit one-time code: Keycloak's operator flow requires both, and the backend
+refuses any session whose ID token is not at the `mfa` level, even if a request
+asks for less. `.local/operator-logins.json` holds each operator's password and
+authenticator secret (`totp`); add the secret to an authenticator app as a
+time-based key, or let the live tests compute codes from it. Open the file
+locally in an editor only. Do not paste it into chat, commands, reports, source
+control, screenshots, or a public artifact. The live tests mount that file
 read-only only into their one-shot test container; application services do not
-mount operator passwords.
+mount operator passwords or authenticator secrets.
 
 ## Real-browser check of the console
 

@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { readFile } from "node:fs/promises";
+import { createHmac } from "node:crypto";
+import { readFile, rename, writeFile } from "node:fs/promises";
 
 const loginsPath = process.env.ACCESSOPS_LIVE_LOGINS;
 const reports = process.env.ACCESSOPS_LIVE_REPORTS ?? "/tmp";
@@ -22,10 +23,48 @@ type Snapshot = {
 };
 
 let passwords: Record<string, string>;
+let authenticators: Record<string, string>;
 test.beforeAll(async () => {
-  // Read only the two generated lab operator passwords; never logged or reported.
-  passwords = JSON.parse(await readFile(loginsPath!, "utf8")).passwords;
+  // Generated lab operator passwords and authenticator secrets; never logged or reported.
+  const logins = JSON.parse(await readFile(loginsPath!, "utf8"));
+  passwords = logins.passwords;
+  authenticators = logins.totp;
 });
+
+// RFC 6238 code (HMAC-SHA1, six digits) for one 30-second step.
+function totp(secret: string, step: number) {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const digest = createHmac("sha1", Buffer.from(secret, "utf8"))
+    .update(counter)
+    .digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return value.toString().padStart(6, "0");
+}
+
+// Keycloak refuses a reused code, so each step is used once per operator. The
+// step file is shared with the Python suites through the report folder.
+async function oneTimeCode(person: string) {
+  const path = `${reports}/otp-steps.json`;
+  let steps: Record<string, number> = {};
+  try {
+    steps = JSON.parse(await readFile(path, "utf8"));
+  } catch {
+    steps = {};
+  }
+  const now = () => Math.floor(Date.now() / 30_000);
+  const step = Math.max(now(), (steps[person] ?? -1) + 1);
+  while (step > now() + 1) {
+    await new Promise((done) =>
+      setTimeout(done, Math.max(0, (step - 1) * 30_000 - Date.now() + 200)),
+    );
+  }
+  steps[person] = step;
+  await writeFile(`${path}.tmp`, JSON.stringify(steps));
+  await rename(`${path}.tmp`, path);
+  return totp(authenticators[person], step);
+}
 
 // Each operator gets a separate browser profile, as two different people would.
 async function operator(browser: Browser, person: "alice" | "bob") {
@@ -44,6 +83,8 @@ async function operator(browser: Browser, person: "alice" | "bob") {
   );
   await page.locator("#username").fill(person);
   await page.locator("#password").fill(passwords[person]);
+  await page.locator("#kc-login").click();
+  await page.locator("#otp").fill(await oneTimeCode(person));
   await page.locator("#kc-login").click();
   await expect(page.getByText("Connected lab", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

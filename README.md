@@ -58,7 +58,8 @@ backend source. Details, failed attempts and limits are in the
 | Departure case, end to end through real Keycloak | 18 / 18 passed |
 | Departure case with a Samba directory account | 28 / 28 passed |
 | New LDAPS and Kerberos logins before → after offboarding | allowed → denied (2 / 2 each) |
-| OIDC, protocol, offboarding, OPA and HTTPS boundary suites | 11, 18, 11, 23 and 5 passed |
+| Operator sign-in requires a second factor | 14 / 14 OIDC checks: password then one-time code; a wrong code and a request lowered to password-only are both refused; sessions audited at the `mfa` level |
+| Protocol, offboarding, OPA and HTTPS boundary suites | 18, 11, 32 and 5 passed |
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
 | Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |

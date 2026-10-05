@@ -48,7 +48,9 @@ def oidc_login(request):
     # State, nonce and verifier live only in the short-lived server session.
     request.session.set_expiry(300)
     try:
-        return oidc_client().authorize_redirect(request, settings.OIDC_REDIRECT_URI)
+        return oidc_client().authorize_redirect(
+            request, settings.OIDC_REDIRECT_URI, acr_values=settings.OIDC_REQUIRED_ACR
+        )
     except Exception:
         return JsonResponse(
             {
@@ -90,6 +92,9 @@ def oidc_callback(request):
             or not 1 <= len(claims["sub"]) <= 255
         ):
             raise ValueError("Invalid operator identity")
+        # Whatever was requested, only a second-factor sign-in opens a session.
+        if claims.get("acr") != settings.OIDC_REQUIRED_ACR:
+            raise ValueError("Second factor required")
         roles = claims.get("accessops_roles", [])
         projects = claims.get("accessops_projects", [])
         if (
@@ -141,7 +146,10 @@ def oidc_callback(request):
                 expires_at=timezone.now() + timedelta(minutes=30),
             )
             audit.append(
-                principal, "session.created", principal.pk, {"issuer": settings.OIDC_ISSUER}
+                principal,
+                "session.created",
+                principal.pk,
+                {"issuer": settings.OIDC_ISSUER, "acr": claims["acr"]},
             )
         return redirect(settings.OIDC_POST_LOGOUT_URI)
     except Exception:

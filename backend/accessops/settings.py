@@ -83,6 +83,9 @@ OIDC_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID", "accessops-console")
 OIDC_CLIENT_SECRET = os.environ.get("OIDC_CLIENT_SECRET", "")
 OIDC_REDIRECT_URI = os.environ.get("OIDC_REDIRECT_URI", "https://localhost:8443/auth/callback")
 OIDC_POST_LOGOUT_URI = os.environ.get("OIDC_POST_LOGOUT_URI", "https://localhost:8443/")
+# Operators must sign in with a second factor: the identity provider's "mfa"
+# authentication level, which this application requests and then requires.
+OIDC_REQUIRED_ACR = "mfa"
 WORKFORCE_ISSUER = os.environ.get(
     "WORKFORCE_ISSUER", "https://localhost:8443/realms/accessops-workforce"
 ).rstrip("/")

@@ -2,16 +2,22 @@
 
 Mount .local/operator-logins.json read-only at /run/test-logins.json into a
 one-shot test container only. It never becomes an application runtime mount.
+Operators sign in with a password and a one-time code computed from the lab's
+generated authenticator secret; neither is ever reported.
 The test uses synthetic Clara/Atlas and returns it to a revoked state; audit
 events and measured requests are intentionally preserved.
 """
 
+import hashlib
+import hmac
 import json
+import os
+import struct
 import time
 import uuid
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
 
 from check_report import CheckReport, report_arguments
 
@@ -19,6 +25,10 @@ from integrations.transport import client
 
 APP = "https://accessops.test:8443"
 IDENTITY = "https://id.accessops.test:8443"
+LOGINS = Path("/run/test-logins.json")
+# Which 30-second code step each operator last used, shared by every suite in a
+# lab run so that no code is offered to Keycloak twice. Holds no secrets.
+OTP_STEPS = Path(os.environ.get("ACCESSOPS_OTP_STEPS", "/test-output/otp-steps.json"))
 BACKEND_FILES = [
     "backend/accessops/settings.py",
     "backend/accessops/urls.py",
@@ -38,15 +48,16 @@ BACKEND_FILES = [
 
 
 class LoginForm(HTMLParser):
-    def __init__(self):
+    def __init__(self, form_id="kc-form-login"):
         super().__init__()
+        self.form_id = form_id
         self.action = None
         self.fields = {}
         self.inside = False
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        if tag == "form" and attrs.get("id") == "kc-form-login":
+        if tag == "form" and attrs.get("id") == self.form_id:
             self.action, self.inside = attrs.get("action"), True
         if self.inside and tag == "input" and attrs.get("type") == "hidden" and attrs.get("name"):
             self.fields[attrs["name"]] = attrs.get("value", "")
@@ -73,6 +84,89 @@ def follow(http, response):
     raise RuntimeError("Too many OIDC redirects")
 
 
+def totp(secret, step):
+    """RFC 6238 code (HMAC-SHA1, six digits) for one 30-second step."""
+    digest = hmac.new(secret.encode(), struct.pack(">Q", step), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = int.from_bytes(digest[offset : offset + 4], "big") & 0x7FFFFFFF
+    return f"{value % 1_000_000:06d}"
+
+
+def one_time_code(person):
+    """A code for a step this operator has not used. Keycloak refuses a reused
+    code and accepts one step either side of its own, so a second sign-in within
+    the same 30 seconds uses the next step, and a third waits for it."""
+    secret = json.loads(LOGINS.read_text())["totp"][person]
+    steps = json.loads(OTP_STEPS.read_text()) if OTP_STEPS.is_file() else {}
+    step = max(int(time.time() // 30), steps.get(person, -1) + 1)
+    while step > int(time.time() // 30) + 1:
+        time.sleep(max(0.0, (step - 1) * 30 - time.time() + 0.2))
+    steps[person] = step
+    staged = OTP_STEPS.with_suffix(".tmp")
+    staged.write_text(json.dumps(steps))
+    os.replace(staged, OTP_STEPS)
+    return totp(secret, step)
+
+
+def unused_code(person):
+    """A six-digit code that is wrong for every step Keycloak could accept now."""
+    secret = json.loads(LOGINS.read_text())["totp"][person]
+    now = int(time.time() // 30)
+    valid = {totp(secret, step) for step in range(now - 2, now + 3)}
+    return next(code for code in (f"{n:06d}" for n in range(1_000_000)) if code not in valid)
+
+
+def authenticated(http):
+    return http.get(APP + "/api/v1/session").json().get("authenticated") is True
+
+
+def second_factor_form(page):
+    """Keycloak's one-time code form, or None if the page is anything else."""
+    form = LoginForm("kc-otp-login-form")
+    form.feed(page.text)
+    return form if page.status_code == 200 and form.action else None
+
+
+def start_login(http, person, password, acr=None):
+    """Begin the console's sign-in, submit the password and return Keycloak's
+    answer. acr replaces the requested authentication level, as a tampering
+    browser could."""
+    start = http.get(APP + "/auth/login")
+    if start.status_code != 302:
+        raise RuntimeError("OIDC authorization initiation failed")
+    url = safe_url(start.headers["location"], APP)
+    params = parse_qs(urlsplit(url).query)
+    if (
+        params.get("code_challenge_method") != ["S256"]
+        or not params.get("state")
+        or not params.get("nonce")
+        or params.get("acr_values") != ["mfa"]
+    ):
+        raise RuntimeError("OIDC state, nonce, S256 challenge or required level absent")
+    if acr:
+        params["acr_values"] = [acr]
+        url = url.split("?")[0] + "?" + urlencode(params, doseq=True)
+    page = follow(http, http.get(url))
+    form = LoginForm()
+    form.feed(page.text)
+    if page.status_code != 200 or not form.action:
+        raise RuntimeError("Expected identity login form unavailable")
+    action = safe_url(form.action, str(page.url))
+    if not action.startswith(IDENTITY + "/realms/accessops-operators/"):
+        raise RuntimeError("Login form targeted unexpected realm")
+    return follow(
+        http, http.post(action, data={**form.fields, "username": person, "password": password})
+    )
+
+
+def submit_code(http, page, code):
+    form = second_factor_form(page)
+    action = safe_url(form.action, str(page.url))
+    if not action.startswith(IDENTITY + "/realms/accessops-operators/"):
+        raise RuntimeError("Code form targeted unexpected realm")
+    return follow(http, http.post(action, data={**form.fields, "otp": code}))
+
+
 def login(person, password):
     http = client(timeout=10)
     try:
@@ -83,28 +177,10 @@ def login(person, password):
 
 
 def _login(http, person, password):
-    start = http.get(APP + "/auth/login")
-    if start.status_code != 302:
-        raise RuntimeError("OIDC authorization initiation failed")
-    url = safe_url(start.headers["location"], APP)
-    params = parse_qs(urlsplit(url).query)
-    if (
-        params.get("code_challenge_method") != ["S256"]
-        or not params.get("state")
-        or not params.get("nonce")
-    ):
-        raise RuntimeError("OIDC state, nonce, or S256 challenge absent")
-    page = follow(http, http.get(url))
-    form = LoginForm()
-    form.feed(page.text)
-    if page.status_code != 200 or not form.action:
-        raise RuntimeError("Expected identity login form unavailable")
-    action = safe_url(form.action, str(page.url))
-    if not action.startswith(IDENTITY + "/realms/accessops-operators/"):
-        raise RuntimeError("Login form targeted unexpected realm")
-    response = follow(
-        http, http.post(action, data={**form.fields, "username": person, "password": password})
-    )
+    page = start_login(http, person, password)
+    if second_factor_form(page) is None:
+        raise RuntimeError("Identity provider did not ask for a second factor")
+    response = submit_code(http, page, one_time_code(person))
     if response.status_code != 200 or not str(response.url).startswith(APP):
         raise RuntimeError("OIDC callback did not establish an application session")
     session = http.get(APP + "/api/v1/session").json()
@@ -171,7 +247,8 @@ def main():
         limitations=[
             "Uses synthetic Clara/Atlas only and requires no active Clara/Atlas grant at the start.",
             "Leaves synthetic request/audit history and returns Clara/Atlas to a revoked grant state.",
-            "Local application logout is measured; IdP-triggered backchannel logout and signing-key rotation are not.",
+            "Operators sign in with a password and a time-based one-time code from the lab's generated authenticator secret; phishing-resistant authenticators (WebAuthn) are not configured.",
+            "Local application logout is measured here; signing-key rotation has its own drill.",
         ],
         source_files=[
             "scripts/live_oidc.py",
@@ -183,8 +260,26 @@ def main():
     sessions = {}
     containment_required = False
     try:
+        logins = json.loads(LOGINS.read_text())["passwords"]
+        with report.case("operator sign-in stops for a one-time code after a correct password"):
+            with client(timeout=10) as http:
+                page = start_login(http, "bob", logins["bob"])
+                if second_factor_form(page) is None or authenticated(http):
+                    raise AssertionError("A password alone went further than the code form")
+        with report.case("a wrong one-time code is refused and opens no session"):
+            with client(timeout=10) as http:
+                page = start_login(http, "bob", logins["bob"])
+                answer = submit_code(http, page, unused_code("bob"))
+                if second_factor_form(answer) is None or authenticated(http):
+                    raise AssertionError("A wrong code was accepted")
+        with report.case("a request lowered to password-only still cannot open a session"):
+            with client(timeout=10) as http:
+                page = start_login(http, "bob", logins["bob"], acr="password")
+                if authenticated(http):
+                    raise AssertionError("A password-only sign-in opened a session")
+                stopped_by = "the identity provider" if second_factor_form(page) else "AccessOps"
+                print(f"password-only request stopped by {stopped_by}")
         with report.case("three real operator OIDC code+PKCE sessions over verified TLS"):
-            logins = json.loads(Path("/run/test-logins.json").read_text())["passwords"]
             for name in ("alice", "bob", "clara"):
                 sessions[name] = login(name, logins[name])
         alice, acsrf = sessions["alice"]
