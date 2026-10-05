@@ -36,6 +36,7 @@ CONNECTED = {
     "leaver-assurance": "Leaver assurance and signed SOC signals",
     "leaver-assurance-attempt-1": "Initial leaver assurance run — failed attempt retained",
     "key-rotation": "Live signing-key rotation and leaked-key drill",
+    "entra-departure": "Live Microsoft Entra departure through Microsoft Graph",
 }
 JUNIT = {
     "postgresql-tests.xml": (

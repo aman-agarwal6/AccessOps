@@ -4,9 +4,9 @@ AccessOps can assess Entra and GitHub observations without a paid service or a
 test tenant. The included vendor-response fixtures are synthetic and work
 offline. The optional collector performs bounded, read-only API requests in a
 user-owned tenant. A separate, opt-in [live Entra connector](#live-microsoft-entra-connector)
-contains an enrolled test user in the lab's own tenant; until its first live run
-is recorded in the verification ledger, there is **no live Entra or GitHub
-tenant measurement**.
+contains an enrolled test user in the lab's own free test tenant; its live runs
+are recorded in the [verification ledger](verification.md). There is **no live
+GitHub organization measurement**.
 
 A snapshot can identify an enabled Entra account or observed GitHub membership
 as residual access. It cannot independently prove complete departure handling.

@@ -36,6 +36,9 @@ directory, using synthetic people:
 - **The people who can disable anyone need a second factor**, enforced by the
   identity provider and again by the backend, including against a request
   rewritten to ask for less.
+- **Microsoft Entra is contained for real**, in a test tenant: the account
+  disabled, its group removed and its sign-in sessions revoked through Microsoft
+  Graph, then read back before the case counts it.
 - **Key rotation and a leaked signing key are rehearsed live**, in both realms.
 - **The directory's limits are measured, not assumed.** Kerberos tickets issued
   before offboarding keep working for up to 10 hours, and the case says so.
@@ -96,6 +99,7 @@ source. Details, every failed attempt and the limits of each check are in the
 | Sign-in after departure detected, blocking closure, signalled to the SOC | 7 / 7 passed: detected 32 s after the sign-in |
 | Operator sign-in with a second factor | 14 / 14 passed: wrong code and password-only request refused |
 | Signing-key rotation and leaked-key drill, both realms | 13 / 13 passed: no token refused during rotation; a forged token refused by Keycloak at once and by the app 60 s after the key's removal |
+| Live Microsoft Entra departure (a free test tenant, synthetic users) | 11 / 11 passed: Graph showed the account disabled, out of the group and sessions revoked 19.8 s after containment; the tenant administrator and an unlisted user were refused |
 | Departure case end to end through real Keycloak | 18 / 18 passed |
 | Departure case with a Samba directory account | 28 / 28 passed; new LDAPS and Kerberos logins allowed → denied (2 / 2 each) |
 | Directory sessions and tickets held from before offboarding | 6 / 6 passed: no new service tickets; earlier ones keep working until they expire (10 h) |
@@ -120,6 +124,8 @@ source. Details, every failed attempt and the limits of each check are in the
   tokens themselves.
 - **Directory:** LDAPS with verified TLS, immutable GUID targets, atomic account
   flag updates and permissions limited to the exact fixture objects.
+- **Microsoft Entra:** Microsoft Graph with certificate client credentials; the
+  connector acts only on listed test objects and refuses administrators.
 
 ## Security choices
 
@@ -142,8 +148,9 @@ source. Details, every failed attempt and the limits of each check are in the
 ## Limits
 
 This is a reference system with synthetic data, not a production deployment.
-No Microsoft or GitHub tenant was contacted; those platforms appear as offline
-fixtures and owner statements. Samba results do not prove Microsoft AD
+Microsoft Entra was tested only in a free test tenant with synthetic users; no
+GitHub organization or Microsoft 365 service was contacted, and those appear as
+offline fixtures and owner statements. Samba results do not prove Microsoft AD
 interoperability. An app that checks access tokens itself refuses a leaver's
 token early only if it follows AccessOps' revocation signals, as the lab app
 does. In the directory, connections and Kerberos tickets from before
