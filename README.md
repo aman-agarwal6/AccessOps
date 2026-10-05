@@ -62,6 +62,7 @@ backend source. Details, failed attempts and limits are in the
 | Backend (PostgreSQL / host) and integration suites | 110, 109 + 1 skipped, 145 passed |
 | Console unit, browser and accessibility checks | 43 and 33 passed (axe, both themes) |
 | Redesigned console in real Firefox against the live lab | Full departure case passed: sign-in, provisioning, containment, owner statements, independent closure |
+| Sign-in after departure detected, signalled to the SOC and blocking closure | 7 / 7 passed: detected 32 s after the sign-in; signed CAEP/RISC events verified by a polling receiver |
 | Signed HR event → access contained and app signed out | 10 / 10 passed: 2.8 s for an effective departure, 2.6 s after a future one takes effect |
 | Leaver's sessions and tokens before → after containment | 19 / 19 passed: app session ended by back-channel logout; refresh token, offline token and introspection rejected; an app that checks tokens itself still accepts the last one for up to 2 minutes |
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
@@ -110,6 +111,9 @@ Microsoft tenant. Secrets are generated under `.local/` and never committed.
   back-channel logout to apps, and counts only once no session remains.
 - HR events must carry a valid Standard Webhooks signature. The HR feed is its
   own identity that can open and contain departures and nothing else.
+- For a day after each departure, AccessOps reads the account's sign-ins. Any
+  successful one blocks closure until investigated, and the SOC receives signed
+  Shared Signals events for containment and for that sign-in.
 - Accounts are matched by immutable IDs, never by name or email.
 - The review assistant can only propose. It cannot approve or apply anything.
 - Every pull request runs CodeQL, dependency review and OSV-Scanner; OpenSSF
