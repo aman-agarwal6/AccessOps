@@ -68,7 +68,7 @@ backend source. Details, failed attempts and limits are in the
 | Signed [v0.2.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.2.0) (GitHub CI) | 255 cases on PostgreSQL 17; provenance and SBOM verified |
 | Deployed demo | 17 / 17 checks passed |
 
-The demo's evidence page publishes these reports, including eight failed
+The demo's evidence page publishes these reports, including twelve failed
 attempts kept on record beside the fixes they led to.
 
 ## Run it

@@ -28,6 +28,13 @@ CONNECTED = {
     "identity-outage": "Actual identity-provider outage denial",
     "offboarding-attempt-1-failed": "Initial drift check — failed attempt retained",
     "host-health-attempt-1-failed": "Initial TLS negative probe — failed attempt retained",
+    "sessions": "Workforce session revocation before and after containment",
+    "sessions-attempt-1": "Initial session revocation run — failed attempt retained",
+    "hr-intake": "Signed HR leaver intake, timed to app sign-out",
+    "hr-intake-attempt-1": "Initial HR intake run — failed attempt retained",
+    "hr-intake-attempt-2": "Second HR intake run — failed attempt retained",
+    "leaver-assurance": "Leaver assurance and signed SOC signals",
+    "leaver-assurance-attempt-1": "Initial leaver assurance run — failed attempt retained",
 }
 JUNIT = {
     "postgresql-tests.xml": (
