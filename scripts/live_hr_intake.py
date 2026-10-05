@@ -168,7 +168,9 @@ def main():
             enroll("now")
             enroll("later")
         now_id, _, now_suffix = workers["now"]
-        event = departure(now_id, datetime.now(UTC) - timedelta(seconds=5), now_suffix)
+        # Effective now, after the worker's Atlas sign-in: a backdated time would make
+        # that sign-in count as access after departure and alert the SOC receiver.
+        event = departure(now_id, datetime.now(UTC), now_suffix)
 
         with report.case("unsigned, wrongly signed, stale or altered events are refused"):
             body, headers = signed(event, secret=secret)
