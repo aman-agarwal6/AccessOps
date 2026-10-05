@@ -58,6 +58,7 @@ backend source. Details, failed attempts and limits are in the
 | Departure case, end to end through real Keycloak | 18 / 18 passed |
 | Departure case with a Samba directory account | 28 / 28 passed |
 | New LDAPS and Kerberos logins before → after offboarding | allowed → denied (2 / 2 each) |
+| Directory sessions and tickets held from before offboarding | 6 / 6 passed: new service tickets refused; open connections and earlier service tickets keep the removed group until they close or expire (10 h), and the case states that time |
 | Operator sign-in requires a second factor | 14 / 14 OIDC checks: password then one-time code; a wrong code and a request lowered to password-only are both refused; sessions audited at the `mfa` level |
 | Live signing-key rotation drill, both realms | 13 / 13 passed: publish-first rotation with no refused tokens; a leaked key's forged token was refused by Keycloak at once and by an app that checks tokens itself 60 s after removal |
 | Protocol, offboarding, OPA and HTTPS boundary suites | 18, 11, 32 and 5 passed |
@@ -129,8 +130,10 @@ No Microsoft or GitHub tenant was contacted; those platforms appear as offline
 fixtures and owner statements. Samba results do not prove Microsoft AD
 interoperability. Keycloak sessions are ended and earlier tokens rejected; an app
 that checks access tokens itself refuses earlier ones only if it follows
-AccessOps' revocation signals, as the Atlas lab app does. Samba sessions and
-Kerberos tickets are not revoked. Closure is an administrative record, not proof that every copy or
+AccessOps' revocation signals, as the Atlas lab app does. In the directory, new
+sign-ins and new Kerberos service tickets are refused, but connections and
+service tickets from before containment keep working until they close or expire
+(up to 10 hours): Kerberos has no per-user revocation. Closure is an administrative record, not proof that every copy or
 session is gone. See the
 [threat model](docs/threat-model.md) and [standards matrix](docs/standards.md).
 

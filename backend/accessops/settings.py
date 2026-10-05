@@ -107,6 +107,11 @@ SSF_RECEIVER_TOKEN = os.environ.get("SSF_RECEIVER_TOKEN", "")
 SSF_ATLAS_AUDIENCE = "urn:accessops:atlas"
 SSF_ATLAS_TOKEN = os.environ.get("ATLAS_SIGNAL_TOKEN", "")
 INTERNAL_API_URL = os.environ.get("INTERNAL_API_URL", "https://localhost:8443").rstrip("/")
+# The directory's maximum Kerberos service ticket lifetime (the Samba and Active
+# Directory default is 10 hours). Kerberos has no per-user revocation: a ticket
+# issued before containment keeps working, with the person's old groups, until it
+# expires, so directory evidence states when that is at the latest.
+AD_TICKET_HOURS = int(os.environ.get("ACCESSOPS_AD_TICKET_HOURS", "10"))
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

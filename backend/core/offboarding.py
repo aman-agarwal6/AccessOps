@@ -64,7 +64,7 @@ LIMITATIONS = [
     "Entra directory state does not prove application-owned sessions or guest home-tenant sessions ended.",
     "GitHub removal does not erase clones, unknown repositories or every token/key.",
     "Data retention, licensing and legacy actions are owner attestations, not automatic platform writes.",
-    "Optional Samba AD observations cover the enrolled account and mapped groups, not existing sessions/tickets or Microsoft interoperability.",
+    "Samba AD: disabling the account stops new sign-ins and new Kerberos service tickets, but a directory session or service ticket issued before containment keeps the removed groups until it closes or expires; Kerberos has no per-user revocation. Samba results do not prove Microsoft AD interoperability.",
 ]
 CAPABILITIES = [
     "account_enabled",
@@ -591,10 +591,17 @@ def assess(case):
                     " were read. Contain the account again and record the investigation."
                 )
         elif key == "ad-directory" and directory_at:
+            residual = directory_at + timedelta(hours=settings.AD_TICKET_HOURS)
             task.update(
                 status="observed",
                 evidenceKind="provider_observation",
-                evidenceSummary="Samba AD-compatible lab worker observed the exact enrolled account disabled and every mapped group membership absent; existing tickets/sessions are separate.",
+                evidenceSummary=(
+                    "Samba AD-compatible lab worker observed the exact enrolled account disabled"
+                    " and every mapped group membership absent; new Kerberos service tickets are"
+                    " refused. Sessions and service tickets issued before containment keep the"
+                    " removed groups until they close or expire: by"
+                    f" {residual.strftime('%Y-%m-%d %H:%M')} UTC at the latest."
+                ),
                 observedAt=directory_at.isoformat(),
             )
         elif key == "entra-directory":

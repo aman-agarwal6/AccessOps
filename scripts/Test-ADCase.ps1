@@ -12,6 +12,7 @@ function Invoke-ContainerInput([string]$Text, [string[]]$Arguments) {
     $OutputEncoding = [Text.UTF8Encoding]::new($false)
     try { $Text | docker @Arguments } finally { [Console]::InputEncoding = $previousInput; $OutputEncoding = $previousOutput }
 }
+. (Join-Path $PSScriptRoot 'LabCompose.ps1')
 $adCaseRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $adCaseLabRoot = (Resolve-Path -LiteralPath $LabRoot).Path
 $adCaseCompose = Join-Path $adCaseLabRoot 'compose.yml'
@@ -44,26 +45,46 @@ try {
     $adCaseCleanupAvailable = $true
     $adCaseArgs = @('compose','-f','infra/compose.yml','-f','infra/compose.ad.yml')
     if (-not $SkipBuild) {
-        & docker @adCaseArgs build backend
-        if ($LASTEXITCODE -ne 0) { throw 'Directory connector image build failed.' }
+        Invoke-LabNative -Command 'docker' -Arguments ($adCaseArgs + @('build', 'backend')) -Failure 'Directory connector image build failed.'
     }
-    & docker @adCaseArgs run --rm --no-deps backend python manage.py migrate --noinput
-    if ($LASTEXITCODE -ne 0) { throw 'Directory case migration failed.' }
-    & docker @adCaseArgs up -d --wait --wait-timeout 120 backend worker
-    if ($LASTEXITCODE -ne 0) { throw 'Directory-connected application did not become healthy.' }
+    Invoke-LabNative -Command 'docker' -Arguments ($adCaseArgs + @('run', '--rm', '--no-deps', 'backend', 'python', 'manage.py', 'migrate', '--noinput')) -Failure 'Directory case migration failed.'
+    Invoke-LabNative -Command 'docker' -Arguments ($adCaseArgs + @('up', '-d', '--wait', '--wait-timeout', '120', 'backend', 'worker')) -Failure 'Directory-connected application did not become healthy.'
     $adCaseOutput = Join-Path $adCaseRoot 'output/connected'
     New-Item -ItemType Directory -Path $adCaseOutput -Force | Out-Null
     $adCaseFailed = $false
+    # Probes run in the opt-in directory-probe service: the directory image with
+    # only its public CA, the fixture reference and the report folder.
+    $adCaseProbe = $adCaseArgs + @('run', '--rm', '--no-deps', '-T', '-v', "${adCaseFixture}:/run/ad-fixture.json:ro", '-v', "${adCaseOutput}:/reports", 'directory-probe')
+    $adCaseReady = Join-Path $adCaseOutput "ad-held-$adCaseSuffix.ready"
+    $adCaseGo = Join-Path $adCaseOutput "ad-held-$adCaseSuffix.go"
+    $adCaseHeld = $null
     try {
-        foreach ($adCasePhase in @('before','after')) {
-            if ($adCasePhase -eq 'after') {
-                & docker @adCaseArgs run --rm --no-deps -v "${adCaseRoot}/scripts:/app/scripts:ro" -v "${adCaseOutput}:/test-output" -v "${adCaseRoot}/.local/operator-logins.json:/run/test-logins.json:ro" -v "${adCaseFixture}:/run/ad-fixture.json:ro" backend python /app/scripts/live_cases.py --ad-fixture /run/ad-fixture.json --report "/test-output/cases-ad-$adCaseSuffix.json" --junit "/test-output/cases-ad-$adCaseSuffix.xml" --snapshot /test-output/connected-cases-ad-snapshot.json
-                if ($LASTEXITCODE -ne 0) { $adCaseFailed = $true }
-            }
-            & docker run --rm --network accessops-adlab_directory --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges --memory 192m --pids-limit 64 -v accessops-adlab_public-ca:/run/lab-ca:ro -v "${adCaseFixture}:/run/ad-fixture.json:ro" -v "${adCaseRoot}/scripts/ad_auth_probe.py:/run/ad-auth-probe.py:ro" -v "${adCaseOutput}:/reports" --entrypoint /usr/bin/python3 accessops-adlab:local /run/ad-auth-probe.py --phase $adCasePhase --report "/reports/ad-auth-$adCasePhase-$adCaseSuffix.json"
-            if ($LASTEXITCODE -ne 0) { $adCaseFailed = $true }
-        }
+        try { Invoke-LabNative -Command 'docker' -Arguments ($adCaseProbe + @('/run/probes/ad_auth_probe.py', '--phase', 'before', '--report', "/reports/ad-auth-before-$adCaseSuffix.json")) }
+        catch { $adCaseFailed = $true }
+        # While the fixture user is active, hold the sessions and tickets a signed-in
+        # person would have, then measure them once the case has offboarded the user.
+        $adCaseHeld = Start-Job -ScriptBlock {
+            param([string]$Root, [string[]]$Arguments)
+            Set-Location -LiteralPath $Root
+            $ErrorActionPreference = 'Continue'
+            & docker @Arguments 2>&1 | ForEach-Object { "$_" }
+            "exit=$LASTEXITCODE"
+        } -ArgumentList $adCaseRoot, ($adCaseProbe + @('/run/probes/ad_session_probe.py', '--report', "/reports/ad-held-sessions-$adCaseSuffix.json", '--ready', "/reports/ad-held-$adCaseSuffix.ready", '--go', "/reports/ad-held-$adCaseSuffix.go"))
+        $adCaseDeadline = (Get-Date).AddSeconds(120)
+        while (-not (Test-Path -LiteralPath $adCaseReady) -and $adCaseHeld.State -eq 'Running' -and (Get-Date) -lt $adCaseDeadline) { Start-Sleep -Seconds 1 }
+        if (-not (Test-Path -LiteralPath $adCaseReady)) { $adCaseFailed = $true; Write-Warning 'The held-session probe did not get ready.' }
+        try { Invoke-LabNative -Command 'docker' -Arguments ($adCaseArgs + @('run', '--rm', '--no-deps', '-v', "${adCaseRoot}/scripts:/app/scripts:ro", '-v', "${adCaseOutput}:/test-output", '-v', "${adCaseRoot}/.local/operator-logins.json:/run/test-logins.json:ro", '-v', "${adCaseFixture}:/run/ad-fixture.json:ro", 'backend', 'python', '/app/scripts/live_cases.py', '--ad-fixture', '/run/ad-fixture.json', '--report', "/test-output/cases-ad-$adCaseSuffix.json", '--junit', "/test-output/cases-ad-$adCaseSuffix.xml", '--snapshot', '/test-output/connected-cases-ad-snapshot.json')) }
+        catch { $adCaseFailed = $true }
+        Set-Content -LiteralPath $adCaseGo -Value 'offboarded'
+        $null = Wait-Job -Job $adCaseHeld -Timeout 180
+        $adCaseHeldOutput = @(Receive-Job -Job $adCaseHeld)
+        $adCaseHeldOutput | Select-Object -Last 3 | ForEach-Object { Write-Output $_ }
+        if ($adCaseHeldOutput[-1] -ne 'exit=0') { $adCaseFailed = $true }
+        try { Invoke-LabNative -Command 'docker' -Arguments ($adCaseProbe + @('/run/probes/ad_auth_probe.py', '--phase', 'after', '--report', "/reports/ad-auth-after-$adCaseSuffix.json")) }
+        catch { $adCaseFailed = $true }
     } finally {
+        if ($adCaseHeld) { Stop-Job -Job $adCaseHeld -ErrorAction SilentlyContinue; Remove-Job -Job $adCaseHeld -Force -ErrorAction SilentlyContinue }
+        Remove-Item -LiteralPath $adCaseReady, $adCaseGo -ErrorAction SilentlyContinue
         docker exec $adCaseDc /usr/bin/python3 $adCaseCleanupPath --contain-interrupted $adCaseSuffix
         if ($LASTEXITCODE -ne 0) { throw 'Exact fixture/canary containment failed; preserve state for local review.' }
         $adCaseCleanupAvailable = $false

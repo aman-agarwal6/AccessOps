@@ -67,14 +67,28 @@ explicit complete readback and a read-only refresh. Successful readings capture
 their actual time before the completion database gate; stale/missing readings,
 new pending jobs and later failed outcomes block closure. Owner statements cannot
 replace the native directory proof. Before/after one-shot probes verify new
-LDAPS authentication and new Kerberos ticket issuance. No existing ticket/session
-revocation is measured. Entra/GitHub imports remain visibly synthetic; external
-scope exclusions remain owner statements rather than live cloud measurements.
+LDAPS authentication and new Kerberos ticket issuance. Entra/GitHub imports
+remain visibly synthetic; external scope exclusions remain owner statements
+rather than live cloud measurements.
 
-Measured on 4 October 2026 with fresh fixture `6bfe42dc4a25`: the case suite
+A third probe holds what an already signed-in person would have for the whole
+case: an LDAPS connection opened with the password, a Kerberos ticket-granting
+ticket, an LDAP service ticket and an LDAP connection opened with it. After
+offboarding, the domain controller refuses the old ticket-granting ticket any
+new service ticket. Everything already held keeps working, with the removed
+group still in its security token: both open connections answer, and the old
+service ticket opens a new connection. Kerberos has no per-user revocation, so
+that access ends only when the connection closes or the ticket expires (10
+hours here, the Samba and AD default). The directory task's evidence therefore
+names the latest expiry time instead of implying that all access is gone.
+`ACCESSOPS_AD_TICKET_HOURS` sets the domain's lifetime if it differs; shortening
+the domain's service ticket lifetime is the lever that narrows the window.
+
+Measured on 5 October 2026 with fresh fixture `2a882426c8f1`: the case suite
 passed 28 of 28 checks, new LDAPS and Kerberos authentication succeeded before
-offboarding (2 of 2) and both were denied afterward (2 of 2). See the
-[verification ledger](verification.md) for scope and retained failed attempts.
+offboarding (2 of 2) and both were denied afterward (2 of 2), and the held-session
+probe passed 6 of 6. See the [verification ledger](verification.md) for scope
+and retained failed attempts.
 
 The wrappers run under Windows PowerShell 5.1 and PowerShell 7. Under 5.1 they
 pin UTF-8 without a byte-order mark for container stdin and read Compose labels
@@ -125,8 +139,8 @@ the certificate. It preserves the old certificate inside the DC's private TLS
 directory. Its JSON output contains public certificate digests and check results,
 with no key or credentials. Preserve that output as a separate correction record.
 See [third-party licenses and dated dependency review](third-party-notices.md).
-Production directory onboarding, full enterprise permission discovery, MFA,
-old-ticket revocation and Windows member-server authorization are separate work.
+Production directory onboarding, full enterprise permission discovery, SMB
+sessions and Windows member-server authorization are separate work.
 
 Protocol references: [LDAP atomic modify](https://www.rfc-editor.org/rfc/rfc4511#section-4.6),
 [immutable AD object identity](https://learn.microsoft.com/en-us/windows/win32/ad/object-names-and-identities),

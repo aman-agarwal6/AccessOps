@@ -14,6 +14,25 @@ services:
       - ../.local/ad:/run/accessops-ad:ro
       - ad-public-ca:/run/accessops-ad-ca:ro
     networks: [app, identity, policy, ad-directory]
+  # One-shot directory probes run by scripts/Test-ADCase.ps1, with the fixture
+  # reference and report folder mounted per run. Same image as the directory,
+  # but with only its public CA: no domain data, keys or admin credentials.
+  directory-probe:
+    image: accessops-adlab:local
+    pull_policy: never
+    profiles: [ad-probes]
+    entrypoint: [/usr/bin/python3]
+    volumes:
+      - ad-public-ca:/run/lab-ca:ro
+      - ../scripts/ad_auth_probe.py:/run/probes/ad_auth_probe.py:ro
+      - ../scripts/ad_session_probe.py:/run/probes/ad_session_probe.py:ro
+    networks: [ad-directory]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    pids_limit: 64
 networks:
   ad-directory:
     external: true
