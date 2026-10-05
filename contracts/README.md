@@ -23,6 +23,8 @@ POST /api/v1/agent/tasks/{id}/tools: {tool:'list_entitlements'|'read_evidence'|'
 GET /auth/login, GET /auth/callback, POST /auth/logout: OIDC code+PKCE server flow.
 POST /auth/backchannel-logout: verified OIDC logout token only.
 POST /api/v1/hr-events: signed HR leaver event, no session (see below).
+POST /api/v1/ssf/poll, GET /api/v1/ssf/jwks, GET /.well-known/ssf-configuration:
+signed leaver signals for a SOC receiver; see [leaver signals](leaver-signals.md).
 
 Mutations return {result:<domain object>, snapshot?:<snapshot>}.
 Errors: {error:{code,message}} with correct non-2xx status; never credentials.

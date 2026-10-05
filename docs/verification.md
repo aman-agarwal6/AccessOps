@@ -6,7 +6,7 @@ requirements. All runs used synthetic records on a personal workstation; no
 employer, production identity provider, Microsoft tenant or GitHub organization
 was contacted. Local reports are unsigned; signed CI evidence is listed separately.
 
-## Next release: session revocation and automated leaver intake
+## Next release: session revocation, automated intake and leaver assurance
 
 ### Workforce session revocation
 
@@ -87,6 +87,40 @@ second, so it is an upper bound):
 | Attempt | What it showed | Fix |
 | --- | --- | --- |
 | `hr-intake-attempt-1`, `-attempt-2` | Forged events were refused, but the signed event was refused too: the policy adapter rejected the new action and subject kind and answered `policy_unavailable`, failing closed | The adapter allowlists `departure_intake` and the `service` kind; any other kind still fails |
+
+### Leaver assurance and signed SOC signals
+
+Local runs on 5 October 2026 (UTC). For 24 hours after a departure, the worker
+reads the account's Keycloak sign-in events every 30 seconds through a new
+read-only events client. A successful sign-in or code exchange after the
+effective time adds a required "Investigate sign-in after departure" task that
+blocks closure until the owner records an investigation. Containment and any
+such sign-in also become signed Security Event Tokens (RISC account-disabled,
+CAEP session-revoked and session-established) that a SOC receiver collects by
+polling. SignalBridge's receiver is being built separately against
+[the leaver signals contract](../contracts/leaver-signals.md); this suite acted
+as the receiver.
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Leaver assurance, live | 7 passed | Containment signals arrived signed, verified against the published key and were shown on the case as delivered once acknowledged; a refused sign-in by the disabled account was counted and recorded on the Keycloak task with no access recorded; after the account was re-enabled outside AccessOps, the leaver's sign-in was detected, signalled and blocked the case 32 s later (mostly the 30-second reading interval); containing again ended it, and the owner's investigation statement unblocked the case |
+| Leaver assurance with `--external-receiver` | 7 passed | Same journey, leaving its signals queued for SignalBridge's receiver and checking them on the case; detection 33 s after the sign-in |
+| Existing live suites on the new worker loop | Protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 19, HR intake 10 passed | Written to a separate folder |
+| Host HTTPS boundary | 5 passed | |
+| Console in a real browser | Passed | The PR #9 journey |
+| Backend on host test settings | 167 passed, 1 skipped | Includes 20 tests for signing, key-less operation, receiver authentication, acknowledgement and errors, bounded polls, metadata, readings, the blocking task and its statement timing, unavailable readings and the event window |
+| Integration boundaries | 190 passed | Includes the events reader: private route, account and window checks, foreign or unknown records, and IP addresses dropped |
+| Console unit and browser tests | 46 and 33 passed | Includes the new task's placement with containment |
+
+What Keycloak records in this lab: sign-ins, code exchanges and refused sign-ins
+(`user_disabled`) are saved; refresh-token events are not, so reuse of an
+already-issued refresh token is not watched. A sign-in between the effective
+time and containment counts as access after departure.
+
+| Attempt | What it showed | Fix |
+| --- | --- | --- |
+| Events client, first upgrade | Keycloak answered 403: the client held `view-events` but, as in this realm's SCIM client, a role only reaches the token through a scope mapping and a role mapper | The upgrade adds both, and only for that role |
+| `leaver-assurance-attempt-1` | Signals passed, but the refused-sign-in check timed out: the test had backdated the departure by five seconds, so the worker's own Atlas sign-in just before it correctly counted as access after departure | The test sets the effective time after the sign-in; the behaviour is documented above |
 
 ## v0.2: departure cases, directory lab and console redesign
 

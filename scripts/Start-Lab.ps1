@@ -20,9 +20,11 @@ if (-not (Test-Path -LiteralPath '.local/backend.env')) {
 # Labs created before HR intake get its signing secret; existing secrets are kept.
 & $accessopsPython scripts/upgrade_lab.py hr
 if ($LASTEXITCODE -ne 0) { throw 'HR intake secret generation failed.' }
+& $accessopsPython scripts/upgrade_lab.py ssf
+if ($LASTEXITCODE -ne 0) { throw 'Security event key generation failed.' }
 # Windows: remove inherited broad ACLs from this application's credential directory.
 # The current user and SYSTEM retain access; Docker Desktop file sharing uses this user.
-foreach ($accessopsSecretPath in @('tls', 'executor', 'realms', 'backend.env', 'app-db.env', 'identity-db.env', 'keycloak.env', 'policy.env', 'policy-runtime.env', 'operator-logins.json', 'atlas.env', 'hr-intake.env', 'backups')) {
+foreach ($accessopsSecretPath in @('tls', 'executor', 'realms', 'backend.env', 'app-db.env', 'identity-db.env', 'keycloak.env', 'policy.env', 'policy-runtime.env', 'operator-logins.json', 'atlas.env', 'hr-intake.env', 'keycloak-events.env', 'ssf-receiver.env', 'ssf', 'backups')) {
     $accessopsTarget = Join-Path $accessopsLocal $accessopsSecretPath
     if (Test-Path -LiteralPath $accessopsTarget) {
         $accessopsItem = Get-Item -LiteralPath $accessopsTarget -Force

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param()
-# One-time upgrade of an existing lab for workforce session revocation. Adds or
-# updates only the two Atlas lab app clients in the workforce realm; users, other
+# One-time upgrade of an existing lab. Adds or updates only the lab-added clients
+# in the workforce realm (Atlas and the read-only events reader); users, other
 # clients and sessions are untouched. New labs get them from Start-Lab.ps1.
 $ErrorActionPreference = 'Stop'
 $accessopsRoot = Split-Path -Parent $PSScriptRoot
@@ -28,7 +28,11 @@ function Protect-LocalPath([string]$Path) {
 # 1. Local files: the Atlas client secret and the stored realm import.
 & $accessopsPython scripts/upgrade_lab.py local
 if ($LASTEXITCODE -ne 0) { throw 'Local upgrade failed.' }
-Protect-LocalPath (Join-Path $accessopsRoot '.local/atlas.env')
+& $accessopsPython scripts/upgrade_lab.py ssf
+if ($LASTEXITCODE -ne 0) { throw 'Security event key generation failed.' }
+foreach ($accessopsSecret in @('atlas.env', 'keycloak-events.env', 'ssf-receiver.env', 'ssf/signing.pem')) {
+    Protect-LocalPath (Join-Path $accessopsRoot ".local/$accessopsSecret")
+}
 
 # 2. Recovery point: a full identity database backup, kept under .local/backups.
 #    Restore with pg_restore --clean into the stopped identity database if needed.
@@ -57,7 +61,7 @@ try {
     Invoke-LabCompose -Arguments @('stop', 'keycloak')
     Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', '-T', '-e', 'UPGRADE_CLIENT_ID', '-e', 'UPGRADE_CLIENT_SECRET', '--entrypoint', '/opt/keycloak/bin/kc.sh', 'keycloak', 'bootstrap-admin', 'service', '--client-id:env', 'UPGRADE_CLIENT_ID', '--client-secret:env', 'UPGRADE_CLIENT_SECRET', '--no-prompt')
     Invoke-LabCompose -Arguments @('up', '-d', '--wait', 'keycloak', 'web')
-    Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', '-T', '-e', 'UPGRADE_CLIENT_ID', '-e', 'UPGRADE_CLIENT_SECRET', '-v', "${accessopsRoot}/.local/atlas.env:/run/atlas.env:ro", 'backend', 'python', '/app/scripts/upgrade_lab.py', 'realm')
+    Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', '-T', '-e', 'UPGRADE_CLIENT_ID', '-e', 'UPGRADE_CLIENT_SECRET', '-v', "${accessopsRoot}/.local/atlas.env:/run/atlas.env:ro", '-v', "${accessopsRoot}/.local/keycloak-events.env:/run/keycloak-events.env:ro", 'backend', 'python', '/app/scripts/upgrade_lab.py', 'realm')
 } catch {
     # Leave the lab running even when a step fails; the error still stops the upgrade.
     try { Invoke-LabCompose -Arguments @('up', '-d', 'keycloak', 'web') }
@@ -68,6 +72,7 @@ try {
     Remove-Item Env:UPGRADE_CLIENT_ID, Env:UPGRADE_CLIENT_SECRET -ErrorAction SilentlyContinue
 }
 
-# 4. Run the new connector code and start the Atlas lab app.
+# 4. Migrate, then run the new code and start the Atlas lab app.
+Invoke-LabCompose -Arguments @('run', '--rm', '--no-deps', 'backend', 'python', 'manage.py', 'migrate', '--noinput')
 Invoke-LabCompose -Arguments @('up', '-d', '--wait', 'backend', 'worker', 'atlas-app')
-Write-Host 'Upgrade complete: session revocation is active and the Atlas lab app is running.'
+Write-Host 'Upgrade complete: lab clients are current, the database is migrated and the Atlas lab app is running.'

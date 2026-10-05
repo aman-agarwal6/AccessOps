@@ -26,6 +26,15 @@ LIST = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
 MEMBERSHIP_ORIGIN = "https://keycloak-observe.accessops.internal:8184"
 # Private route allowing only per-user logout (POST) and session listing (GET).
 SESSIONS_ORIGIN = "https://keycloak-sessions.accessops.internal:8185"
+EVENTS_URL = MEMBERSHIP_ORIGIN + "/admin/realms/accessops-workforce/events"
+# Sign-in and token events a departed account must not have; errors are refusals.
+SIGN_IN_SUCCESS = ("LOGIN", "CODE_TO_TOKEN", "REFRESH_TOKEN", "TOKEN_EXCHANGE")
+SIGN_IN_REFUSED = (
+    "LOGIN_ERROR",
+    "CODE_TO_TOKEN_ERROR",
+    "REFRESH_TOKEN_ERROR",
+    "TOKEN_EXCHANGE_ERROR",
+)
 
 
 def identifier(value):
@@ -53,6 +62,65 @@ class KeycloakConnector:
         self.secret = client_secret or os.getenv("SCIM_CLIENT_SECRET", "")
         self.http = http or client()
         self._access_token, self._expires = "", 0
+
+    @classmethod
+    def events_reader(cls, **options):
+        """A connector authenticated as the read-only events client (view-events)."""
+        return cls(
+            client_id=os.getenv("EVENTS_CLIENT_ID", "accessops-events"),
+            client_secret=os.getenv("EVENTS_CLIENT_SECRET", ""),
+            **options,
+        )
+
+    def sign_in_events(self, user_id, since_ms, limit=200):
+        """Sign-in and token events for one account at or after since_ms, oldest
+        first. Only time, type, client and error are kept; a reading that may be
+        incomplete stays unknown."""
+        user_uuid(user_id)
+        if type(since_ms) is not int or since_ms < 0:
+            raise ConnectorError("Invalid event window")
+        params = [
+            ("user", user_id),
+            ("dateFrom", str(since_ms)),
+            ("direction", "asc"),
+            ("first", "0"),
+            ("max", str(limit + 1)),
+        ] + [("type", kind) for kind in SIGN_IN_SUCCESS + SIGN_IN_REFUSED]
+        try:
+            response = self.http.get(
+                EVENTS_URL,
+                params=params,
+                headers={"Authorization": "Bearer " + self._token(), "Accept": "application/json"},
+                follow_redirects=False,
+            )
+            if response.status_code != 200 or str(response.url).split("?", 1)[0] != EVENTS_URL:
+                raise ConnectorError("Event observation unavailable")
+            records = json_response(response, limit=262144)
+            if not isinstance(records, list) or len(records) > limit:
+                raise ConnectorError("Event observation incomplete")
+            events = []
+            for record in records:
+                if (
+                    not isinstance(record, dict)
+                    or record.get("userId") != user_id
+                    or record.get("type") not in SIGN_IN_SUCCESS + SIGN_IN_REFUSED
+                    or type(record.get("time")) is not int
+                    or not isinstance(record.get("clientId") or "", str)
+                    or not isinstance(record.get("error") or "", str)
+                ):
+                    raise ConnectorError("Event observation incomplete")
+                if record["time"] >= since_ms:
+                    events.append(
+                        {
+                            "time": record["time"],
+                            "type": record["type"],
+                            "clientId": (record.get("clientId") or "")[:128],
+                            "error": (record.get("error") or "")[:64],
+                        }
+                    )
+            return events
+        except (httpx.HTTPError, IntegrationError):
+            raise ConnectorError("Event observation unavailable") from None
 
     def _token(self):
         if self._expires > time.monotonic():

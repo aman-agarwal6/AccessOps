@@ -305,6 +305,40 @@ class OffboardingCase(models.Model):
         super().save(*args, **kwargs)
 
 
+class ActivityCheck(models.Model):
+    """One reading of a departed account's Keycloak sign-ins since departure."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        OffboardingCase, on_delete=models.PROTECT, related_name="activity_checks"
+    )
+    checked_at = models.DateTimeField()
+    status = models.CharField(max_length=12)  # observed | unavailable
+    successes = models.JSONField(default=list)  # [{time, type, clientId}], no IPs
+    refused = models.PositiveIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Activity readings are append-only.")
+        super().save(*args, **kwargs)
+
+
+class SecurityEvent(models.Model):
+    """A signed Security Event Token waiting for, or acknowledged by, the receiver."""
+
+    jti = models.CharField(max_length=64, primary_key=True)
+    source_ref = models.CharField(max_length=200, unique=True)
+    event_type = models.CharField(max_length=40)
+    subject = models.CharField(max_length=255)
+    case = models.ForeignKey(
+        OffboardingCase, null=True, on_delete=models.PROTECT, related_name="security_events"
+    )
+    token = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True)
+    receiver_error = models.CharField(max_length=64, blank=True)
+
+
 class ADEnrollment(models.Model):
     """Trusted local enrollment, never accepted from a browser mutation."""
 

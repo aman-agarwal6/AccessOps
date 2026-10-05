@@ -19,7 +19,7 @@ https://accessops.test:8443 {
 	request_body {
 		max_size 128KB
 	}
-	@backend path /api/* /auth/*
+	@backend path /api/* /auth/* /.well-known/ssf-configuration
 	handle @backend {
 		reverse_proxy backend:8000
 	}
@@ -57,7 +57,8 @@ https://policy.accessops.internal:8183 {
 	}
 }
 
-# Read-only workforce group observation, private Docker networks only.
+# Read-only workforce group membership and sign-in event observation, private
+# Docker networks only.
 # No host publication and no public admin route; all other paths/methods deny.
 https://keycloak-observe.accessops.internal:8184 {
 	tls internal
@@ -66,6 +67,14 @@ https://keycloak-observe.accessops.internal:8184 {
 		path_regexp membership ^/admin/realms/accessops-workforce/groups/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/members$
 	}
 	handle @membership {
+		reverse_proxy keycloak:8080
+	}
+	# Workforce sign-in events, for the post-departure activity check (view-events only).
+	@events {
+		method GET
+		path /admin/realms/accessops-workforce/events
+	}
+	handle @events {
 		reverse_proxy keycloak:8080
 	}
 	handle {

@@ -22,8 +22,10 @@ if (Test-Path -LiteralPath '.local/atlas.env') {
     if ($LASTEXITCODE -ne 0) { throw 'Workforce session revocation checks failed.' }
     & docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_hr_intake.py --report /test-output/hr-intake.json --junit /test-output/hr-intake.xml
     if ($LASTEXITCODE -ne 0) { throw 'Signed HR leaver intake checks failed.' }
+    & docker compose -f infra/compose.yml run --rm --no-deps -v "${accessopsRoot}/scripts:/app/scripts:ro" -v "${accessopsReports}:/test-output" -v "${accessopsRoot}/.local/operator-logins.json:/run/test-logins.json:ro" backend python /app/scripts/live_leaver_assurance.py --report /test-output/leaver-assurance.json --junit /test-output/leaver-assurance.xml
+    if ($LASTEXITCODE -ne 0) { throw 'Leaver assurance and signal checks failed.' }
 } else {
-    Write-Host 'Skipped session revocation and HR intake checks: run scripts/Upgrade-Lab.ps1 once to add the Atlas lab app.'
+    Write-Host 'Skipped session revocation, HR intake and leaver assurance checks: run scripts/Upgrade-Lab.ps1 once to add the Atlas lab app.'
 }
 & $accessopsPython scripts/host_health.py --report "$accessopsReports/host-health.json" --junit "$accessopsReports/host-health.xml"
 if ($LASTEXITCODE -ne 0) { throw 'Verified host loopback TLS checks failed.' }

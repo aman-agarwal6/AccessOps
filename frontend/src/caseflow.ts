@@ -15,7 +15,13 @@ export const PHASES = [
   {
     id: "contain",
     title: "Contain access",
-    tasks: ["local-containment", "keycloak-directory", "ad-directory"],
+    tasks: [
+      "local-containment",
+      "keycloak-directory",
+      "ad-directory",
+      // Appears only after a sign-in is read following the departure.
+      "post-departure-access",
+    ],
   },
   {
     id: "cloud",

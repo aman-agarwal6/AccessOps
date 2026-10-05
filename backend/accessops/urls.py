@@ -1,9 +1,12 @@
-from core import auth, enrollment, intake, offboarding, views
+from core import auth, enrollment, intake, offboarding, ssf, views
 from django.urls import path
 
 urlpatterns = [
     path("api/v1/offboarding-cases", offboarding.create),
     path("api/v1/hr-events", intake.receive),
+    path("api/v1/ssf/poll", ssf.poll),
+    path("api/v1/ssf/jwks", ssf.jwks),
+    path(".well-known/ssf-configuration", ssf.configuration),
     path("api/v1/offboarding-cases/<uuid:case_id>/packet", offboarding.packet),
     path(
         "api/v1/offboarding-cases/<uuid:case_id>/tasks/<str:task_id>/attest",

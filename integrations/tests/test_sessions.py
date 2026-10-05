@@ -4,7 +4,13 @@ import httpx
 import pytest
 
 from integrations.errors import ConnectorError
-from integrations.keycloak import SESSIONS_ORIGIN, KeycloakConnector
+from integrations.keycloak import (
+    EVENTS_URL,
+    SESSIONS_ORIGIN,
+    SIGN_IN_REFUSED,
+    SIGN_IN_SUCCESS,
+    KeycloakConnector,
+)
 
 UID = "22222222-2222-4222-8222-222222222222"
 BASE = SESSIONS_ORIGIN + "/admin/realms/accessops-workforce/users/" + UID
@@ -133,3 +139,74 @@ def test_reconcile_counts_sessions_and_contained_accounts_must_have_none(
     )
     result = connector.reconcile({"providerSubject": UID, "status": status})
     assert result == {"drift": drift, "observed": {"active": active, "sessions": count}}
+
+
+def events_connector(records, status=200):
+    seen = []
+
+    def handle(request):
+        seen.append(request)
+        return httpx.Response(status, json=records)
+
+    connector = KeycloakConnector(
+        issuer=ISSUER, http=httpx.Client(transport=httpx.MockTransport(handle))
+    )
+    connector._token = lambda: "synthetic-placeholder"
+    return connector, seen
+
+
+def record(**changes):
+    value = {
+        "time": 2_000,
+        "type": "LOGIN",
+        "userId": UID,
+        "clientId": "atlas-app",
+        "ipAddress": "10.0.0.9",
+    }
+    value.update(changes)
+    return value
+
+
+def test_sign_in_events_use_the_private_route_and_drop_addresses():
+    connector, seen = events_connector(
+        [record(), record(time=500), record(type="LOGIN_ERROR", error="user_disabled")]
+    )
+    events = connector.sign_in_events(UID, 1_000)
+    assert str(seen[0].url).split("?", 1)[0] == EVENTS_URL
+    assert seen[0].url.params["user"] == UID and seen[0].url.params["dateFrom"] == "1000"
+    assert set(seen[0].url.params.get_list("type")) == set(SIGN_IN_SUCCESS + SIGN_IN_REFUSED)
+    assert events == [
+        {"time": 2_000, "type": "LOGIN", "clientId": "atlas-app", "error": ""},
+        {"time": 2_000, "type": "LOGIN_ERROR", "clientId": "atlas-app", "error": "user_disabled"},
+    ]
+    assert "ipAddress" not in str(events)
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        [record(userId="someone-else")],
+        [record(type="UPDATE_PASSWORD")],
+        [record(time="2000")],
+        [record()] * 201,
+        {"events": []},
+    ],
+)
+def test_incomplete_or_foreign_event_reads_stay_unknown(records):
+    connector, _ = events_connector(records)
+    with pytest.raises(ConnectorError):
+        connector.sign_in_events(UID, 0)
+
+
+@pytest.mark.parametrize("args", [("not-a-uuid", 0), (UID, -1), (UID, "0")])
+def test_event_reads_need_an_exact_account_and_window(args):
+    connector, seen = events_connector([])
+    with pytest.raises(ConnectorError):
+        connector.sign_in_events(*args)
+    assert seen == []
+
+
+def test_event_read_refusal_stays_unknown():
+    connector, _ = events_connector([], status=403)
+    with pytest.raises(ConnectorError):
+        connector.sign_in_events(UID, 0)

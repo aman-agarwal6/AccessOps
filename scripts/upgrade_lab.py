@@ -1,19 +1,21 @@
-"""One-time, non-destructive upgrade of an existing lab for session revocation.
+"""One-time, non-destructive upgrades of an existing lab. Never prints secrets.
 
-local  (host)       Create .local/atlas.env and write the current Atlas client
-                    definitions into the stored workforce realm import. Never
-                    prints secrets.
+local  (host)       Create missing Atlas and events-reader client secrets and
+                    write the current lab-added client definitions into the
+                    stored workforce realm import.
 realm  (container)  Using a temporary bootstrap admin service account, create the
-                    Atlas clients in the running workforce realm, or add any
-                    protocol mapper or client scope they lack, then delete that
-                    temporary account and prove its credential fails. Only the two
-                    Atlas lab clients are touched; other clients, users and
-                    sessions are not.
-
+                    lab-added clients in the running workforce realm, or add any
+                    protocol mapper, client scope or role they lack, then delete
+                    that temporary account and prove its credential fails. Only
+                    the Atlas clients and the events reader are touched; other
+                    clients, users and sessions are not.
 hr     (host)       Create .local/hr-intake.env with an HR webhook signing secret
-                    if it is missing. Start-Lab.ps1 runs it on every start.
+                    if it is missing.
+ssf    (host)       Create the security event signing key and the receiver's
+                    poll token if they are missing.
 
-scripts/Upgrade-Lab.ps1 runs local and realm with a database backup first.
+Start-Lab.ps1 runs hr and ssf on every start. scripts/Upgrade-Lab.ps1 runs local
+and realm with a database backup first.
 """
 
 import json
@@ -38,32 +40,63 @@ def read_env(path):
     return values
 
 
-def local():
-    from generate_local import LOCAL, workforce_apps
-
-    env = LOCAL / "atlas.env"
-    created = not env.exists()
+def ensure_secret(path, key, make):
+    """Create a one-line env file if missing; return (secret, created)."""
+    created = not path.exists()
     if created:
-        with env.open("x", encoding="utf-8", newline="\n") as target:
-            target.write("ATLAS_CLIENT_SECRET=" + secrets.token_urlsafe(36) + "\n")
-    secret = read_env(env).get("ATLAS_CLIENT_SECRET", "")
-    if len(secret) < 32:
-        raise SystemExit("atlas.env exists but has no usable client secret.")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("x", encoding="utf-8", newline="\n") as target:
+            target.write(key + "=" + make() + "\n")
+    value = read_env(path).get(key, "")
+    if len(value) < 32:
+        raise SystemExit(path.name + " exists but has no usable secret.")
+    return value, created
+
+
+def lab_clients(atlas_secret, events_secret):
+    from generate_local import events_client, workforce_apps
+
+    return [*workforce_apps(atlas_secret), events_client(events_secret)]
+
+
+def local():
+    from generate_local import EVENTS_SCOPE_MAPPING, EVENTS_SERVICE_USER, LOCAL, uid
+
+    def token():
+        return secrets.token_urlsafe(36)
+
+    atlas, atlas_created = ensure_secret(LOCAL / "atlas.env", "ATLAS_CLIENT_SECRET", token)
+    events, events_created = ensure_secret(
+        LOCAL / "keycloak-events.env", "EVENTS_CLIENT_SECRET", token
+    )
     realm_file = LOCAL / "realms" / (REALM + "-realm.json")
     data = json.loads(realm_file.read_text(encoding="utf-8"))
-    apps = workforce_apps(secret)
-    names = {app["clientId"] for app in apps}
+    clients = lab_clients(atlas, events)
+    names = {item["clientId"] for item in clients}
     others = [item for item in data.get("clients", []) if item.get("clientId") not in names]
-    if others + apps != data.get("clients"):
-        data["clients"] = others + apps
+    users = data.get("users", [])
+    if not any(user.get("username") == EVENTS_SERVICE_USER["username"] for user in users):
+        users = [*users, {"id": uid("events-service"), **EVENTS_SERVICE_USER}]
+    mappings = json.loads(json.dumps(data.get("clientScopeMappings", {})))
+    management = mappings.setdefault("realm-management", [])
+    if EVENTS_SCOPE_MAPPING not in management:
+        management.append(EVENTS_SCOPE_MAPPING)
+    if (
+        others + clients != data.get("clients")
+        or users != data.get("users")
+        or mappings != data.get("clientScopeMappings")
+    ):
+        data["clients"], data["users"] = others + clients, users
+        data["clientScopeMappings"] = mappings
         staged = realm_file.with_suffix(".json.upgrade")
         staged.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
         os.replace(staged, realm_file)
     print(
         json.dumps(
             {
-                "atlasEnv": "created" if created else "present",
-                "realmImportAtlasClients": sorted(names),
+                "atlasEnv": "created" if atlas_created else "present",
+                "eventsEnv": "created" if events_created else "present",
+                "realmImportLabClients": sorted(names),
             }
         )
     )
@@ -72,18 +105,34 @@ def local():
 def hr():
     from generate_local import LOCAL, hr_webhook_secret
 
-    env = LOCAL / "hr-intake.env"
-    if env.exists():
-        print(json.dumps({"hrIntakeEnv": "present"}))
-        return
-    with env.open("x", encoding="utf-8", newline="\n") as target:
-        target.write("HR_WEBHOOK_SECRET=" + hr_webhook_secret() + "\n")
-    print(json.dumps({"hrIntakeEnv": "created"}))
+    _, created = ensure_secret(LOCAL / "hr-intake.env", "HR_WEBHOOK_SECRET", hr_webhook_secret)
+    print(json.dumps({"hrIntakeEnv": "created" if created else "present"}))
+
+
+def ssf():
+    from generate_local import LOCAL, ssf_signing_key
+
+    key = LOCAL / "ssf" / "signing.pem"
+    key_created = not key.exists()
+    if key_created:
+        key.parent.mkdir(parents=True, exist_ok=True)
+        with key.open("x", encoding="utf-8", newline="\n") as target:
+            target.write(ssf_signing_key())
+    _, token_created = ensure_secret(
+        LOCAL / "ssf-receiver.env", "SSF_RECEIVER_TOKEN", lambda: secrets.token_urlsafe(36)
+    )
+    print(
+        json.dumps(
+            {
+                "ssfSigningKey": "created" if key_created else "present",
+                "ssfReceiverToken": "created" if token_created else "present",
+            }
+        )
+    )
 
 
 def realm():
     import httpx
-    from generate_local import workforce_apps
 
     from integrations.transport import client
 
@@ -93,7 +142,10 @@ def realm():
         "client_id": admin_id,
         "client_secret": os.environ["UPGRADE_CLIENT_SECRET"],
     }
-    atlas_secret = read_env("/run/atlas.env")["ATLAS_CLIENT_SECRET"]
+    clients = lab_clients(
+        read_env("/run/atlas.env")["ATLAS_CLIENT_SECRET"],
+        read_env("/run/keycloak-events.env")["EVENTS_CLIENT_SECRET"],
+    )
     result = {"created": [], "present": [], "updated": [], "temporaryAdminRemoved": False}
     with client(timeout=15) as public:
         response = public.post(TOKEN_URL, data=credentials)
@@ -117,11 +169,12 @@ def realm():
             found = require(admin.get(path, params={"clientId": app["clientId"]}), 200).json()
             if not found:
                 require(admin.post(path, json=app), 201)
-                if not require(admin.get(path, params={"clientId": app["clientId"]}), 200).json():
+                found = require(admin.get(path, params={"clientId": app["clientId"]}), 200).json()
+                if not found:
                     raise RuntimeError("Created client is not readable")
                 result["created"].append(app["clientId"])
-                return
-            # Existing Atlas client: add only what its definition gained since.
+                return found[0]["id"]
+            # Existing lab client: add only what its definition gained since.
             base = f"{path}/{found[0]['id']}"
             mappers = {
                 item["name"]
@@ -145,10 +198,34 @@ def realm():
                     require(admin.put(f"{base}/{kind}-client-scopes/{scope['id']}"), 204)
                     result["updated"].append(app["clientId"] + f" {kind} scope {name}")
             result["present"].append(app["clientId"])
+            return found[0]["id"]
+
+        def grant_view_events(client_id):
+            # The events reader's service account holds view-events and nothing
+            # else, and the client may carry only that role in its tokens.
+            user = require(
+                admin.get(f"/{REALM}/clients/{client_id}/service-account-user"), 200
+            ).json()
+            management = require(
+                admin.get(f"/{REALM}/clients", params={"clientId": "realm-management"}), 200
+            ).json()[0]["id"]
+            role = require(
+                admin.get(f"/{REALM}/clients/{management}/roles/view-events"), 200
+            ).json()
+            for label, path in (
+                ("role", f"/{REALM}/users/{user['id']}/role-mappings/clients/{management}"),
+                ("scope", f"/{REALM}/clients/{client_id}/scope-mappings/clients/{management}"),
+            ):
+                held = {item["name"] for item in require(admin.get(path), 200).json()}
+                if "view-events" not in held:
+                    require(admin.post(path, json=[role]), 204)
+                    result["updated"].append(f"accessops-events {label} view-events")
 
         try:
-            for app in workforce_apps(atlas_secret):
-                ensure(app)
+            for app in clients:
+                client_id = ensure(app)
+                if app["clientId"] == "accessops-events":
+                    grant_view_events(client_id)
         finally:
             # Always remove the temporary admin, even after a failed step. The
             # refused-token check below is what decides success.
@@ -172,7 +249,7 @@ def realm():
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    commands = {"local": local, "realm": realm, "hr": hr}
+    commands = {"local": local, "realm": realm, "hr": hr, "ssf": ssf}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        raise SystemExit("usage: upgrade_lab.py local|realm|hr")
+        raise SystemExit("usage: upgrade_lab.py local|realm|hr|ssf")
     commands[sys.argv[1]]()

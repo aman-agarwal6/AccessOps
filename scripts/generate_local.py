@@ -139,6 +139,60 @@ def workforce_apps(atlas_secret):
     return [web, cli]
 
 
+def events_client(secret):
+    """Read-only reader of the workforce realm's sign-in events (view-events only).
+    Like the SCIM client, it needs a scope mapping and a role mapper for its one
+    realm-management role to reach its access token."""
+    client = base_client("accessops-events")
+    client.update(
+        {
+            "secret": secret,
+            "clientAuthenticatorType": "client-secret",
+            "protocolMappers": [
+                mapper(
+                    "events-realm-management-roles",
+                    "oidc-usermodel-client-role-mapper",
+                    {
+                        "usermodel.clientRoleMapping.clientId": "realm-management",
+                        "claim.name": "resource_access.realm-management.roles",
+                        "jsonType.label": "String",
+                        "multivalued": "true",
+                        "access.token.claim": "true",
+                        "id.token.claim": "false",
+                    },
+                )
+            ],
+        }
+    )
+    return client
+
+
+EVENTS_SCOPE_MAPPING = {"client": "accessops-events", "roles": ["view-events"]}
+
+
+EVENTS_SERVICE_USER = {
+    "username": "service-account-accessops-events",
+    "enabled": True,
+    "serviceAccountClientId": "accessops-events",
+    "clientRoles": {"realm-management": ["view-events"]},
+}
+
+
+def ssf_signing_key():
+    """EC P-256 key that signs AccessOps security event tokens (PKCS#8 PEM)."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    return (
+        ec.generate_private_key(ec.SECP256R1())
+        .private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        .decode()
+    )
+
+
 def hr_webhook_secret():
     """Standard Webhooks signing secret shared with the (synthetic) HR system."""
     return "whsec_" + base64.b64encode(secrets.token_bytes(32)).decode()
@@ -175,15 +229,22 @@ def main():
         raise SystemExit("Local configuration already exists; no credentials were changed.")
     if not (ROOT / "AGENTS.md").is_file():
         raise SystemExit("Wrong repository")
-    for subdir in ("tls", "executor", "realms", "docker"):
+    for subdir in ("tls", "executor", "realms", "docker", "ssf"):
         (LOCAL / subdir).mkdir(parents=True, exist_ok=True)
 
     def secret():
         return secrets.token_urlsafe(36)
 
-    app_pass, id_pass, oidc_secret, scim_secret, authzen_token, api_secret, atlas_secret = [
-        secret() for _ in range(7)
-    ]
+    (
+        app_pass,
+        id_pass,
+        oidc_secret,
+        scim_secret,
+        authzen_token,
+        api_secret,
+        atlas_secret,
+        events_secret,
+    ) = [secret() for _ in range(8)]
     operator_passwords = {name: secret() for name in ("alice", "bob", "clara")}
     private = rsa.generate_private_key(public_exponent=65537, key_size=3072)
     now = dt.datetime.now(dt.timezone.utc)
@@ -243,6 +304,9 @@ def main():
     env_file("policy.env", {"AUTHZEN_TOKEN": authzen_token})
     env_file("atlas.env", {"ATLAS_CLIENT_SECRET": atlas_secret})
     env_file("hr-intake.env", {"HR_WEBHOOK_SECRET": hr_webhook_secret()})
+    env_file("keycloak-events.env", {"EVENTS_CLIENT_SECRET": events_secret})
+    env_file("ssf-receiver.env", {"SSF_RECEIVER_TOKEN": secret()})
+    write(LOCAL / "ssf/signing.pem", ssf_signing_key())
     env_file(
         "backend.env",
         {
@@ -436,9 +500,18 @@ def main():
             "serviceAccountsEnabled": False,
         }
     )
-    workforce["clients"] = [scim, executor, api_client, *workforce_apps(atlas_secret)]
+    workforce["clients"] = [
+        scim,
+        executor,
+        api_client,
+        events_client(events_secret),
+        *workforce_apps(atlas_secret),
+    ]
     workforce["clientScopeMappings"] = {
-        "realm-management": [{"client": "accessops-scim", "roles": ["manage-users"]}]
+        "realm-management": [
+            {"client": "accessops-scim", "roles": ["manage-users"]},
+            EVENTS_SCOPE_MAPPING,
+        ]
     }
     workforce["groups"] = [
         {"id": uid("group:" + name), "name": "accessops-" + name}
@@ -475,6 +548,7 @@ def main():
             "serviceAccountClientId": "accessops-scim",
             "clientRoles": {"realm-management": ["manage-users"]},
         },
+        {"id": uid("events-service"), **EVENTS_SERVICE_USER},
     ]
     for data in (operators, workforce):
         write(LOCAL / "realms" / (data["realm"] + "-realm.json"), json.dumps(data, indent=2) + "\n")

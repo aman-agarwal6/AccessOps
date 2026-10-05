@@ -92,6 +92,13 @@ POLICY_VERSION = os.environ.get("POLICY_VERSION", "accessops-v1")
 HR_WEBHOOK_SECRET = os.environ.get("HR_WEBHOOK_SECRET", "")
 HR_INTAKE_ISSUER = "https://hr-intake.accessops.internal"
 HR_INTAKE_SOURCE = "northstar-hr"
+# Read-only Keycloak events client for the post-departure activity watch.
+EVENTS_CLIENT_SECRET = os.environ.get("EVENTS_CLIENT_SECRET", "")
+# Shared Signals transmitter: signed leaver events, collected by RFC 8936 polling.
+SSF_ISSUER = os.environ.get("SSF_ISSUER", "https://accessops.test:8443")
+SSF_AUDIENCE = os.environ.get("SSF_AUDIENCE", "urn:accessops:soc-receiver")
+SSF_SIGNING_KEY_FILE = os.environ.get("SSF_SIGNING_KEY_FILE", "/run/ssf/signing.pem")
+SSF_RECEIVER_TOKEN = os.environ.get("SSF_RECEIVER_TOKEN", "")
 INTERNAL_API_URL = os.environ.get("INTERNAL_API_URL", "https://localhost:8443").rstrip("/")
 LOGGING = {
     "version": 1,
