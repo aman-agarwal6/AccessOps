@@ -25,9 +25,10 @@ only when someone other than its owner accepts the exact evidence packet.
 Measured with synthetic users on a local lab with real Keycloak 26.8, OPA,
 PostgreSQL and a Samba directory, and in a free Microsoft Entra test tenant:
 
-- **A signed HR event ends access in 2.6 seconds.** The case opens, the account
-  is disabled, every Keycloak session ends, the person is signed out of an app,
-  and that app refuses their still-unexpired access token.
+- **A signed HR event ends access in under 6 seconds** (median 5.7 s over six
+  runs). The case opens, the account is disabled, every Keycloak session ends,
+  the person is signed out of an app, and that app refuses their still-unexpired
+  access token.
 - **Microsoft Entra containment runs against a real test tenant.** Through
   Microsoft Graph, AccessOps disables the account, removes its group membership
   and revokes its sign-in sessions, and the case counts it only after Graph
@@ -36,8 +37,8 @@ PostgreSQL and a Samba directory, and in a free Microsoft Entra test tenant:
   disabling an account leaves open or key handling exposes. Each one is fixed
   or stated on the case (below).
 - **Access after departure is caught.** A Keycloak sign-in after the departure
-  is detected 32 seconds after it happened, blocks closure, and becomes a signed
-  Shared Signals event for the SOC. In a separate run,
+  is caught at the next 30-second reading (within 33 s), blocks closure, and
+  becomes a signed Shared Signals event for the SOC. In a separate run,
   [SignalBridge](https://github.com/aman-agarwal6/signalbridge) polled the
   signed events and opened a case from the sign-in
   ([receipt](https://github.com/aman-agarwal6/signalbridge/blob/main/docs/evidence/20261005-accessops-leaver-poll-931402fb1ee44209b58c60063f63150f.json)).
@@ -61,7 +62,7 @@ Kerberos tickets.
 | --- | --- | --- |
 | Group membership | Disabling the account left a managed group membership behind | Offboarding removes every known managed grant and needs a fresh negative reading for each |
 | Signed-in sessions | New tokens stopped, but the person stayed signed in to the app and Keycloak kept the session | Containment ends Keycloak sessions and sends back-channel logout; it counts as done only when no session is left |
-| Tokens an app checks itself | The app kept accepting the leaver's token for up to two more minutes | Each app gets its own stream of signed revocation events; the lab app refuses the token 3 seconds after containment |
+| Tokens an app checks itself | The app kept accepting the leaver's token for up to two more minutes | Each app gets its own stream of signed revocation events; the lab app refuses the token within 2 seconds of containment |
 | A leaked signing key | Keycloak's own introspection accepted a token forged with the published key; apps cached Keycloak's keys for five minutes, so a removed key could stay trusted that long | Removing a leaked key is the only remedy, so apps drop removed keys within 60 seconds |
 | Key rotation | Switching to a new signing key at once made the app refuse valid tokens for 30 seconds | Rotation publishes the new key first and waits one key-cache lifetime; no valid token is refused |
 | Kerberos tickets | Connections and tickets from before offboarding kept the removed group's rights | Kerberos has no per-user revocation; new tickets are refused and the case states when the old ones expire |
@@ -102,23 +103,25 @@ Every action carries one of these labels, and a label never upgrades itself.
 
 ## Verified results
 
-Local lab runs on 5 October 2026 with synthetic records, on the current backend
-source. Details, every failed attempt and the limits of each check are in the
+Local lab runs on 27 October 2026 with synthetic records, on the current code.
+The Microsoft Entra departure ran on 5 October on the v0.4.0 backend. Every
+report is on the demo's evidence page with each check's measured time; details,
+every failed attempt and the limits of each check are in the
 [verification ledger](docs/verification.md).
 
 | Check | Result |
 | --- | --- |
-| Signed HR event → case, containment, sessions ended, app signed out, token refused | 10 / 10 passed: 2.6 s, or 2.3 s after a future-dated departure takes effect |
-| Leaver's sessions and tokens before → after containment | 22 / 22 passed: back-channel logout; refresh, offline and introspection rejected; a locally checked token refused 3.0 s after containment |
-| Sign-in after departure detected, blocking closure, signalled to the SOC | 7 / 7 passed: detected 32 s after the sign-in. The suite itself acted as the SOC receiver; SignalBridge consumed the signals of a separate run (04:35 UTC, see the ledger) |
+| Signed HR event → case, containment, sessions ended, app signed out, token refused | 6 runs, each 10 / 10 passed: median 5.7 s (4.5–5.8 s); after a future-dated departure takes effect, median 2.6 s (1.6–4.0 s) |
+| Leaver's sessions and tokens before → after containment | 22 / 22 passed: back-channel logout; refresh, offline and introspection rejected; a locally checked token refused 1.6 s after containment |
+| Sign-in after departure detected, blocking closure, signalled to the SOC | 7 / 7 passed: flagged within 33 s of the sign-in (one 30-second reading interval). The suite itself acted as the SOC receiver; SignalBridge consumed the signals of a separate run on 5 October (see the ledger) |
 | Operator sign-in with a second factor | 3 / 3 MFA checks passed, within the 14 / 14 sign-in suite: a password alone stops at the code form, a wrong code is refused, and a request lowered to password-only gets no session |
 | Signing-key rotation (both realms) and leaked-key drill (workforce realm) | 13 / 13 passed: no token refused during rotation; a forged token refused by Keycloak at once and by the app 60 s after the key's removal |
 | Live Microsoft Entra departure (a free test tenant, synthetic users) | 11 / 11 passed: Graph showed the account disabled, out of the group and sessions revoked 19.8 s after containment; the tenant administrator and an unlisted user were refused |
 | Departure case end to end through real Keycloak | 18 / 18 passed |
 | Departure case with a Samba directory account | 28 / 28 passed; new LDAPS and Kerberos logins allowed → denied (2 / 2 each) |
 | Directory sessions and tickets held from before offboarding | 6 / 6 passed: no new service tickets; earlier ones keep working until they expire (10 h) |
-| Full lab suite (`Test-Lab.ps1`) | All passed: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 7, HTTPS 5 |
-| Console in real Firefox against the lab | Full departure case passed, with one-time codes |
+| Full lab suite (`Test-Lab.ps1`) | All passed: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 7, HTTPS 5. The first start failed one check because the lab's internal certificates had expired while it was off; restarting the web container fixed it |
+| Console in real Firefox against the lab | Passed on the second attempt, with one-time codes. The first was refused at closure by a race the rerun exposed (see Limits) |
 | Signed [v0.4.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.4.0) (GitHub CI) | 401 / 401 backend and integration test cases (217 test functions, some run with several inputs) on PostgreSQL 17; provenance and SBOM attestations verified |
 | Deployed demo | 17 / 17 checks passed |
 
@@ -195,6 +198,8 @@ sign-out and restoring the test user.
   logons are not read.
 - A failed sign-in check is recorded, but it is not shown on the case and does
   not block closure.
+- Each sign-in check rewrites the case's evidence packet, so a reviewer whose
+  close dialog was open across a check is refused as stale and must reload.
 - Closure is an administrative record, not proof that every copy or session
   is gone.
 
