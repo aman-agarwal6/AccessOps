@@ -9,7 +9,7 @@ in the verification ledger. Preview features do not define the default lab.
 | Specification | Implementation boundary |
 | --- | --- |
 | [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html), [PKCE RFC 7636](https://www.rfc-editor.org/rfc/rfc7636), [OAuth Security BCP RFC 9700](https://www.rfc-editor.org/rfc/rfc9700) | Authorization code + PKCE, server session, state/nonce validation; no tokens stored in the browser. Operator sign-in requests `acr_values=mfa` and the backend requires `acr` = `mfa` in the ID token (Keycloak step-up flow: password, then a time-based one-time code, [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)) |
-| [JWT assertions RFC 7523](https://www.rfc-editor.org/rfc/rfc7523) | Executor client authentication with private_key_jwt; model never receives the private key or token |
+| [JWT assertions RFC 7523](https://www.rfc-editor.org/rfc/rfc7523) | Executor client authentication with private_key_jwt. The signing key is mounted read-only into the backend and worker only, and neither the key nor the executor token reaches the browser |
 | [Introspection RFC 7662](https://www.rfc-editor.org/rfc/rfc7662) | Active-token check plus current app grant/sponsor state; introspection failure denies |
 | [Shared Signals Framework 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html), [CAEP](https://openid.net/specs/openid-caep-1_0.html), [RISC](https://openid.net/specs/openid-risc-1_0-final.html) | Leaver signals as Security Event Tokens ([RFC 8417](https://www.rfc-editor.org/rfc/rfc8417)) with `sub_id` iss_sub subjects and `secevent+jwt` typing: RISC account-disabled, CAEP session-revoked and session-established. One stream per receiver, each with its own audience, event types and delivery state. The Atlas lab app is a CAEP receiver: it refuses tokens issued before a revocation of their subject. Transmitter metadata and keys; no stream-management API |
 | [Poll-based SET delivery, RFC 8936](https://www.rfc-editor.org/rfc/rfc8936) | The receiver pulls with a bearer token and acknowledges by `jti`; unacknowledged events are offered again; receiver errors are recorded |
@@ -33,8 +33,8 @@ use separate realms and credentials. Principal identity is `(issuer, subject)`.
 | [JWT access-token profile RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) | Validate configured issuer, audience, signature, timestamps and key handling; claim full profile only when typ and every mandatory claim are verified |
 | [Resource Indicators RFC 8707](https://www.rfc-editor.org/rfc/rfc8707) | Resource/audience boundary; audience mappers are not proof of wire-level resource-parameter support |
 | [RAR RFC 9396](https://www.rfc-editor.org/rfc/rfc9396) | Server task grants record fixed records, purpose, typed actions and budget; no claim of native RAR wire support |
-| [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [AI 600-1](https://doi.org/10.6028/NIST.AI.600-1) | Bounded authority and human decisions; GenAI evaluation applies to a future local model profile, not a claim that an LLM runs in the shipped assistant |
-| [OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/) and [Agentic Top 10, December 2025 release](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/) | LLM01:2025 indirect injection; ASI01 goal hijack, ASI02 tool misuse, ASI03 identity/privilege abuse; selected controls, not comprehensive coverage |
+| [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [AI 600-1](https://doi.org/10.6028/NIST.AI.600-1) | Bounded authority and human decisions. The assistant is deterministic: no generative model is used, so no GenAI evaluation is claimed |
+| [OWASP LLM Top 10 2025](https://genai.owasp.org/llm-top-10/) and [Agentic Top 10, December 2025 release](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/) | ASI02 tool misuse and ASI03 identity/privilege abuse: the assistant has its own service identity, a fixed tool allowlist and a ten-minute, six-call, one-draft task grant. LLM01:2025 indirect injection and ASI01 goal hijack: untrusted record text is returned as data and cannot select tools or approve (deterministic test; no LLM is used or evaluated). Selected controls, not comprehensive coverage |
 
 An agent's sponsor is a governance relationship, not an OAuth delegated actor by
 itself. The stable core uses an independent service identity and approval-bound
@@ -76,4 +76,5 @@ Attestation proves provenance/integrity, not application security or compliance.
 The [control-to-test mapping](control-map.md) and
 [verification ledger](verification.md) record the implemented scope and actual
 results. Optional profiles listed above are design/watch-list items: the current
-code does not provide token exchange, DPoP proof validation, or a CAEP receiver.
+code does not provide token exchange or DPoP proof validation (an executor
+request that carries a DPoP proof is refused).
