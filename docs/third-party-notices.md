@@ -18,9 +18,9 @@ repositories. Samba is licensed under
 component licenses preserved in the distribution packages. The Docker recipe is
 included, rather than a binary Samba distribution; Ubuntu source packages and the
 [Samba source repository](https://git.samba.org/samba.git/) provide upstream source.
-The lab source comes from my separate local directory-lab project and is
-reproduced as an allowlist under `infra/ad-lab/`; no credentials, directory
-state, private certificate keys or runtime reports were copied.
+The lab source comes from my separate local directory-lab project; only an
+allowlisted set of its files is copied into `infra/ad-lab/`. No credentials,
+directory state, private certificate keys or runtime reports were copied.
 
 On 2026-10-03, the exact PyPI package/version OSV queries for ldap3 2.9.1 and
 pyasn1 0.6.4 returned no vulnerability records. The

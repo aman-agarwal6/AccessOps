@@ -11,7 +11,8 @@ The workflows use standard `ubuntu-latest` runners, which are
 Artifact/cache storage still has [separate limits](https://docs.github.com/en/actions/reference/limits).
 Test artifacts expire after seven days and release workflow artifacts after
 fourteen; small verified release files are copied to a GitHub Release. Do not
-enable larger runners, paid storage or external APIs to maintain the demo. Provider terms can change; the static build remains portable.
+enable larger runners, paid storage or external APIs to maintain the demo.
+Provider terms can change; the static build remains portable.
 
 ## Automated security checks
 
@@ -61,5 +62,4 @@ changing database versions. Never use the disposable test runner against the
 connected database.
 
 The demo is deliberately independent of the local lab: it keeps working when the
-lab computer is off. The deterministic assistant works without
-an LLM; adding a model is a separate implementation and evaluation task.
+lab computer is off. The review assistant is deterministic and needs no LLM.

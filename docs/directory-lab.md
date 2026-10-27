@@ -1,10 +1,10 @@
 # Actual local directory departure cases
 
-The optional free lab adds real Samba AD-compatible directory behavior to the
-authenticated AccessOps case workflow. It does not establish Microsoft Active
-Directory interoperability. Cases without a trusted directory enrollment keep
-the existing nine-task workflow; an enrolled case has a required tenth directory
-task backed by actual provider observations.
+The optional free lab adds real Active Directory-compatible (Samba) directory
+behavior to the authenticated AccessOps case workflow. It does not establish
+Microsoft Active Directory interoperability. Cases without a trusted directory
+enrollment keep the existing nine-task workflow; an enrolled case has a required
+tenth directory task backed by actual provider observations.
 
 Complete the ordinary [connected setup](../infra/README.md) first. Docker Desktop
 and the documented local Python environment are sufficient; no cloud tenant,
@@ -123,9 +123,9 @@ prior certificate privately and the leaf certificate, domain and credentials. It
 does not weaken verification or export a private key. It is a narrow
 compatibility correction, not an automatic renewal service.
 
-For that older-lab correction, review the helper first and run it inside the
-explicitly selected DC from the repository root; fresh bundled labs do not need
-it. Use PowerShell 7 for this one-off command (Windows PowerShell 5.1 would strip
+For that older-lab correction, review the helper first and run it inside that
+lab's DC container from the repository root; fresh bundled labs do not need it.
+Use PowerShell 7 for this one-off command (Windows PowerShell 5.1 would strip
 its inner quotes):
 
 ```powershell
@@ -133,7 +133,7 @@ Get-Content -LiteralPath ./scripts/ad_correct_ca.py -Raw |
     docker compose -f <lab-root>/compose.yml exec -T dc /usr/bin/python3 -c 'import sys; exec(compile(sys.stdin.read(), "reviewed-ad-certificate-helper", "exec"))'
 ```
 
-Select the exact authorized lab's Compose file. The helper validates unchanged
+Point `-f` at that lab's Compose file. The helper validates unchanged
 public key, subject, SKI and leaf and strict chain verification before replacing
 the certificate. It preserves the old certificate inside the DC's private TLS
 directory. Its JSON output contains public certificate digests and check results,

@@ -201,21 +201,24 @@ AccessOps, re-enables the test user afterwards for the next run.
 
 The read-only collector verifies TLS using the standard public trust context,
 ignores ambient proxy variables, follows no redirects, and sends only GET
-requests to the fixed vendor origins. The live Entra connector uses the same
-TLS, proxy and redirect settings with a ten-second timeout (five for connect),
-and also sends its token request and the PATCH, DELETE and POST calls listed
-above. Tokens are never taken from page links. GitHub next links must preserve
-the exact endpoint, original query parameters, and vendor origin; only the page
-number may change. Invalid links, duplicate IDs, malformed fields, HTTP denial,
-rate limits, and incomplete pagination produce unknown observations with safe
-reason codes, without copying provider error bodies.
+requests to the fixed vendor origins. Tokens are never taken from page links.
+GitHub next links must preserve the exact endpoint, original query parameters,
+and vendor origin; only the page number may change. Invalid links, duplicate
+IDs, malformed fields, HTTP denial, rate limits, and incomplete pagination
+produce unknown observations with safe reason codes, without copying provider
+error bodies.
 
 The collector's default limits are ten pages, 1,000 records per membership
 collection, 32 total requests, 256 KiB per decoded response, a five-second
-request timeout (three for connect), and a 60-second collection deadline. Partial pages are never labeled
-complete. The canonical import accepts at most 100 observations and 100 KB per
-report; the collector checks both before writing. These limits intentionally
-favor a bounded targeted assessment over a whole-tenant inventory.
+request timeout (three for connect), and a 60-second collection deadline.
+Partial pages are never labeled complete. The canonical import accepts at most
+100 observations and 100 KB per report; the collector checks both before
+writing. These limits intentionally favor a bounded targeted assessment over a
+whole-tenant inventory.
+
+The live Entra connector uses the same TLS, proxy and redirect settings, with a
+ten-second request timeout (five for connect). Besides GET, it sends its token
+request and the PATCH, DELETE and POST calls listed above.
 
 Run the offline boundary suite with a fresh project-local temporary directory:
 
