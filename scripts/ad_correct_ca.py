@@ -1,4 +1,4 @@
-"""Correct only the handed-over lab CA certificate; never export its key."""
+"""Reissue an older lab CA certificate with CA key usage; never export its key."""
 
 import datetime as dt
 import hashlib
