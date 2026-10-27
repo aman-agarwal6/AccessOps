@@ -193,13 +193,14 @@ sign-out and restoring the test user.
   if it follows AccessOps' revocation signals, as the lab app does.
 - In the directory, connections and Kerberos tickets from before containment
   keep working until they close or expire.
-- Sign-ins after departure are watched only in Keycloak, and only while the
-  case is open. Entra sign-in logs need a paid Entra ID P1 license, and Samba
-  logons are not read.
-- A failed sign-in check is recorded, but it is not shown on the case and does
-  not block closure.
-- Each sign-in check rewrites the case's evidence packet, so a reviewer whose
-  close dialog was open across a check is refused as stale and must reload.
+- Sign-ins after departure are watched only in Keycloak, for the day after
+  departure, closed cases included. Entra sign-in logs need a paid Entra ID P1
+  license, and Samba logons are not read.
+- Keycloak keeps events for one day, so a departure contained later than that,
+  or a watch stopped for longer, can't be checked in full. The case says so
+  instead of blocking closure.
+- A sign-in read after closure is signalled and shown on the case, but the
+  closed case is not reopened.
 - Closure is an administrative record, not proof that every copy or session
   is gone.
 

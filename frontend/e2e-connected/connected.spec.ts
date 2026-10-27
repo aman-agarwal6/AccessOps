@@ -23,7 +23,7 @@ const blocked: string[] = [];
 test.beforeAll(async () => {
   snapshot = JSON.parse(await readFile(snapshotPath!, "utf8"));
 });
-async function connect(page: Page) {
+async function connect(page: Page, data: typeof snapshot = snapshot) {
   const owner = snapshot.offboardingCases[0]?.ownerId ?? "renderer-only";
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
@@ -36,7 +36,7 @@ async function connect(page: Page) {
     }),
   );
   await page.route("**/api/v1/snapshot", (route) =>
-    route.fulfill({ json: snapshot }),
+    route.fulfill({ json: data }),
   );
   for (const pattern of ["**/api/**", "**/auth/**"])
     await page.route(pattern, (route) => {
@@ -101,6 +101,70 @@ test("a closed directory-enrolled case shows provider observations, never simula
   await expect(page.locator(".task .prov-simulated")).toHaveCount(0);
   await expect(page.getByText("Samba AD lab (server-enrolled)")).toBeAttached();
   await expect(page.locator("input[name*='Guid' i]")).toHaveCount(0);
+  await axe(page);
+});
+
+/** The recording with a synthetic sign-in watch on one case; older ones lack it. */
+function watched(item: Case, watch: Record<string, unknown>) {
+  const windowEndsAt = new Date(Date.now() + 3600000).toISOString();
+  return {
+    ...snapshot,
+    offboardingCases: snapshot.offboardingCases.map((entry) =>
+      entry.id === item.id
+        ? {
+            ...entry,
+            watch: {
+              windowEndsAt,
+              lastReadAt: null,
+              lastAttemptAt: null,
+              refused: null,
+              successes: 0,
+              afterClosure: 0,
+              ...watch,
+            },
+          }
+        : entry,
+    ),
+  };
+}
+
+test("an open case's sign-in watch renders accessibly", async ({ page }) => {
+  const item = snapshot.offboardingCases.find(
+    (entry) => entry.status !== "closed",
+  );
+  test.skip(!item, "Snapshot has no open case.");
+  await connect(page, watched(item!, { status: "pending" }));
+  await page.goto(`/#/cases?case=${encodeURIComponent(item!.id)}`);
+  await expect(page.getByText("Sign-in watch:")).toBeVisible();
+  await axe(page);
+});
+
+test("a sign-in read after closure is an accessible alert", async ({
+  page,
+}) => {
+  const item = snapshot.offboardingCases.find(
+    (entry) => entry.status === "closed",
+  );
+  test.skip(!item, "Snapshot has no closed case.");
+  const read = new Date(Date.now() - 12000).toISOString();
+  await connect(
+    page,
+    watched(item!, {
+      status: "watching",
+      lastReadAt: read,
+      lastAttemptAt: read,
+      refused: 0,
+      successes: 1,
+      afterClosure: 1,
+    }),
+  );
+  await page.goto(`/#/cases?case=${encodeURIComponent(item!.id)}`);
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "1 sign-in was first read after closure." }),
+  ).toBeVisible();
+  await expect(page.getByText("Sign-in watch:")).toBeVisible();
   await axe(page);
 });
 

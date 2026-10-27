@@ -613,11 +613,17 @@ def assess(case):
             )
         elif key == "keycloak-directory" and provider_at:
             summary = "Fresh Keycloak readings observed the workforce account disabled with no active sessions, and known managed grant memberships absent. Keycloak rejects tokens issued before containment and sent back-channel logout to registered apps; credentials and unknown access paths are separate."
-            # No read time here: the hashed packet changes only when the evidence does.
-            if reading and not successes:
+            # No read time or count here, so the hashed packet changes only when a
+            # finding does, never per refused attempt; the count is in the watch.
+            if reading and not successes and watch["status"] != "missed":
+                refused = case.activity_checks.filter(status="observed", refused__gt=0).exists()
                 summary += (
                     " Since the departure, Keycloak recorded no successful sign-in or token use"
-                    f" and refused {reading.refused} attempt(s)."
+                    + (
+                        "; it refused at least one attempt, counted in the sign-in watch."
+                        if refused
+                        else " and no refused attempt."
+                    )
                 )
             if watch["status"] == "missed":
                 summary += " " + MISSED

@@ -18,7 +18,6 @@ one-shot test container only. Secrets and passwords are never reported.
 
 import json
 import os
-import re
 import secrets
 import time
 import uuid
@@ -130,6 +129,10 @@ def main():
         ]
         + BACKEND_FILES,
     )
+    if args.external_receiver:
+        report.limitations.append(
+            "With --external-receiver, the session-established signal for the sign-in after closure is left for the other receiver and not checked here; the closed case shows only the detection."
+        )
     sessions, connector, http, browser = {}, None, None, None
     worker_id = subject = None
     exposed = contained = False
@@ -233,9 +236,10 @@ def main():
                     raise AssertionError("A disabled account signed in")
 
             def refused():
+                # The count is in the unhashed watch; the evidence states only that one was.
                 summary = (task(case(), "keycloak-directory") or {}).get("evidenceSummary", "")
-                found = re.search(r"refused (\d+) attempt", summary)
-                return found and int(found.group(1)) >= 1
+                count = ((case() or {}).get("watch") or {}).get("refused") or 0
+                return count >= 1 and "refused at least one attempt" in summary
 
             until(refused, "refused attempt in the case evidence", 75)
             if task(case(), "post-departure-access") is not None:
@@ -294,7 +298,9 @@ def main():
                 raise AssertionError("The investigation statement did not unblock the case")
 
         with report.case(
-            "after independent closure, a sign-in by the re-enabled account is still detected and signalled"
+            "after independent closure, a sign-in by the re-enabled account is still detected"
+            # A closed case's signals are frozen, so only this suite's receiver sees the new one.
+            + ("" if args.external_receiver else " and signalled")
         ):
             item = case()
             path = f"/api/v1/offboarding-cases/{item['id']}"
@@ -353,9 +359,7 @@ def main():
                 "detection after closure",
                 60,
             )
-            print(
-                f"sign-in after closure detected and signalled after {time.monotonic() - started:.1f} s"
-            )
+            print(f"sign-in after closure detected after {time.monotonic() - started:.1f} s")
             wait_observed(alice, offboard(alice, acsrf, worker_id))
             exposed = False
             if connector.get_user(subject).get("active") is not False or (

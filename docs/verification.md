@@ -58,7 +58,10 @@ and that summary is part of the closure packet. So the packet changes about
 every 30 seconds while the watch runs. A reviewer who opens the close dialog
 just before a reading is refused and must reload. The server fails closed, so
 nothing is closed on stale evidence, but the console should not churn the
-packet this way. That case was left open in the lab.
+packet this way. That case was left open in the lab. Fixed after this run, and
+not yet rerun on the lab: no read time or refused count is hashed any more, so
+the packet changes only when a finding does, and the watch's live state sits
+outside the packet.
 
 **Earlier figures corrected.** On 5 October an HR intake run measured 2.6 s
 (2.3 s after a future-dated departure takes effect), and a session run measured

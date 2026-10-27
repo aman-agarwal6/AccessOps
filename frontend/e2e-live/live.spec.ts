@@ -20,8 +20,17 @@ type Snapshot = {
     status: string;
     blockers: string[];
     tasks: { id: string; status: string; evidenceKind: string }[];
+    watch?: { status: string };
   }[];
 };
+/** Watch states that block closure until the worker's next reading. */
+const WATCH_WAITING = [
+  "not_configured",
+  "pending",
+  "unavailable",
+  "stale",
+  "finishing",
+];
 
 let passwords: Record<string, string>;
 let authenticators: Record<string, string>;
@@ -278,18 +287,22 @@ test("operators close a real departure case through the redesigned console", asy
     }
     // Closure waits for a current sign-in check, which the worker takes every
     // 30 seconds; the case may briefly show that wait before it is reviewable.
+    // Only the watch is waited for, so any other blocker fails at the heading.
     await waitFor(
       async () => {
         const item = (await snapshot(page)).offboardingCases.find(
           (entry) => entry.id === caseId,
         );
-        return item && item.blockers.length === 0 ? item : undefined;
+        return item?.watch && !WATCH_WAITING.includes(item.watch.status)
+          ? item
+          : undefined;
       },
       "the first sign-in check after departure",
       90,
     );
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+    await expect(page.getByText("Sign-in watch:")).toBeVisible();
     await expect(nextStep(page).getByRole("heading")).toHaveText(
       "Ready for independent review",
     );

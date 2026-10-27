@@ -140,6 +140,10 @@ export function watchLine(
   const since = watch.lastReadAt && ago(watch.lastReadAt, now);
   const read = since ? `last checked ${since}` : "no successful check yet";
   const success = since ? `last success ${since}` : "no successful check yet";
+  // The packet says only whether an attempt was refused; the count is here.
+  const refused = watch.refused
+    ? ` · ${watch.refused} refused attempt${watch.refused === 1 ? "" : "s"}`
+    : "";
   switch (watch.status) {
     case "not_started":
       return { tone: "neutral", text: "starts after containment" };
@@ -154,25 +158,31 @@ export function watchLine(
         text: `waiting for the first check · ${until}`,
       };
     case "watching":
-      return { tone: "ok", text: `${read} · ${until}` };
+      return { tone: "ok", text: `${read}${refused} · ${until}` };
     case "unavailable":
       return {
         tone: "danger",
-        text: `latest check failed · ${success} · ${until}`,
+        text: `latest check failed · ${success}${refused} · ${until}`,
       };
     case "stale":
-      return { tone: "warn", text: `not current, ${read} · ${until}` };
+      return {
+        tone: "warn",
+        text: `not current, ${read}${refused} · ${until}`,
+      };
     case "finishing":
       return {
         tone: "neutral",
-        text: `waiting for the final check · ${until}`,
+        text: `waiting for the final check${refused} · ${until}`,
       };
     case "complete":
-      return { tone: "ok", text: `complete · covered the day until ${end}` };
+      return {
+        tone: "ok",
+        text: `complete · covered the day until ${end}${refused}`,
+      };
     case "missed":
       return {
         tone: "warn",
-        text: `no check covered the full day after departure · ${until}`,
+        text: `did not cover the full day after departure${refused} · ${until}`,
       };
   }
 }
@@ -250,15 +260,24 @@ export function nextStep(
   const roles = principal?.roles ?? [];
   const operator = roles.includes("operator");
   const reviewer = roles.includes("reviewer") || roles.includes("approver");
-  if (item.status === "closed")
+  if (item.status === "closed") {
+    // Nothing blocks a closed case, so the queue names what its watch found.
+    const after = item.watch?.afterClosure ?? 0;
+    const interrupted =
+      item.watch?.status === "unavailable" || item.watch?.status === "stale";
     return {
       stage: "closed",
       tone: "done",
-      title: "Closed on reviewed evidence",
+      title: after
+        ? `Closed · ${after} sign-in${after === 1 ? "" : "s"} read after closure`
+        : interrupted
+          ? "Closed · sign-in watch interrupted"
+          : "Closed on reviewed evidence",
       detail:
         "The packet is frozen. Closure records what was reviewed; it does not prove every remote session or copy is gone.",
       action: { kind: "export", label: "Export closure packet" },
     };
+  }
   if (Date.parse(item.effectiveAt) > now)
     return {
       stage: "scheduled",

@@ -38,6 +38,10 @@ PENDING = "Waiting for the first sign-in check after departure."
 UNAVAILABLE = "The latest sign-in check after departure failed; closure waits for a successful one."
 STALE = "No successful sign-in check in the last 90 seconds; closure waits for a current one."
 FINISHING = "Waiting for the final sign-in check covering the full day after departure."
+MISSED = (
+    "The sign-in watch did not cover the full day after departure, and Keycloak no longer"
+    " holds the events it did not read."
+)
 
 
 @pytest.fixture
@@ -181,7 +185,11 @@ def test_clean_reading_counts_refusals_and_is_shown_on_the_keycloak_task(org, cl
     assert assurance.watch_departures(reader) == 1
     check = ActivityCheck.objects.get(case=case)
     assert check.status == "observed" and check.refused == 2 and check.successes == []
-    assert "refused 2 attempt(s)" in keycloak_task(case)["evidenceSummary"]
+    assert assess(case)["watch"]["refused"] == 2
+    assert keycloak_task(case)["evidenceSummary"].endswith(
+        " Since the departure, Keycloak recorded no successful sign-in or token use;"
+        " it refused at least one attempt, counted in the sign-in watch."
+    )
     assert keycloak_task(case, "post-departure-access") is None
     assert not SecurityEvent.objects.exists()
 
@@ -296,17 +304,26 @@ def test_identical_readings_keep_the_packet_and_the_reviewed_hash_still_closes(
     assert response.status_code == 200, response.json()
 
 
-def test_a_new_refused_attempt_is_evidence_and_changes_the_packet(org, client_for, monkeypatch):
+def test_only_the_first_refused_attempt_changes_the_packet(org, client_for, monkeypatch):
+    # Anyone who knows the username can cause refusals, so a hashed count would let
+    # them keep every reviewer's packet stale; that one was refused is still evidence.
     monkeypatch.setattr(assurance, "INTERVAL", timedelta(0))
     case = complete_case(org, client_for(org["alice"]), watched=False)
-    reader = Reader([event(case, "LOGIN_ERROR", error="user_disabled")])
+    reader = Reader()
     assurance.watch_departures(reader)
+    assert keycloak_task(case)["evidenceSummary"].endswith(" and no refused attempt.")
     reviewed = close_input(case)
-    reader.events.append(event(case, "LOGIN_ERROR", seconds=90, error="user_disabled"))
+    reader.events.append(event(case, "LOGIN_ERROR", error="user_disabled"))
     assurance.watch_departures(reader)
-    assert "refused 2 attempt(s)" in keycloak_task(case)["evidenceSummary"]
     response = close(org, client_for, case, reviewed)
     assert response.status_code == 409 and response.json()["error"]["code"] == "stale_case"
+    reviewed = close_input(case)
+    for seconds in (90, 120, 150):
+        reader.events.append(event(case, "LOGIN_ERROR", seconds=seconds, error="user_disabled"))
+        assurance.watch_departures(reader)
+    assert assess(case)["watch"]["refused"] == 4
+    assert close_input(case) == reviewed
+    assert close(org, client_for, case, reviewed).status_code == 200
 
 
 def test_a_failed_latest_reading_blocks_closure_until_a_successful_one(
@@ -314,7 +331,7 @@ def test_a_failed_latest_reading_blocks_closure_until_a_successful_one(
 ):
     monkeypatch.setattr(assurance, "INTERVAL", timedelta(0))
     case = complete_case(org, client_for(org["alice"]))
-    # More than 200 events since departure also make a reading unavailable.
+    # More than 200 successful sign-ins since departure also make a reading unavailable.
     assurance.watch_departures(Reader(fail=True))
     value = assess(case)
     assert value["blockers"] == [UNAVAILABLE]
@@ -325,6 +342,8 @@ def test_a_failed_latest_reading_blocks_closure_until_a_successful_one(
     assurance.watch_departures(Reader())
     assert assess(case)["blockers"] == []
     assert close(org, client_for, case).status_code == 200
+    # The open case showed it as a blocker, so only closed cases audit it.
+    assert not AuditEvent.objects.filter(action="departure.watch_interrupted").exists()
 
 
 @pytest.mark.parametrize(
@@ -385,13 +404,95 @@ def test_a_watch_that_never_covered_the_window_is_stated_but_does_not_block(org,
     move_departure(case, hours=49)
     reader = Reader()
     assert assurance.watch_departures(reader) == 0 and reader.calls == []
-    assert (
-        "The sign-in watch never completed a reading covering the full day after departure."
-        in keycloak_task(case)["evidenceSummary"]
-    )
+    assert keycloak_task(case)["evidenceSummary"].endswith(" " + MISSED)
     value = assess(case)
     assert value["watch"]["status"] == "missed" and value["blockers"] == []
     assert close(org, client_for, case).status_code == 200
+
+
+def test_a_missing_events_client_blocks_closure_even_after_the_grace_day(org, client_for, settings):
+    settings.EVENTS_CLIENT_SECRET = ""
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    move_departure(case, hours=49)
+    value = assess(case)
+    assert value["watch"]["status"] == "not_configured" and value["blockers"] == [NOT_CONFIGURED]
+    response = close(org, client_for, case)
+    assert response.status_code == 409 and response.json()["error"]["code"] == "closure_blocked"
+    # Configuring the client clears the block: the missed day is stated, with no deadlock.
+    settings.EVENTS_CLIENT_SECRET = "synthetic-events-client-" + "e" * 16
+    value = assess(case)
+    assert value["watch"]["status"] == "missed" and value["blockers"] == []
+    assert close(org, client_for, case).status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("hours", "status"),
+    [([1, 25], "complete"), ([1, 26], "missed"), ([24], "complete"), ([30], "missed")],
+    ids=["gap-within-retention", "gap-past-retention", "first-at-end", "first-too-late"],
+)
+def test_the_watch_completes_only_if_its_readings_reach_back_to_the_departure(
+    org, client_for, hours, status
+):
+    # Keycloak keeps events for 24 hours, so no reading sees further back than that.
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    move_departure(case, hours=31)
+    for hour in hours:
+        record_reading(case, case.effective_at + timedelta(hours=hour))
+    value = assess(case)
+    assert value["watch"]["status"] == status and value["blockers"] == []
+    summary = keycloak_task(case)["evidenceSummary"]
+    assert ("Since the departure" in summary) is (status == "complete")
+    assert summary.endswith(" " + MISSED) is (status == "missed")
+
+
+def test_a_late_containment_makes_no_claim_about_the_unread_start_of_the_day(org, client_for):
+    # Contained 30 hours after departure: Keycloak no longer holds the first 6 hours.
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    move_departure(case, hours=30)
+    assert assurance.watch_departures(Reader()) == 1
+    value = assess(case)
+    assert value["watch"]["status"] == "missed" and value["blockers"] == []
+    summary = keycloak_task(case)["evidenceSummary"]
+    assert summary.endswith(" " + MISSED) and "Since the departure" not in summary
+    assert assurance.due_cases(timezone.now(), 10) == []
+
+
+def test_the_watch_boundaries(org, client_for):
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    end = case.effective_at + timedelta(hours=24)
+    now = timezone.now()
+    # A reading exactly FRESH old is current; one second later it is stale.
+    record_reading(case, now - timedelta(seconds=90))
+    assert assurance.watch_state(case, now)["status"] == "watching"
+    assert assurance.watch_state(case, now + timedelta(seconds=1))["status"] == "stale"
+    # From the end of the window the final reading is due for one more day.
+    assert assurance.watch_state(case, end)["status"] == "finishing"
+    last = end + timedelta(hours=24) - timedelta(seconds=1)
+    assert assurance.watch_state(case, last)["status"] == "finishing"
+    assert assurance.due_cases(last, 10) == [case]
+    assert assurance.watch_state(case, last + timedelta(seconds=1))["status"] == "missed"
+    assert assurance.due_cases(last + timedelta(seconds=1), 10) == []
+    # A reading exactly at the end is the final one.
+    record_reading(case, end)
+    assert assurance.watch_state(case, end)["status"] == "complete"
+    assert assurance.due_cases(end + timedelta(minutes=5), 10) == []
+
+
+def test_a_failed_reading_at_the_same_time_as_a_good_one_fails_closed(org, client_for):
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    at = timezone.now()
+    record_reading(case, at)
+    record_reading(case, at, status="unavailable")
+    value = assess(case)
+    assert value["watch"]["status"] == "unavailable" and value["blockers"] == [UNAVAILABLE]
+
+
+def test_a_failed_first_reading_is_unavailable_not_pending(org, client_for):
+    case = complete_case(org, client_for(org["alice"]), watched=False)
+    assurance.watch_departures(Reader(fail=True))
+    value = assess(case)
+    assert value["watch"]["status"] == "unavailable" and value["blockers"] == [UNAVAILABLE]
+    assert value["watch"]["lastReadAt"] is None and value["watch"]["lastAttemptAt"]
 
 
 def test_closure_freezes_the_watch_state_and_assess_returns_a_copy(org, client_for):
@@ -480,6 +581,81 @@ def test_a_reading_that_began_before_closure_is_taken_again(org, client_for, mon
     case.refresh_from_db()
     assert assess(case)["watch"]["afterClosure"] == 1
     assert AuditEvent.objects.filter(action="departure.access_after_closure").exists()
+
+
+def test_a_sign_in_investigated_before_closure_is_not_counted_after_it(
+    org, client_for, signer, monkeypatch
+):
+    monkeypatch.setattr(assurance, "INTERVAL", timedelta(0))
+    owner = client_for(org["alice"])
+    case = complete_case(org, owner)
+    reader = Reader([event(case, "LOGIN", seconds=30)])
+    assert assurance.watch_departures(reader) == 1
+    path = f"{PREFIX}/{case.pk}/tasks/post-departure-access/attest"
+    statement = {
+        "reference": "INC-SYN-0002",
+        "summary": "Synthetic investigation: re-enabled by mistake, contained again, no data accessed.",
+    }
+    assert post(owner, path, statement).status_code == 200
+    case.refresh_from_db()
+    assert close(org, client_for, case).status_code == 200
+    # Read again after closure: the same sign-in, already reviewed.
+    assert assurance.watch_departures(reader) == 1
+    case.refresh_from_db()
+    watch = assess(case)["watch"]
+    assert watch["successes"] == 1 and watch["afterClosure"] == 0
+    assert not AuditEvent.objects.filter(action="departure.access_after_closure").exists()
+    assert SecurityEvent.objects.filter(case=case, event_type="session-established").count() == 1
+
+
+def test_a_closed_case_still_gets_its_final_reading_after_the_window(org, client_for, monkeypatch):
+    monkeypatch.setattr(assurance, "INTERVAL", timedelta(0))
+    case = complete_case(org, client_for(org["alice"]))
+    assert close(org, client_for, case).status_code == 200
+    # Closed a minute before the end of the window, read just before closure.
+    move_departure(case, hours=25)
+    end = case.effective_at + timedelta(hours=24)
+    ActivityCheck.objects.filter(case=case).update(checked_at=end - timedelta(minutes=2))
+    OffboardingCase.objects.filter(pk=case.pk).update(closed_at=end - timedelta(minutes=1))
+    case.refresh_from_db()
+    assert assess(case)["watch"]["status"] == "finishing"
+    assert assurance.due_cases(timezone.now(), 10) == [case]
+    assert assurance.watch_departures(Reader()) == 1
+    case.refresh_from_db()
+    assert assess(case)["watch"]["status"] == "complete"
+    assert assurance.due_cases(timezone.now(), 10) == []
+
+
+def test_a_failed_reading_on_a_closed_case_is_audited_once(org, client_for, monkeypatch):
+    # Nothing blocks on a closed case, so the audit trail records the interruption.
+    monkeypatch.setattr(assurance, "INTERVAL", timedelta(0))
+    case = complete_case(org, client_for(org["alice"]))
+    assert close(org, client_for, case).status_code == 200
+    assurance.watch_departures(Reader(fail=True))
+    assurance.watch_departures(Reader(fail=True))
+    (interrupted,) = AuditEvent.objects.filter(action="departure.watch_interrupted")
+    assert interrupted.target_id == str(case.pk) and set(interrupted.detail) == {"lastReadAt"}
+    case.refresh_from_db()
+    assert assess(case)["watch"]["status"] == "unavailable"
+    assurance.watch_departures(Reader())
+    assurance.watch_departures(Reader(fail=True))
+    assert AuditEvent.objects.filter(action="departure.watch_interrupted").count() == 2
+
+
+def test_a_pass_stops_once_it_has_used_its_time(org, client_for, monkeypatch):
+    # A slow or unreachable Keycloak must not hold up the provider jobs in the same loop.
+    monkeypatch.setattr(assurance, "BUDGET", 0)
+    owner = client_for(org["alice"])
+    closed = complete_case(org, owner)
+    assert close(org, client_for, closed).status_code == 200
+    opened = complete_case(org, owner)
+    ActivityCheck.objects.update(checked_at=timezone.now() - timedelta(minutes=1))
+    assert assurance.due_cases(timezone.now(), 10) == [opened, closed]
+    reader = Reader(fail=True)
+    assert assurance.watch_departures(reader) == 1 and len(reader.calls) == 1
+    assert assurance.due_cases(timezone.now(), 10) == [closed]
+    assert assurance.watch_departures(reader) == 1
+    assert assurance.due_cases(timezone.now(), 10) == []
 
 
 def test_session_signal_ids_are_unique(org, signer):

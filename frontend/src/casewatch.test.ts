@@ -172,13 +172,30 @@ describe("server-enrolled Entra account", () => {
       }).offboardingCases ?? [];
     expect(parsed.entraBinding).toEqual(enrollment);
     expect(parsed.watch).toEqual(pending);
+    // Python's isoformat, as the backend sends it.
+    const sent = watch({
+      windowEndsAt: "2026-10-28T21:13:23.009770+00:00",
+      lastReadAt: "2026-10-27T21:14:02.118204+00:00",
+      lastAttemptAt: "2026-10-27T21:14:02.118204+00:00",
+    });
+    expect(
+      parseSnapshot({
+        ...snapshot,
+        offboardingCases: [{ ...item, watch: sent }],
+      }).offboardingCases?.[0].watch,
+    ).toEqual(sent);
+    const [group] = enrollment.groupIds;
     for (const bad of [
       { entraBinding: { ...enrollment, userId: "display-name" } },
+      { entraBinding: { ...enrollment, tenantId: "contoso" } },
       { entraBinding: { ...enrollment, groupIds: "all" } },
+      { entraBinding: { ...enrollment, groupIds: [group, group] } },
       { watch: { ...watch(), status: "asleep" } },
       { watch: { ...watch(), afterClosure: -1 } },
       { watch: { ...watch(), successes: 1.5 } },
+      { watch: { ...watch(), refused: -1 } },
       { watch: { ...watch(), lastReadAt: "yesterday" } },
+      { watch: { ...watch(), lastAttemptAt: "soon" } },
       { watch: { ...watch(), windowEndsAt: null } },
     ])
       expect(() =>
@@ -250,7 +267,17 @@ describe("sign-in watch after departure", () => {
       tone: "neutral",
       text: `waiting for the final check · day ended ${end}`,
     });
-    expect(watchLine(watch({ status: "missed" }), now)?.tone).toBe("warn");
+    expect(watchLine(watch({ status: "missed" }), now)).toEqual({
+      tone: "warn",
+      text: `did not cover the full day after departure · runs until ${end}`,
+    });
+    // The packet says only that an attempt was refused; the line has the count.
+    expect(watchLine(watch({ refused: 1 }), now)?.text).toBe(
+      `last checked 12s ago · 1 refused attempt · runs until ${end}`,
+    );
+    expect(
+      watchLine(watch({ status: "complete", refused: 3 }), now)?.text,
+    ).toBe(`complete · covered the day until ${end} · 3 refused attempts`);
     expect(watchLine(undefined, now)).toBeUndefined();
   });
 
@@ -262,20 +289,44 @@ describe("sign-in watch after departure", () => {
       watch: watch({ status: "complete", successes: 2, afterClosure: 2 }),
     });
     expect(two).toContain('role="alert"');
+    expect(two).toContain("2 sign-ins were first read after closure.");
+    // Signals depend on the server's configuration, which the console can't see.
     expect(two).toContain(
-      "2 sign-ins after closure were detected and signalled to the SOC.",
+      "Each sign-in is audited and, where leaver signals are configured, sent to the SOC.",
     );
     expect(
       render({
         ...closed,
         watch: watch({ status: "watching", successes: 1, afterClosure: 1 }),
       }),
-    ).toContain(
-      "1 sign-in after closure was detected and signalled to the SOC.",
-    );
+    ).toContain("1 sign-in was first read after closure.");
     expect(render({ ...closed, watch: watch() })).not.toContain(
       "after closure",
     );
     expect(render(closed)).not.toContain("after closure");
+  });
+
+  it("names a closed case's watch findings in the queue", async () => {
+    const closed = (await initialOffboardingCases(now))[3];
+    const title = (patch?: Partial<CaseWatch>) =>
+      nextStep(
+        { ...closed, watch: patch && watch(patch) },
+        now,
+        jules,
+        "Jules",
+        true,
+      ).title;
+    expect(title()).toBe("Closed on reviewed evidence");
+    expect(title({})).toBe("Closed on reviewed evidence");
+    expect(title({ status: "complete", successes: 1, afterClosure: 1 })).toBe(
+      "Closed · 1 sign-in read after closure",
+    );
+    expect(title({ status: "unavailable", afterClosure: 2 })).toBe(
+      "Closed · 2 sign-ins read after closure",
+    );
+    for (const status of ["unavailable", "stale"] as const)
+      expect(title({ status })).toBe("Closed · sign-in watch interrupted");
+    for (const status of ["finishing", "missed", "not_configured"] as const)
+      expect(title({ status })).toBe("Closed on reviewed evidence");
   });
 });

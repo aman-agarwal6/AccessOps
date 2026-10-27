@@ -202,10 +202,11 @@ export function CaseDetail({
             icon={<ShieldAlert size={18} aria-hidden="true" />}
           >
             <strong>
-              {afterClosure} sign-in{afterClosure === 1 ? "" : "s"} after
-              closure {afterClosure === 1 ? "was" : "were"} detected and
-              signalled to the SOC.
+              {afterClosure} sign-in{afterClosure === 1 ? " was" : "s were"}{" "}
+              first read after closure.
             </strong>{" "}
+            The closure review did not cover this access. Each sign-in is
+            audited and, where leaver signals are configured, sent to the SOC.
             The closed packet stays as it was reviewed.
           </Callout>
         </div>

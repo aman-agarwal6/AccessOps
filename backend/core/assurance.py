@@ -5,17 +5,20 @@ the effective time and keeps every reading. A successful sign-in after departure
 adds a required "Investigate sign-in after departure" task to the case and sends
 the SOC a CAEP session-established event; refused attempts are only counted.
 Keycloak keeps events for one day in this lab, so the watch covers that day,
-closed cases included, and closure waits until it is current. After closure a
-sign-in is still signalled and shown on the case; the closed packet never changes.
+closed cases included, and closure waits until it is current. No reading sees
+further back, so a late containment or a day-long gap leaves the watch missed,
+which the case states. After closure a sign-in is still signalled and shown on
+the case; the closed packet never changes.
 """
 
 import logging
+import time
 from datetime import UTC, datetime, timedelta
 from functools import cache
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Exists, F, OuterRef
+from django.db.models import Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 
 from . import audit, ssf
@@ -23,8 +26,13 @@ from .models import ActivityCheck, OffboardingCase
 from .services import policy_state
 
 logger = logging.getLogger(__name__)
-WINDOW = timedelta(hours=24)
+# Keycloak's eventsExpiration in this lab: no reading sees events older than this.
+RETENTION = timedelta(seconds=86400)
+# The day after departure, which one reading can still see back to its start.
+WINDOW = RETENTION
 INTERVAL = timedelta(seconds=30)
+# Seconds one pass may spend reading, so a slow Keycloak never holds up provider jobs.
+BUDGET = 5
 # Closure needs a successful reading at least this recent during the window.
 FRESH = timedelta(seconds=90)
 # After the window, the final reading is retried for this long; then it is missed.
@@ -48,7 +56,14 @@ BLOCKERS = {
     "stale": "No successful sign-in check in the last 90 seconds; closure waits for a current one.",
     "finishing": "Waiting for the final sign-in check covering the full day after departure.",
 }
-MISSED = "The sign-in watch never completed a reading covering the full day after departure."
+MISSED = (
+    "The sign-in watch did not cover the full day after departure, and Keycloak no longer"
+    " holds the events it did not read."
+)
+
+
+def key(item):
+    return (item["time"], item["type"], item["clientId"])
 
 
 def watch_configured():
@@ -69,28 +84,25 @@ def due_cases(now, limit):
         status="observed",
         checked_at__gte=OuterRef("effective_at") + WINDOW,
     )
-    cases = (
+    attempts = ActivityCheck.objects.filter(case=OuterRef("pk")).order_by("-checked_at")
+    return list(
         OffboardingCase.objects.filter(
             containment_request__isnull=False,
             effective_at__lte=now,
             effective_at__gt=now - WINDOW - GRACE,
         )
         .exclude(Exists(final))
+        .annotate(last_attempt=Subquery(attempts.values("checked_at")[:1]))
+        .filter(Q(last_attempt__isnull=True) | Q(last_attempt__lte=now - INTERVAL))
         .select_related("identity")
+        # Open cases first, so closed ones never delay a pending closure.
+        .order_by(F("closed_at").asc(nulls_first=True), "effective_at")[:limit]
     )
-    due = []
-    # Open cases first, so closed ones never delay a pending closure.
-    for case in cases.order_by(F("closed_at").asc(nulls_first=True), "effective_at")[:200]:
-        latest = case.activity_checks.order_by("-checked_at").first()
-        if latest is None or latest.checked_at <= now - INTERVAL:
-            due.append(case)
-        if len(due) == limit:
-            break
-    return due
 
 
 def watch_departures(reader=None, limit=10):
-    """Read each due case once. Returns the number of readings recorded."""
+    """Read due cases once each until a pass has taken BUDGET seconds; the rest
+    stay due, and go stale if that lasts. Returns the number of readings recorded."""
     if reader is None:
         if not watch_configured():
             warn_unconfigured()
@@ -101,8 +113,10 @@ def watch_departures(reader=None, limit=10):
     from integrations.errors import ConnectorError
     from integrations.keycloak import SIGN_IN_REFUSED, SIGN_IN_SUCCESS
 
-    recorded = 0
+    recorded, started = 0, time.monotonic()
     for case in due_cases(timezone.now(), limit):
+        if recorded and time.monotonic() - started >= BUDGET:
+            break
         read_at = timezone.now()
         try:
             events = reader.sign_in_events(
@@ -123,7 +137,13 @@ def watch_departures(reader=None, limit=10):
                 # The case closed while this reading was in flight, so its reviewer
                 # never saw it. Drop it: the next one reads the same events.
                 continue
-            new = [item for item in successes if item not in post_departure_successes(case)]
+            known = {key(item) for item in post_departure_successes(case)}
+            new = []
+            for item in successes:
+                if key(item) not in known:
+                    known.add(key(item))
+                    new.append(item)
+            previous = case.activity_checks.order_by("-checked_at").first()
             ActivityCheck.objects.create(
                 case=case,
                 checked_at=read_at,
@@ -148,6 +168,14 @@ def watch_departures(reader=None, limit=10):
                     case.pk,
                     {"count": len(new), "firstAt": min(item["time"] for item in new)},
                 )
+            if status != "observed" and closed_at and previous and previous.status == "observed":
+                # Nothing blocks on a closed case, so the first failed reading is audited.
+                audit.append(
+                    "worker",
+                    "departure.watch_interrupted",
+                    case.pk,
+                    {"lastReadAt": previous.checked_at.isoformat()},
+                )
         recorded += 1
     return recorded
 
@@ -155,7 +183,7 @@ def watch_departures(reader=None, limit=10):
 def successes_read(case):
     """Every distinct successful sign-in or token use ever read after departure,
     with the time of the first reading that saw it."""
-    seen = []
+    seen, keys = [], set()
     for checked_at, successes in (
         case.activity_checks.filter(status="observed")
         .exclude(successes=[])
@@ -163,7 +191,8 @@ def successes_read(case):
         .values_list("checked_at", "successes")
     ):
         for item in successes:
-            if all(item != known for known, _ in seen):
+            if key(item) not in keys:
+                keys.add(key(item))
                 seen.append((item, checked_at))
     return seen
 
@@ -174,6 +203,17 @@ def post_departure_successes(case):
 
 def latest_reading(case):
     return case.activity_checks.filter(status="observed").order_by("-checked_at").first()
+
+
+def covered(case, end):
+    """Whether successful readings saw every event from the departure to end. Each
+    sees RETENTION back and the window is no longer, so only the step to the first
+    reading at or after end can leave events unread."""
+    observed = case.activity_checks.filter(status="observed")
+    before = observed.filter(checked_at__lt=end).order_by("-checked_at").first()
+    final = observed.filter(checked_at__gte=end).order_by("checked_at").first()
+    start = before.checked_at if before else case.effective_at
+    return final is not None and final.checked_at - start <= RETENTION
 
 
 def watch_state(case, now, read=None):
@@ -193,12 +233,15 @@ def watch_state(case, now, read=None):
     if not case.containment_request_id or case.effective_at > now:
         status = "not_started"
     elif last and last.checked_at >= end:
-        status = "complete"
+        # A first reading, or one after a gap, longer than RETENTION after the last
+        # cannot see the start of that span: the watch then missed it for good.
+        status = "complete" if covered(case, end) else "missed"
+    elif not watch_configured():
+        # Before missed: configuring the client clears this, so it always blocks.
+        status = "not_configured"
     elif now >= end + GRACE:
         # Not a blocker, or a late containment could never close; the case says so.
         status = "missed"
-    elif not watch_configured():
-        status = "not_configured"
     elif attempt is None:
         status = "pending"
     elif failed:
