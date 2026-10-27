@@ -567,6 +567,30 @@ button.stat:hover {
   margin-top: 3px;
   color: var(--warn);
 }
+.watch-line {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--s2);
+  margin-top: var(--s4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.watch-line strong {
+  color: var(--text);
+}
+.watch-line svg {
+  margin-top: 3px;
+  color: var(--text-3);
+}
+.watch-line.ok svg {
+  color: var(--ok);
+}
+.watch-line.warn svg {
+  color: var(--warn);
+}
+.watch-line.danger svg {
+  color: var(--danger);
+}
 .legend {
   display: grid;
   gap: var(--s3);

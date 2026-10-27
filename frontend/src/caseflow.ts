@@ -1,15 +1,24 @@
 import type { Principal } from "./domain";
-import type { OffboardingCase, OffboardingTask } from "./offboarding";
-import type { ProvenanceKind } from "./ui";
+import type {
+  CaseWatch,
+  OffboardingCase,
+  OffboardingTask,
+} from "./offboarding";
+import { formatDate, type ProvenanceKind } from "./ui";
 
-/** Tasks the system observes itself; owners can never attest these. */
+/** Tasks the system observes itself on every case; owners never attest these. */
 export const NATIVE_TASKS = [
   "local-containment",
   "keycloak-directory",
   "ad-directory",
 ] as const;
-export const isNative = (id: string) =>
-  (NATIVE_TASKS as readonly string[]).includes(id);
+/** An enrolled Entra account is observed by the worker, so it is native too. */
+export const isNative = (
+  item: Pick<OffboardingCase, "entraBinding">,
+  id: string,
+) =>
+  (NATIVE_TASKS as readonly string[]).includes(id) ||
+  (id === "entra-directory" && !!item.entraBinding);
 
 export const PHASES = [
   {
@@ -108,6 +117,65 @@ function span(ms: number) {
   if (hours < 48) return `${hours}h ${String(minutes % 60).padStart(2, "0")}m`;
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
+function ago(value: string, now: number) {
+  const ms = Math.max(0, now - Date.parse(value));
+  return ms < 60000 ? `${Math.floor(ms / 1000)}s ago` : `${span(ms)} ago`;
+}
+
+export type WatchLine = {
+  tone: "ok" | "warn" | "danger" | "neutral";
+  text: string;
+};
+/** The sign-in watch in one line, or nothing when the case has no watch. */
+export function watchLine(
+  watch: CaseWatch | undefined,
+  now: number,
+): WatchLine | undefined {
+  if (!watch) return undefined;
+  const end = formatDate(watch.windowEndsAt);
+  const until =
+    now < Date.parse(watch.windowEndsAt)
+      ? `runs until ${end}`
+      : `day ended ${end}`;
+  const since = watch.lastReadAt && ago(watch.lastReadAt, now);
+  const read = since ? `last checked ${since}` : "no successful check yet";
+  const success = since ? `last success ${since}` : "no successful check yet";
+  switch (watch.status) {
+    case "not_started":
+      return { tone: "neutral", text: "starts after containment" };
+    case "not_configured":
+      return {
+        tone: "danger",
+        text: "not configured, so sign-ins after departure can't be checked",
+      };
+    case "pending":
+      return {
+        tone: "neutral",
+        text: `waiting for the first check · ${until}`,
+      };
+    case "watching":
+      return { tone: "ok", text: `${read} · ${until}` };
+    case "unavailable":
+      return {
+        tone: "danger",
+        text: `latest check failed · ${success} · ${until}`,
+      };
+    case "stale":
+      return { tone: "warn", text: `not current, ${read} · ${until}` };
+    case "finishing":
+      return {
+        tone: "neutral",
+        text: `waiting for the final check · ${until}`,
+      };
+    case "complete":
+      return { tone: "ok", text: `complete · covered the day until ${end}` };
+    case "missed":
+      return {
+        tone: "warn",
+        text: `no check covered the full day after departure · ${until}`,
+      };
+  }
+}
 
 export type StepAction =
   | "contain"
@@ -125,6 +193,7 @@ export type NextStep = {
     | "observe"
     | "import"
     | "attest"
+    | "watch"
     | "refresh"
     | "review";
   tone: "action" | "waiting" | "done";
@@ -139,6 +208,37 @@ export type NextStep = {
 
 const pendingTask = (item: OffboardingCase, id: string) =>
   item.tasks.find((task) => task.id === id)?.status === "pending";
+
+/** Watch states that block closure. Only the server's next reading clears them. */
+const WATCH_WAITING: Partial<
+  Record<CaseWatch["status"], { title: string; detail: string }>
+> = {
+  not_configured: {
+    title: "Sign-ins after departure can't be checked",
+    detail:
+      "The read-only Keycloak events client isn't configured on the server. Closure stays blocked until an administrator configures it.",
+  },
+  pending: {
+    title: "Waiting for the first sign-in check",
+    detail:
+      "Keycloak sign-in events are read every 30 seconds after containment. Refresh to see the first check.",
+  },
+  unavailable: {
+    title: "Waiting for a successful sign-in check",
+    detail:
+      "The latest read of Keycloak sign-in events failed. A failed check never counts as no sign-in; closure waits for a successful one.",
+  },
+  stale: {
+    title: "Waiting for a current sign-in check",
+    detail:
+      "No successful sign-in check in the last 90 seconds. Closure waits for a current one; refresh to update.",
+  },
+  finishing: {
+    title: "Waiting for the final sign-in check",
+    detail:
+      "The day after departure has ended. Closure waits for one successful check that covers the whole day.",
+  },
+};
 
 export function nextStep(
   item: OffboardingCase,
@@ -197,7 +297,10 @@ export function nextStep(
       needs: "operator",
       blockedBy: operator ? undefined : "Requires the operator role.",
     };
-  if (pendingTask(item, "ad-directory"))
+  if (
+    pendingTask(item, "ad-directory") ||
+    (isNative(item, "entra-directory") && pendingTask(item, "entra-directory"))
+  )
     return connected
       ? {
           stage: "observe",
@@ -228,7 +331,7 @@ export function nextStep(
       blockedBy: operator ? undefined : "Requires the operator role.",
     };
   const attestable = item.tasks.filter(
-    (task) => task.status === "pending" && !isNative(task.id),
+    (task) => task.status === "pending" && !isNative(item, task.id),
   );
   if (attestable.length)
     return {
@@ -248,6 +351,9 @@ export function nextStep(
           ? undefined
           : `Only the case owner, ${ownerName}, can record owner evidence.`,
     };
+  // Nobody here can act on a watch blocker; any others stay listed under readiness.
+  const watch = item.watch && WATCH_WAITING[item.watch.status];
+  if (watch) return { stage: "watch", tone: "waiting", ...watch };
   if (item.blockers.length)
     return {
       stage: "refresh",

@@ -10,7 +10,9 @@ import {
   Hourglass,
   Lock,
   PenLine,
+  Radar,
   RefreshCw,
+  ShieldAlert,
   ShieldOff,
   TriangleAlert,
   Upload,
@@ -24,6 +26,7 @@ import {
   progress,
   sla,
   taskProvenance,
+  watchLine,
   type NextStep,
   type StepAction,
 } from "../../caseflow";
@@ -49,6 +52,7 @@ const stepIcons: Record<NextStep["stage"], typeof ShieldOff> = {
   observe: RefreshCw,
   import: FileInput,
   attest: PenLine,
+  watch: Radar,
   refresh: TriangleAlert,
   review: ClipboardCheck,
 };
@@ -84,6 +88,8 @@ export function CaseDetail({
   const containment = item.tasks.find(
     (task) => task.id === "local-containment",
   );
+  const watch = watchLine(item.watch, ws.now);
+  const afterClosure = closed ? (item.watch?.afterClosure ?? 0) : 0;
   const legend: ProvenanceKind[] = [
     ws.connected ? "observed" : "simulated",
     "imported",
@@ -188,6 +194,23 @@ export function CaseDetail({
         </div>
       )}
 
+      {afterClosure > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <Callout
+            tone="danger"
+            role="alert"
+            icon={<ShieldAlert size={18} aria-hidden="true" />}
+          >
+            <strong>
+              {afterClosure} sign-in{afterClosure === 1 ? "" : "s"} after
+              closure {afterClosure === 1 ? "was" : "were"} detected and
+              signalled to the SOC.
+            </strong>{" "}
+            The closed packet stays as it was reviewed.
+          </Callout>
+        </div>
+      )}
+
       <section
         className={`next-step ${step.tone === "done" ? "done" : step.tone === "waiting" ? "waiting" : ""}`}
         aria-labelledby="next-step-title"
@@ -271,7 +294,10 @@ export function CaseDetail({
                 <ul>
                   {phase.tasks.map((task) => {
                     const kind = taskProvenance(task, ws.connected);
-                    const native = isNative(task.id);
+                    const native = isNative(item, task.id);
+                    const enrolled =
+                      (task.id === "ad-directory" && !!item.adBinding) ||
+                      (task.id === "entra-directory" && !!item.entraBinding);
                     const canAttest =
                       !native &&
                       !closed &&
@@ -363,24 +389,21 @@ export function CaseDetail({
                                 Read again
                               </button>
                             )}
-                          {task.id === "ad-directory" &&
-                            ws.connected &&
-                            item.adBinding &&
-                            !closed && (
-                              <button
-                                className="btn btn-ghost btn-sm"
-                                disabled={
-                                  ws.busy ||
-                                  !operator ||
-                                  future ||
-                                  containment?.status !== "observed"
-                                }
-                                onClick={() => onAction("observeDirectory")}
-                              >
-                                <RefreshCw size={14} aria-hidden="true" />
-                                Refresh directory
-                              </button>
-                            )}
+                          {enrolled && ws.connected && !closed && (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              disabled={
+                                ws.busy ||
+                                !operator ||
+                                future ||
+                                containment?.status !== "observed"
+                              }
+                              onClick={() => onAction("observeDirectory")}
+                            >
+                              <RefreshCw size={14} aria-hidden="true" />
+                              Refresh directory
+                            </button>
+                          )}
                           {canAttest && (
                             <button
                               className={`btn btn-sm ${step.stage === "attest" ? "btn-secondary" : "btn-ghost"}`}
@@ -444,6 +467,14 @@ export function CaseDetail({
                   </li>
                 )}
               </ul>
+            )}
+            {watch && (
+              <p className={`watch-line ${watch.tone}`}>
+                <Radar size={15} aria-hidden="true" />
+                <span>
+                  <strong>Sign-in watch:</strong> {watch.text}
+                </span>
+              </p>
             )}
             {!closed && (
               <p
@@ -512,11 +543,13 @@ export function CaseDetail({
                           ? ws.connected
                             ? "Connected lab"
                             : "Simulated in this tab"
-                          : binding
-                            ? "Bound account · snapshot"
-                            : platform === "legacy" && item.adBinding
-                              ? "Trusted enrollment"
-                              : "Owner evidence"}
+                          : platform === "entra" && item.entraBinding
+                            ? "Trusted enrollment"
+                            : binding
+                              ? "Bound account · snapshot"
+                              : platform === "legacy" && item.adBinding
+                                ? "Trusted enrollment"
+                                : "Owner evidence"}
                       </small>
                     </span>
                     <span className="num">
@@ -564,7 +597,9 @@ export function CaseDetail({
           <details className="disclosure">
             <summary>
               Bound account IDs ·{" "}
-              {item.bindings.length + (item.adBinding ? 1 : 0)}
+              {item.bindings.length +
+                (item.adBinding ? 1 : 0) +
+                (item.entraBinding ? 1 : 0)}
             </summary>
             <div className="disclosure-body">
               <dl className="kv" style={{ gridTemplateColumns: "1fr" }}>
@@ -593,6 +628,19 @@ export function CaseDetail({
                       <br />
                       {item.adBinding.groupGuids.length} enrolled group scopes ·
                       read only
+                    </dd>
+                  </div>
+                )}
+                {item.entraBinding && (
+                  <div>
+                    <dt>Microsoft Entra ID (server-enrolled)</dt>
+                    <dd className="hash">
+                      Tenant {item.entraBinding.tenantId}
+                      <br />
+                      Account {item.entraBinding.userId}
+                      <br />
+                      {item.entraBinding.groupIds.length} enrolled group scopes
+                      · read only
                     </dd>
                   </div>
                 )}
