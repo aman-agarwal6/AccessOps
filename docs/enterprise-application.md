@@ -1,10 +1,11 @@
 # The departure problem
 
 An IAM analyst receives an HR event: an employee leaves or a contractor's
-engagement expires. With the signed HR feed connected, AccessOps opens the case
-and contains access itself, so the analyst starts from a contained case. Disabling the central account leaves a practical question:
+engagement expires. Disabling the central account leaves a practical question:
 what else can they still access, who owns the remaining work, and what evidence
-supports closing the departure ticket?
+supports closing the departure ticket? With the signed HR feed connected,
+AccessOps opens the case and contains the accounts it controls before the
+analyst starts.
 
 AccessOps turns that event into a case with an effective date, accountable owner,
 deadline, explicit stable account bindings and nine required actions. The work
@@ -19,9 +20,10 @@ the application does not delete a mailbox or remove a license automatically.
 
 The local system can actually contain its enrolled workforce identity and
 sponsored automation, including ending the identity's Keycloak sessions so apps
-registered for back-channel logout sign the person out. An optional Samba AD-compatible directory adds a tenth
-required task: disable the explicitly enrolled account and remove mapped group
-memberships through verified LDAPS with object-specific delegated permissions.
+registered for back-channel logout sign the person out. An optional Samba
+AD-compatible directory adds a tenth required task: disable the explicitly
+enrolled account and remove mapped group memberships through verified LDAPS with
+object-specific delegated permissions.
 New sign-ins and new Kerberos tickets are refused afterwards; connections and
 tickets already held keep working until they close or expire, and the case says
 when that is. Samba results do not establish Microsoft interoperability. An opt-in

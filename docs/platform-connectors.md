@@ -158,8 +158,8 @@ Opt-in, for a test tenant you own. On containment, the worker disables the
 enrolled Entra user, removes it from its mapped groups and revokes its sign-in
 sessions through Microsoft Graph v1.0, then reads all three back. The case's
 Entra task counts only that reading: account disabled, every mapped membership
-absent, no directory role, and `signInSessionsValidFromDateTime` at or after the
-departure. An owner statement cannot replace it.
+absent, no direct directory role, and `signInSessionsValidFromDateTime` at or
+after the departure. An owner statement cannot replace it.
 
 It signs in as a single-tenant app registration with a certificate (client
 credentials with a signed JWT assertion); the private key stays in
@@ -177,9 +177,11 @@ privileged Graph application permissions for these calls:
 On Entra ID Free these permissions apply to the whole tenant, so the connector
 itself is the scope boundary. It acts only on the test users and group listed in
 `.local/entra/lab.json`, refuses any object in `protected_object_ids` (the
-tenant administrator), refuses a user who holds any directory role, and refuses
-to run until `admin_consent_granted_at` records the administrator's consent. It
-never enables an account or adds a membership. Enrollment is server-local
+tenant administrator), refuses a user Graph lists as a direct member of a
+directory role (roles held through a group, PIM-eligible roles and roles scoped
+to an administrative unit are not seen), and refuses to run until
+`admin_consent_granted_at` records the administrator's consent. It never enables
+an account or adds a membership. Enrollment is server-local
 (`manage.py enroll_entra`) and requires an enabled test user in every mapped
 group; a test user can be enrolled again for a new identity only after every
 earlier identity bound to it is offboarded.
@@ -195,19 +197,22 @@ uploaded `connector-cert.cer` to the app registration, added the permissions
 above, granted admin consent and recorded it in `lab.json`. The harness, not
 AccessOps, re-enables the test user afterwards for the next run.
 
-## Bounds and failure behavior
+## Collector bounds and failure behavior
 
-The transport verifies TLS using the standard public trust context, ignores
-ambient proxy variables, follows no redirects, and sends only GET requests to
-the fixed vendor origins. Tokens are never taken from page links. GitHub next
-links must preserve the exact endpoint, original query parameters, and vendor
-origin; only the page number may change. Invalid links, duplicate IDs, malformed
-fields, HTTP denial, rate limits, and incomplete pagination produce unknown
-observations with safe reason codes, without copying provider error bodies.
+The read-only collector verifies TLS using the standard public trust context,
+ignores ambient proxy variables, follows no redirects, and sends only GET
+requests to the fixed vendor origins. The live Entra connector uses the same
+TLS, proxy and redirect settings with a ten-second timeout (five for connect),
+and also sends its token request and the PATCH, DELETE and POST calls listed
+above. Tokens are never taken from page links. GitHub next links must preserve
+the exact endpoint, original query parameters, and vendor origin; only the page
+number may change. Invalid links, duplicate IDs, malformed fields, HTTP denial,
+rate limits, and incomplete pagination produce unknown observations with safe
+reason codes, without copying provider error bodies.
 
-Default limits are ten pages, 1,000 records per membership collection, 32 total
-requests, 256 KiB per decoded response, a five-second request timeout (three for
-connect), and a 60-second collection deadline. Partial pages are never labeled
+The collector's default limits are ten pages, 1,000 records per membership
+collection, 32 total requests, 256 KiB per decoded response, a five-second
+request timeout (three for connect), and a 60-second collection deadline. Partial pages are never labeled
 complete. The canonical import accepts at most 100 observations and 100 KB per
 report; the collector checks both before writing. These limits intentionally
 favor a bounded targeted assessment over a whole-tenant inventory.
