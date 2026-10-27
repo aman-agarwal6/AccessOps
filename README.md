@@ -38,7 +38,8 @@ PostgreSQL and a Samba directory, and in a free Microsoft Entra test tenant:
   or stated on the case (below).
 - **Access after departure is caught.** A Keycloak sign-in after the departure
   is caught at the next 30-second reading (within 33 s), blocks closure, and
-  becomes a signed Shared Signals event for the SOC. In a separate run,
+  becomes a signed Shared Signals event for the SOC, even after the case has
+  closed. In a separate run,
   [SignalBridge](https://github.com/aman-agarwal6/signalbridge) polled the
   signed events and opened a case from the sign-in
   ([receipt](https://github.com/aman-agarwal6/signalbridge/blob/main/docs/evidence/20261005-accessops-leaver-poll-931402fb1ee44209b58c60063f63150f.json)).
@@ -52,11 +53,12 @@ PostgreSQL and a Samba directory, and in a free Microsoft Entra test tenant:
 
 ## What the live runs caught
 
-I found each of these on the live lab. Group membership and both key gaps
-showed up as failed runs; the [ledger](docs/verification.md) records each one
-beside its fix. For sessions and tokens I compared disabling the account alone
-with full containment, and a directory probe measured held connections and
-Kerberos tickets.
+I found each of these on the live lab. Group membership, both key gaps and the
+closure race showed up as failed runs; the [ledger](docs/verification.md)
+records each one beside its fix. For sessions and tokens I compared disabling
+the account alone with full containment, and a directory probe measured held
+connections and Kerberos tickets. A code review found the rest of the
+sign-in watch's gaps.
 
 | What survived | Before the fix | Now |
 | --- | --- | --- |
@@ -66,6 +68,7 @@ Kerberos tickets.
 | A leaked signing key | Keycloak's own introspection accepted a token forged with the published key; apps cached Keycloak's keys for five minutes, so a removed key could stay trusted that long | Removing a leaked key is the only remedy, so apps drop removed keys within 60 seconds |
 | Key rotation | Switching to a new signing key at once made the app refuse valid tokens for 30 seconds | Rotation publishes the new key first and waits one key-cache lifetime; no valid token is refused |
 | Kerberos tickets | Connections and tickets from before offboarding kept the removed group's rights | Kerberos has no per-user revocation; new tickets are refused and the case states when the old ones expire |
+| The sign-in watch at closure | Closing a case ended the watch, a failed check didn't block closure, and each check changed the packet the reviewer was approving, so a close could be refused | The watch runs the full day after departure, closed cases included; closure needs a current successful check; the packet changes only when a finding does |
 
 ## Try it
 
@@ -103,8 +106,9 @@ Every action carries one of these labels, and a label never upgrades itself.
 
 ## Verified results
 
-Local lab runs on 27 October 2026 with synthetic records, on the current code.
-The Microsoft Entra departure ran on 5 October on the v0.4.0 backend. Every
+Local lab runs on 27 October 2026 with synthetic records, on the current code;
+the sign-in watch fix was rerun that evening. The Microsoft Entra departure ran
+on 5 October on the v0.4.0 backend. Every
 report is on the demo's evidence page with each check's measured time; details,
 every failed attempt and the limits of each check are in the
 [verification ledger](docs/verification.md).
@@ -113,15 +117,16 @@ every failed attempt and the limits of each check are in the
 | --- | --- |
 | Signed HR event → case, containment, sessions ended, app signed out, token refused | 6 runs, each 10 / 10 passed: median 5.7 s (4.5–5.8 s); after a future-dated departure takes effect, median 2.6 s (1.6–4.0 s) |
 | Leaver's sessions and tokens before → after containment | 22 / 22 passed: back-channel logout; refresh, offline and introspection rejected; a locally checked token refused 1.6 s after containment |
-| Sign-in after departure detected, blocking closure, signalled to the SOC | 7 / 7 passed: flagged within 33 s of the sign-in (one 30-second reading interval). The suite itself acted as the SOC receiver; SignalBridge consumed the signals of a separate run on 5 October (see the ledger) |
+| Sign-in after departure detected, blocking closure, signalled to the SOC | 9 / 9 passed: flagged within one 30-second reading (27–33 s across runs); after independent closure, a sign-in by the re-enabled account was still detected and signalled. The suite itself acted as the SOC receiver; SignalBridge consumed the signals of a separate run on 5 October (see the ledger) |
 | Operator sign-in with a second factor | 3 / 3 MFA checks passed, within the 14 / 14 sign-in suite: a password alone stops at the code form, a wrong code is refused, and a request lowered to password-only gets no session |
 | Signing-key rotation (both realms) and leaked-key drill (workforce realm) | 13 / 13 passed: no token refused during rotation; a forged token refused by Keycloak at once and by the app 60 s after the key's removal |
 | Live Microsoft Entra departure (a free test tenant, synthetic users) | 11 / 11 passed: Graph showed the account disabled, out of the group and sessions revoked 19.8 s after containment; the tenant administrator and an unlisted user were refused |
-| Departure case end to end through real Keycloak | 18 / 18 passed |
+| Departure case end to end through real Keycloak | 19 / 19 passed, twice: the reviewer closed with a packet loaded before the watch's next reading |
 | Departure case with a Samba directory account | 28 / 28 passed; new LDAPS and Kerberos logins allowed → denied (2 / 2 each) |
 | Directory sessions and tickets held from before offboarding | 6 / 6 passed: no new service tickets; earlier ones keep working until they expire (10 h) |
-| Full lab suite (`Test-Lab.ps1`) | All passed: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 7, HTTPS 5. The first start failed one check because the lab's internal certificates had expired while it was off; restarting the web container fixed it |
-| Console in real Firefox against the lab | Passed on the second attempt, with one-time codes. The first was refused at closure by a race the rerun exposed (see Limits) |
+| Full lab suite (`Test-Lab.ps1`) | All passed on the watch fix: policy 32, protocols 18, sign-in 14, offboarding 11, cases 18, sessions 22, HR 10, assurance 9, HTTPS 5. Earlier that day the first start failed one check because the lab's internal certificates had expired while it was off; restarting the web container fixed it |
+| Console in real Firefox against the lab | 3 of 3 passed after the watch fix, with one-time codes. Before it, the day's first attempt was refused at closure by the race the fix removed |
+| Console rendering of a recorded lab snapshot | 11 / 11 passed, including the sign-in watch line and the after-closure alert, clean in axe |
 | Signed [v0.4.0 release](https://github.com/aman-agarwal6/AccessOps/releases/tag/v0.4.0) (GitHub CI) | 401 / 401 backend and integration test cases (217 test functions, some run with several inputs) on PostgreSQL 17; provenance and SBOM attestations verified |
 | Deployed demo | 17 / 17 checks passed |
 
@@ -170,9 +175,11 @@ sign-out and restoring the test user.
   account does not stand in for removed group memberships or ended sessions.
 - HR events must carry a valid Standard Webhooks signature. The HR feed is its
   own identity that can open and contain departures and nothing else.
-- After containment, for up to a day after the departure, AccessOps checks the
-  account's Keycloak sign-ins every 30 seconds. A successful sign-in blocks
-  closure until the owner records an investigation.
+- For the day after the departure, AccessOps checks the account's Keycloak
+  sign-ins every 30 seconds, closed cases included. A successful sign-in blocks
+  closure until the owner records an investigation; after closure it is
+  signalled to the SOC and shown on the case. Closure needs a successful check
+  from the last 90 seconds, so a failed, missing or unconfigured check blocks it.
 - Accounts are matched by immutable IDs, never by name or email.
 - The review assistant can only propose. It cannot approve or apply anything.
 - `main` accepts only pull requests that pass tests, CodeQL and dependency

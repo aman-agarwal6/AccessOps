@@ -7,6 +7,43 @@ employer or production identity provider or GitHub organization was contacted;
 Microsoft Entra was used only in the lab's own free test tenant with synthetic
 users. Local reports are unsigned; signed CI evidence is listed separately.
 
+## Sign-in watch and closure fixes (27 October 2026, evening)
+
+The rerun below exposed a closure race, and a code audit found three more gaps
+in the post-departure sign-in watch:
+
+- Each reading's time was part of the evidence packet, so a reviewer's close
+  could be refused as stale.
+- Closing a case ended the watch.
+- A failed reading neither blocked closure nor showed on the case.
+- Without the events client the watch was silently off.
+
+The fix keeps the watch's live state outside the packet hash. The watch now runs
+for the full day after the departure, closed cases included. Closure needs a
+successful reading from the last 90 seconds (and, after the day, a final one).
+A failed, missing or unconfigured reading blocks it. A sign-in read after
+closure is signalled to the SOC, audited and shown on the case, while the closed
+packet stays as reviewed. The console now treats an enrolled Entra task as a
+provider observation instead of offering an owner statement the server refuses.
+It also shows the watch.
+
+Lab runs on the fix branch (`6ebcf16`; the reading-race check was added in
+`92fb587`, a script-only change). Times are UTC.
+
+| Run | Result | Measured |
+| --- | --- | --- |
+| Full `Test-Lab.ps1` (22:10) | All passed | Policy 32, protocols 18, OIDC with MFA 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 9, host HTTPS 5 |
+| Leaver assurance, inside that run | 9 passed | Two new checks. After independent closure, a sign-in by the re-enabled account was still detected and signalled (check took 29.1 s); the closed packet was unchanged. Bob's session sign-out is the other. A sign-in after departure blocked closure within 26.8 s |
+| Departure cases with the reading-race check, run twice (22:20, 22:21) | 19 passed each | The reviewer's packet was loaded, the watch then took a new reading 17.1 s and 14.8 s later, and closing with the earlier packet succeeded both times. Before the fix this was refused as stale. The closed packet records the watch as current |
+| Console in real Firefox, three runs (22:16–22:18) | 3 of 3 passed | Sign-in with one-time codes, containment and independent closure; 62 s, 55 s and 57 s |
+| Console rendering of the recorded lab snapshot (22:22) | 11 passed | Includes the sign-in watch line and the after-closure alert, both clean in axe |
+| Backend and integrations, host test settings | 427 passed, 1 skipped | 12 of the new watch tests failed on the old code before the fix |
+| Console unit tests | 53 passed | 6 new tests for the Entra task, the watch line, the waiting step and the after-closure alert failed on the old code |
+
+Not covered: the five watch states that block closure were tested in unit tests,
+not forced on the lab. A failed reading would need Keycloak's events endpoint
+taken down mid-run.
+
 ## Lab rerun on the current code (27 October 2026)
 
 I reran the lab on `main` at `b6a7c12` (the v0.4 code plus patched Django REST
@@ -58,10 +95,8 @@ and that summary is part of the closure packet. So the packet changes about
 every 30 seconds while the watch runs. A reviewer who opens the close dialog
 just before a reading is refused and must reload. The server fails closed, so
 nothing is closed on stale evidence, but the console should not churn the
-packet this way. That case was left open in the lab. Fixed after this run, and
-not yet rerun on the lab: no read time or refused count is hashed any more, so
-the packet changes only when a finding does, and the watch's live state sits
-outside the packet.
+packet this way. That case was left open in the lab. Fixed and rerun the same
+evening; see the section above.
 
 **Earlier figures corrected.** On 5 October an HR intake run measured 2.6 s
 (2.3 s after a future-dated departure takes effect), and a session run measured
