@@ -524,6 +524,15 @@ def main():
                 or not draft["limitations"]
             ):
                 raise AssertionError("Draft packet evidence limits missing")
+        with report.case("a packet loaded before the next sign-in reading still closes after it"):
+            # The watch reads every 30 s; its read time stays outside the packet hash,
+            # so a reviewer's packet must survive a reading that changes no finding.
+            loaded = draft["case"]["watch"]["lastReadAt"]
+            deadline = time.monotonic() + 60
+            while current_case(bob, case_id)["watch"]["lastReadAt"] == loaded:
+                if time.monotonic() >= deadline:
+                    raise AssertionError("No new sign-in reading within 60 s")
+                time.sleep(1)
         with report.case(
             "independent reviewer closes exact current evidence into a persisted administrative packet"
         ):
