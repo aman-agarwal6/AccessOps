@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONNECTED = {
     "policy": "OPA authorization rules",
     "protocols": "Identity and authorization protocols",
+    "protocols-attempt-1": "First lab start after three weeks off — failed attempt retained",
     "oidc-business": "OIDC login and protected access lifecycle",
     "offboarding": "Connected offboarding and unbacked access",
     "cases": "Authenticated enterprise departure cases — mixed evidence",
@@ -31,6 +32,12 @@ CONNECTED = {
     "sessions": "Workforce session revocation before and after containment",
     "sessions-attempt-1": "Initial session revocation run — failed attempt retained",
     "hr-intake": "Signed HR leaver intake, timed to sign-out and token refusal",
+    "hr-intake-run-1": "Signed HR leaver intake, standalone repeat 1 of 5",
+    "hr-intake-run-2": "Signed HR leaver intake, standalone repeat 2 of 5",
+    "hr-intake-run-3": "Signed HR leaver intake, standalone repeat 3 of 5",
+    "hr-intake-run-4": "Signed HR leaver intake, standalone repeat 4 of 5",
+    "hr-intake-run-5": "Signed HR leaver intake, standalone repeat 5 of 5",
+    "hr-intake-20261005": "Signed HR leaver intake, 5 October 2026 run",
     "hr-intake-attempt-1": "Initial HR intake run — failed attempt retained",
     "hr-intake-attempt-2": "Second HR intake run — failed attempt retained",
     "leaver-assurance": "Leaver assurance and signed SOC signals",
@@ -74,6 +81,14 @@ JUNIT = {
     "case-tests-attempt-3.xml": (
         "Initial directory worker fixture attempt — failures retained",
         "Historical isolated test fixture failures; later corrections did not rewrite this result.",
+    ),
+    "console-live.xml": (
+        "Operator console in real Firefox against the lab",
+        "Actual Firefox automation against the running lab with one-time codes: sign in, contain and independently close a departure case. Browser evidence, not a provider observation by itself.",
+    ),
+    "console-live-attempt-1.xml": (
+        "Operator console in real Firefox — closure refused, failure retained",
+        "Historical failed attempt: the reviewer's close was refused because the case's packet changed while the dialog was open. The later retry passed unchanged.",
     ),
     "connected-renderer-tests.xml": (
         "Connected console rendering of a recorded lab snapshot",
@@ -125,6 +140,15 @@ def record(name, scenario, started, ended, checks, manifest, digest):
     }
 
 
+def check_detail(driver, item):
+    detail = "Actual check using " + driver + "."
+    seconds = item.get("duration_seconds")
+    # Report the check's own measured duration; sub-10 ms bookkeeping steps say nothing.
+    if isinstance(seconds, (int, float)) and math.isfinite(seconds) and seconds >= 0.01:
+        detail += f" Took {seconds:.2f} s."
+    return detail
+
+
 def connected_record(stem, name):
     path = ROOT / "output" / "connected" / (stem + ".json")
     raw, digest = read_report(path)
@@ -139,7 +163,7 @@ def connected_record(stem, name):
             {
                 "name": item["name"],
                 "status": item["status"],
-                "detail": "Actual check using " + data["driver"] + ".",
+                "detail": check_detail(data["driver"], item),
             }
         )
     limits = data["limitations"] + [
