@@ -3,9 +3,11 @@
 A unique synthetic worker signs in to Atlas and leaves through the signed HR
 feed. The suite acts as the SOC receiver: it polls AccessOps (RFC 8936),
 verifies each Security Event Token against the published key and acknowledges
-it. It then checks the post-departure watch twice: a refused sign-in is only
-counted, and a sign-in that succeeds after the account is re-enabled outside
-AccessOps is detected, signalled and blocks the case until investigated.
+it. It then checks the post-departure watch three times: a refused sign-in is only
+counted, a sign-in that succeeds after the account is re-enabled outside
+AccessOps is detected, signalled and blocks the case until investigated, and
+after an independent reviewer closes the case, a further sign-in is still
+detected and signalled while the closed packet stays unchanged.
 
 As the lab's receiver, this suite acknowledges every event it is offered. With
 --external-receiver it leaves signals for another receiver (such as
@@ -111,7 +113,8 @@ def main():
             "This suite is the lab's SOC receiver; SignalBridge's receiver is built separately against contracts/leaver-signals.md.",
             "Keycloak keeps sign-in, code-exchange and refused sign-in events here, not refresh-token events; reuse of an old refresh token is not watched.",
             "The watch reads events every 30 seconds for 24 hours after departure, so detection time includes that interval.",
-            "The account is re-enabled through SCIM as a synthetic administrator mistake and contained again before the suite ends.",
+            "The account is re-enabled through SCIM as a synthetic administrator mistake, twice, and contained again each time before the suite ends.",
+            "The case's external tasks are closed on synthetic owner scope exclusions; no Entra or GitHub tenant is contacted.",
             "Unique synthetic workers, cases, signals and audit history are retained.",
         ],
         source_files=[
@@ -120,6 +123,7 @@ def main():
             "scripts/live_sessions.py",
             "scripts/check_report.py",
             "backend/core/assurance.py",
+            "backend/core/offboarding.py",
             "backend/core/ssf.py",
             "backend/core/intake.py",
             "integrations/keycloak.py",
@@ -288,6 +292,78 @@ def main():
                 "after departure" in line for line in item["blockers"]
             ):
                 raise AssertionError("The investigation statement did not unblock the case")
+
+        with report.case(
+            "after independent closure, a sign-in by the re-enabled account is still detected and signalled"
+        ):
+            item = case()
+            path = f"/api/v1/offboarding-cases/{item['id']}"
+            for entry in item["tasks"]:
+                if entry["status"] == "pending":
+                    post(
+                        alice,
+                        acsrf,
+                        f"{path}/tasks/{entry['id']}/attest",
+                        {
+                            "reference": "fixture-" + suffix + ":" + entry["id"],
+                            "summary": "Synthetic scope exclusion for a fictional departure: no external tenant was contacted or changed.",
+                        },
+                    )
+
+            def closable():
+                # Closure waits for a current sign-in reading, taken every 30 s.
+                current = case()
+                return current if current and not current["blockers"] else None
+
+            item = until(closable, "a case with no closure blockers", 90)
+            logins = json.loads(Path("/run/test-logins.json").read_text())["passwords"]
+            sessions["bob"] = login("bob", logins["bob"])
+            bob, bcsrf = sessions["bob"]
+            post(
+                bob,
+                bcsrf,
+                path + "/close",
+                {"expectedRevision": item["revision"], "packetHash": item["packetHash"]},
+            )
+            frozen = bob.get(APP + path + "/packet").json()
+            if frozen["case"]["status"] != "closed" or "watchAtClosure" not in frozen:
+                raise AssertionError("The case did not close with its sign-in watch recorded")
+
+            def established():
+                if args.external_receiver:
+                    return 0  # Left queued for the other receiver.
+                receiver.poll(subject)
+                return sum(
+                    CAEP + "session-established" in claims["events"] for claims in receiver.received
+                )
+
+            before = established()
+            connector.patch_user(subject, [{"op": "replace", "path": "active", "value": True}])
+            exposed = True
+            with client(timeout=10) as returning:
+                sign_in_atlas(returning, username, secret)
+                started = time.monotonic()
+                if atlas_me(returning)[0] != 200:
+                    raise AssertionError("Re-enabled account could not sign in")
+            until(
+                lambda: (
+                    (case() or {}).get("watch", {}).get("afterClosure", 0) >= 1
+                    and (args.external_receiver or established() > before)
+                ),
+                "detection after closure",
+                60,
+            )
+            print(
+                f"sign-in after closure detected and signalled after {time.monotonic() - started:.1f} s"
+            )
+            wait_observed(alice, offboard(alice, acsrf, worker_id))
+            exposed = False
+            if connector.get_user(subject).get("active") is not False or (
+                connector.count_sessions(subject) != 0
+            ):
+                raise AssertionError("The account was not contained again")
+            if bob.get(APP + path + "/packet").json() != frozen:
+                raise AssertionError("The closed packet changed after closure")
     except Exception as error:
         report.record_error(error)
     finally:

@@ -32,6 +32,55 @@ Mutation responses are `{result: CaseDTO}`. Snapshot adds `offboardingCases`.
 Cases contain event, workforce identity, owner, effective/due dates, revision, current policyVersion,
 bindings, task status/evidence source, import receipts, blockers and packetHash.
 Only the latest fifty scope-visible cases are included in this reference snapshot.
+`signals` and `watch` are added after packetHash and are not part of it.
+
+## Sign-in watch
+
+After containment the worker reads the workforce account's Keycloak sign-in and
+token events since the effective time, every 30 seconds for 24 hours, whether the
+case is open or closed. Each case carries the watch's live state:
+
+```json
+"watch": {
+  "status": "watching",
+  "windowEndsAt": "2026-10-28T18:25:00+00:00",
+  "lastReadAt": "2026-10-27T18:40:12.104233+00:00",
+  "lastAttemptAt": "2026-10-27T18:40:12.104233+00:00",
+  "refused": 1,
+  "successes": 0,
+  "afterClosure": 0
+}
+```
+
+| Status | When | Blocks closure |
+| --- | --- | --- |
+| `not_started` | Not contained, or the departure is not effective yet | No (other blockers apply) |
+| `not_configured` | The read-only events client secret is missing | Yes |
+| `pending` | No reading since containment | Yes |
+| `unavailable` | The latest attempt failed, including a reading of more than 200 events | Yes |
+| `stale` | During the window, the latest successful reading is over 90 seconds old | Yes |
+| `watching` | During the window, with a current successful reading | No |
+| `finishing` | The window has ended; waiting for a successful reading at or after its end, retried for 24 hours | Yes |
+| `complete` | A successful reading at or after the end of the window exists | No |
+| `missed` | 24 hours after the window with no such reading; the Keycloak task states it | No |
+
+`windowEndsAt` is the effective time plus 24 hours. `lastReadAt` is the latest
+successful reading and `lastAttemptAt` the latest of any outcome (both null before
+the first). `refused` is the latest successful reading's count of refused attempts,
+or null. `successes` counts distinct successful sign-ins or token uses read so far;
+`afterClosure` counts those first read after closure, and is 0 while the case is
+open. Each blocking status adds one fixed blocker line.
+
+Only findings enter packetHash: the refused count, any sign-in after departure, the
+blocker lines and, for `missed`, a fixed sentence on the Keycloak task. No read
+time is hashed: a reading with the same result as the last leaves the packet
+unchanged, so a reviewer's hash stays valid while the watch runs. Closure records
+the watch in the closed packet as `watchAtClosure`, inside the closed packet's
+hash but not `reviewedInputHash`. After closure the watch continues: a sign-in
+read then is sent to the SOC as `session-established`, audited as
+`departure.access_after_closure` and counted in `watch.afterClosure`, and the
+closed packet never changes. A reading that began before closure and finished
+after it is discarded and taken again.
 
 Fixed required task keys:
 `local-containment`, `keycloak-directory`, `entra-directory`, `entra-sessions`,
