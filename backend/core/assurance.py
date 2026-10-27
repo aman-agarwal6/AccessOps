@@ -31,7 +31,8 @@ RETENTION = timedelta(seconds=86400)
 # The day after departure, which one reading can still see back to its start.
 WINDOW = RETENTION
 INTERVAL = timedelta(seconds=30)
-# Seconds one pass may spend reading, so a slow Keycloak never holds up provider jobs.
+# After this many seconds a pass starts no new reading, so a slow Keycloak delays
+# provider jobs by at most one reading's timeouts.
 BUDGET = 5
 # Closure needs a successful reading at least this recent during the window.
 FRESH = timedelta(seconds=90)

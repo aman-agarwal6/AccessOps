@@ -139,10 +139,13 @@ export function watchLine(
       : `day ended ${end}`;
   const since = watch.lastReadAt && ago(watch.lastReadAt, now);
   const read = since ? `last checked ${since}` : "no successful check yet";
-  const success = since ? `last success ${since}` : "no successful check yet";
-  // The packet says only whether an attempt was refused; the count is here.
+  const success = since
+    ? `last good check ${since}`
+    : "no successful check yet";
+  // The packet says only whether an attempt was refused; the count is here,
+  // capped at 200 per reading by the server.
   const refused = watch.refused
-    ? ` · ${watch.refused} refused attempt${watch.refused === 1 ? "" : "s"}`
+    ? ` · ${watch.refused >= 200 ? "200+" : watch.refused} refused attempt${watch.refused === 1 ? "" : "s"}`
     : "";
   switch (watch.status) {
     case "not_started":
@@ -263,8 +266,12 @@ export function nextStep(
   if (item.status === "closed") {
     // Nothing blocks a closed case, so the queue names what its watch found.
     const after = item.watch?.afterClosure ?? 0;
+    const status = item.watch?.status;
+    // Not configured after closure means the events client was removed: the watch is off.
     const interrupted =
-      item.watch?.status === "unavailable" || item.watch?.status === "stale";
+      status === "unavailable" ||
+      status === "stale" ||
+      status === "not_configured";
     return {
       stage: "closed",
       tone: "done",
@@ -272,7 +279,9 @@ export function nextStep(
         ? `Closed · ${after} sign-in${after === 1 ? "" : "s"} read after closure`
         : interrupted
           ? "Closed · sign-in watch interrupted"
-          : "Closed on reviewed evidence",
+          : status === "missed"
+            ? "Closed · sign-in watch incomplete"
+            : "Closed on reviewed evidence",
       detail:
         "The packet is frozen. Closure records what was reviewed; it does not prove every remote session or copy is gone.",
       action: { kind: "export", label: "Export closure packet" },

@@ -278,6 +278,13 @@ describe("sign-in watch after departure", () => {
     expect(
       watchLine(watch({ status: "complete", refused: 3 }), now)?.text,
     ).toBe(`complete · covered the day until ${end} · 3 refused attempts`);
+    // The server caps refusals at 200 per reading, so 200 is a lower bound.
+    expect(watchLine(watch({ refused: 200 }), now)?.text).toBe(
+      `last checked 12s ago · 200+ refused attempts · runs until ${end}`,
+    );
+    expect(watchLine(watch({ status: "unavailable" }), now)?.text).toContain(
+      "last good check 12s ago",
+    );
     expect(watchLine(undefined, now)).toBeUndefined();
   });
 
@@ -324,9 +331,12 @@ describe("sign-in watch after departure", () => {
     expect(title({ status: "unavailable", afterClosure: 2 })).toBe(
       "Closed · 2 sign-ins read after closure",
     );
-    for (const status of ["unavailable", "stale"] as const)
+    for (const status of ["unavailable", "stale", "not_configured"] as const)
       expect(title({ status })).toBe("Closed · sign-in watch interrupted");
-    for (const status of ["finishing", "missed", "not_configured"] as const)
+    expect(title({ status: "missed" })).toBe(
+      "Closed · sign-in watch incomplete",
+    );
+    for (const status of ["finishing", "complete", "watching"] as const)
       expect(title({ status })).toBe("Closed on reviewed evidence");
   });
 });

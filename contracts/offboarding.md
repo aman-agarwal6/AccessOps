@@ -90,7 +90,7 @@ read then is sent to the SOC as `session-established`, audited as
 closed packet never changes. Nothing blocks on a closed case, so its first failed
 reading after a successful one is audited as `departure.watch_interrupted`. A
 reading that began before closure and finished after it is discarded and taken
-again. One worker pass stops reading after five seconds; the rest stay due.
+again. One worker pass starts no new reading after five seconds; the rest stay due.
 
 Fixed required task keys:
 `local-containment`, `keycloak-directory`, `entra-directory`, `entra-sessions`,
