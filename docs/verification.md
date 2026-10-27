@@ -7,6 +7,65 @@ employer or production identity provider or GitHub organization was contacted;
 Microsoft Entra was used only in the lab's own free test tenant with synthetic
 users. Local reports are unsigned; signed CI evidence is listed separately.
 
+## Lab rerun on the current code (27 October 2026)
+
+I reran the lab on `main` at `b6a7c12` (the v0.4 code plus patched Django REST
+framework, certifi and Vite) to replace two kinds of weak evidence. The HR
+intake and session timings quoted until now came from runs whose reports were
+overwritten. The Samba directory case, the held directory sessions, the
+key-rotation drill and the browser journey had last run on v0.3.0 code. Every
+report below is kept and on the demo's evidence page, where each check now
+shows its own measured time. Times are UTC.
+
+| Run | Result | Measured |
+| --- | --- | --- |
+| Full `Test-Lab.ps1`, first start (18:19) | Failed: protocols 5 passed, 1 failed | The lab's internal certificates had expired during three weeks off. The web container could not renew them until it was restarted; the root CA was unchanged |
+| Full `Test-Lab.ps1` after restarting the web container (18:21) | All passed in 4 min 58 s | Policy 32, protocols 18, OIDC with MFA 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5; the running source matched the checkout across 9 services |
+| HR intake, five standalone runs (18:27–18:31) | Each 10 passed | See the timing table below |
+| Signing-key rotation drill (18:31) | 13 passed | No valid token refused during rotation in either realm; a token forged in the workforce realm was refused by Keycloak at once and by the app 60.2 s after the key's removal |
+| Console in real Firefox, first attempt (18:35) | Failed | The independent reviewer's close was refused with HTTP 409 and the case stayed open (see below) |
+| Console in real Firefox, second attempt (18:40) | Passed | Sign-in with one-time codes, containment and independent closure, unchanged code |
+| Samba directory case, fixture `e56da3aecd6e` (18:42) | Case 28 passed | New LDAPS and Kerberos logins 2 of 2 allowed before, 2 of 2 denied after |
+| Directory sessions held across offboarding, same fixture | 6 passed | No new service ticket from the held TGT; the held LDAPS and Kerberos LDAP connections and a held service ticket kept working with the removed group until expiry; ticket lifetime 10.0 h, stated on the case |
+
+HR intake, from the HR event to case, containment, zero Keycloak sessions,
+Atlas sign-out and the existing token refused (each check's own duration):
+
+| Run | Effective departure | Future-dated, from when it took effect |
+| --- | --- | --- |
+| Inside the full lab suite | 5.84 s | 1.58 s |
+| Standalone 1 | 5.40 s | 3.38 s |
+| Standalone 2 | 5.73 s | 3.66 s |
+| Standalone 3 | 5.76 s | 1.56 s |
+| Standalone 4 | 5.80 s | 1.82 s |
+| Standalone 5 | 4.51 s | 3.99 s |
+| **Median (range)** | **5.7 s (4.5–5.8)** | **2.6 s (1.6–4.0)** |
+
+The HR webhook itself answered in 0.16–0.20 s. The rest is the worker applying
+and reading back each change; I haven't broken that time down. The future-dated
+clock starts when the test harness notices the effective time, so it can
+understate that figure by up to about half a second.
+
+Other measurements in the same run: Atlas's local check refused the leaver's
+unexpired token 1.6 s after the containment request (115 s of its lifetime
+left). A sign-in after the departure was flagged within 32.6 s, which is about
+one 30-second reading interval.
+
+**A closure race the rerun exposed.** In the first Firefox attempt the case had
+no blockers, yet the reviewer's close was refused as stale. The post-departure
+watch writes its last reading time into the Keycloak task's evidence summary,
+and that summary is part of the closure packet. So the packet changes about
+every 30 seconds while the watch runs. A reviewer who opens the close dialog
+just before a reading is refused and must reload. The server fails closed, so
+nothing is closed on stale evidence, but the console should not churn the
+packet this way. That case was left open in the lab.
+
+**Earlier figures corrected.** On 5 October an HR intake run measured 2.6 s
+(2.3 s after a future-dated departure takes effect), and a session run measured
+3.0 s for the local token refusal. Later full-lab runs overwrote both reports.
+The retained runs from that day measured 6.7 s and 4.3 s for HR intake and
+2.5 s for the token refusal. The figures above replace them.
+
 ## v0.4.0: live Microsoft Entra containment (5 October 2026)
 
 ### Live Microsoft Entra departure
@@ -78,8 +137,8 @@ token. The SOC stream is unchanged.
 
 | Check | Actual result | Scope |
 | --- | --- | --- |
-| Session revocation before → after | 22 passed | The 19 earlier checks plus Atlas reading its stream, and two new ones: from the containment request, Atlas's local check refused the worker's unexpired token in 3.0 s (114 s of its lifetime left), and the refusal came from the signal, not expiry. The disable-only control still shows local acceptance, because disabling alone sends no signal |
-| HR intake | 10 passed | The timed checks now also require the token refusal: 2.6 s from the HR event to case, containment, zero sessions, Atlas sign-out and the existing token refused; 2.3 s after a future departure took effect |
+| Session revocation before → after | 22 passed | The 19 earlier checks plus Atlas reading its stream, and two new ones: from the containment request, Atlas's local check refused the worker's unexpired token in 3.0 s (114 s of its lifetime left), and the refusal came from the signal, not expiry. The disable-only control still shows local acceptance, because disabling alone sends no signal. A later full-lab run overwrote this report; the retained run that day measured 2.5 s |
+| HR intake | 10 passed | The timed checks now also require the token refusal: 2.6 s from the HR event to case, containment, zero sessions, Atlas sign-out and the existing token refused; 2.3 s after a future departure took effect. A later full-lab run overwrote this report; the retained run that day measured 6.7 s and 4.3 s. See the 27 October rerun for the current figures |
 | Leaver assurance | 7 passed | The SOC stream's signals and acknowledgements are unaffected by Atlas's stream |
 | Backend and integrations, host test settings | 366 passed, 1 skipped | Includes per-stream audience, event types, polling and acknowledgement isolation, and Atlas's signal rules: real ES256 signatures, wrong audience, issuer or type refused, stale stream or older tokens referred to Keycloak, unreadable keys never reported as invalid events |
 | Full `Test-Lab.ps1` | All passed in 3 min 54 s | Policy 32, protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5; the running source matched the checkout across 9 services |

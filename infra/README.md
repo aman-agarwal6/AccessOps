@@ -239,8 +239,13 @@ JUnit report and two screenshots go to `output/connected/` (`console-live.xml`,
 ./scripts/Stop-Lab.ps1
 ```
 
-Stopping preserves the database and local secrets. Re-run `Start-Lab.ps1` after
-source or dependency changes to rebuild images. It deterministically builds
+Stopping preserves the database and local secrets. Each live suite overwrites
+its report under `output/connected/`, so copy any report you want to keep
+before the next run. After the lab has been off for about two weeks, Caddy's
+internal certificates may have expired and fail to renew on the first start
+(a protocol check then fails with a connector error); restart the web
+container once with `docker compose -f infra/compose.yml restart web`. Re-run
+`Start-Lab.ps1` after source or dependency changes to rebuild images. It deterministically builds
 the exact policy bundle, records its SHA-256 in the runtime configuration, and
 reloads the policy services. The backend fails closed if the configured bundle
 digest does not match the decision response. Realm import is first-run setup;
