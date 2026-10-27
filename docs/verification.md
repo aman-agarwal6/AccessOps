@@ -36,15 +36,22 @@ Lab runs on the fix branch (`6ebcf16`; the reading-race check was added in
 | Leaver assurance, inside that run | 9 passed | Two new checks. After independent closure, a sign-in by the re-enabled account was still detected and signalled (check took 29.1 s); the closed packet was unchanged. Bob's session sign-out is the other. A sign-in after departure blocked closure within 26.8 s |
 | Departure cases with the reading-race check, run twice (22:20, 22:21) | 19 passed each | The reviewer's packet was loaded, the watch then took a new reading 17.1 s and 14.8 s later, and closing with the earlier packet succeeded both times. Before the fix this was refused as stale. The closed packet records the watch as current |
 | Console in real Firefox, three runs (22:16–22:18) | 3 of 3 passed | Sign-in with one-time codes, containment and independent closure; 62 s, 55 s and 57 s |
-| Console rendering of the recorded lab snapshot (22:22) | 11 passed | Includes the sign-in watch line and the after-closure alert, both clean in axe |
+| Console rendering of the recorded lab snapshot (22:22) | 11 passed | The sign-in watch line and the after-closure alert, rendered from a synthetic watch added to the recording, are both clean in axe |
 | Backend and integrations, host test settings | 427 passed, 1 skipped | 12 of the new watch tests failed on the old code before the fix |
 | Console unit tests | 53 passed | 6 new tests for the Entra task, the watch line, the waiting step and the after-closure alert failed on the old code |
 
-Not covered: the five watch states that block closure were tested in unit tests,
-not forced on the lab. A failed reading would need Keycloak's events endpoint
-taken down mid-run.
+Not covered:
+- The five watch states that block closure were tested in unit tests, not
+  forced on the lab; a failed reading would need Keycloak's events endpoint
+  taken down mid-run.
+- The Samba directory case, held directory sessions, key rotation and the
+  standalone HR timing runs were not rerun on the fix. Their latest runs are the
+  afternoon ones below, on `b6a7c12`.
+- After these runs, the console's wording for closed cases whose watch is off or
+  incomplete changed, along with the watch line's copy. Those changes are
+  covered by unit tests only.
 
-## Lab rerun on the current code (27 October 2026)
+## Lab rerun on `b6a7c12` (27 October 2026)
 
 I reran the lab on `main` at `b6a7c12` (the v0.4 code plus patched Django REST
 framework, certifi and Vite) to replace two kinds of weak evidence. The HR
