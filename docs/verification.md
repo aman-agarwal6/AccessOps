@@ -257,16 +257,20 @@ up to 24 hours after a departure, the worker reads the account's Keycloak
 sign-in events every 30 seconds through a new read-only events client. A
 successful sign-in or code exchange after the effective time adds a required
 "Investigate sign-in after departure" task that blocks closure until the owner
-records an investigation. Containment and any
-such sign-in also become signed Security Event Tokens (RISC account-disabled,
-CAEP session-revoked and session-established) that a SOC receiver collects by
-polling. In the runs below this suite acted as the receiver, except where noted.
+records an investigation. Containment and any such sign-in also become signed
+Security Event Tokens (RISC account-disabled, CAEP session-revoked and
+session-established) that a SOC receiver collects by polling. In the runs below
+this suite acted as the receiver, except where noted.
+
 SignalBridge, built separately against
 [the leaver signals contract](../contracts/leaver-signals.md), polled the
-running lab in two rounds on 5 October: all 38 signed events were verified,
-stored and acknowledged. In the second round a contained test account was
-re-enabled and used, and SignalBridge opened a critical access-after-departure
-case.
+running lab in two rounds on 5 October and verified, stored and acknowledged
+all 38 signed events (32, then 6). Round one's sign-in signals opened 3
+critical cases that the tests caused: at the time, the HR intake test backdated
+each departure by 5 seconds, so the worker's own sign-in just before it counted
+as after departure. That test no longer backdates. In the second round a
+contained test account was re-enabled and used, and SignalBridge opened a
+critical access-after-departure case.
 
 | Check | Actual result | Scope |
 | --- | --- | --- |

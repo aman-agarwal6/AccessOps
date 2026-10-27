@@ -11,7 +11,7 @@ opt-in connectors.
 ```mermaid
 flowchart LR
   B[Browser console] -->|TLS + server session + CSRF| A[Django enforcement]
-  O[Operator realm] -->|OIDC verified claims at mfa, signed back-channel logout| A
+  O[Operator realm] -->|OIDC claims with MFA, signed back-channel logout| A
   H[HR system] -->|Signed Standard Webhooks event| A
   I[Read-only collector or synthetic fixture] -->|Imported report| A
   R[Deterministic review assistant] -->|Executor token + bounded task| A
@@ -22,7 +22,7 @@ flowchart LR
   K -->|Signed back-channel logout| L[Atlas lab app]
   S[SOC receiver such as SignalBridge] -->|Bearer poll + ack of signed SETs| A
   L -->|Bearer poll + ack of signed SETs| A
-  W -.->|LDAPS, object-specific delegated rights| X[Samba AD-compatible directory]
+  W -.->|LDAPS, object-specific delegated rights| X[Active Directory-compatible Samba directory]
   W -.->|Microsoft Graph, certificate client credentials| G[Entra test tenant]
   D -->|Sanitized allowlisted export| E[Evidence archive]
   C[Clean CI run] -->|Detached provenance + SBOM signature| E
@@ -54,7 +54,7 @@ flowchart LR
 | Forged or replayed HR event contains someone | Standard Webhooks HMAC over id, timestamp and body; five-minute window; webhook ID as idempotency key; per-address rate limit; one 401 for every failure | Missing, wrong, altered, stale and future signatures change nothing (unit and live) |
 | HR feed used for more than departures | The feed is a service principal holding only `hr_intake`; the Python gate and OPA allow it to open a case and execute an offboard request, nothing else. Statements and closure stay with people | Policy cases and service-authority tests; the case owner is the feed's sponsor, an active operator |
 | HR event names the wrong person or opens a duplicate | Only an enrolled workforce identity ID is accepted; agents, operators and unknown IDs are refused; a reused event ID with a different departure, or a second event while a case is open, returns 409 | Unit tests; live conflict check |
-| Leaver signs in after departure (account re-enabled outside AccessOps, or between the effective time and containment) | While the case is open, from containment until 24 hours after departure, the worker reads the account's Keycloak sign-in events every 30 seconds; any success adds a required investigation task that blocks closure and sends the SOC a signed CAEP session-established event | Only Keycloak is watched (not Entra sign-in logs or Samba logons). Closing the case ends the watch, and a failed reading is recorded but does not block closure. Detection time includes the 30-second reading interval; refresh-token events are not saved by this lab's Keycloak, so reuse of an old refresh token is not watched |
+| Leaver signs in after departure (account re-enabled outside AccessOps, or between the effective time and containment) | While the case is open, from containment until 24 hours after departure, the worker reads the account's Keycloak sign-in events every 30 seconds; any success adds a required investigation task that blocks closure and sends the SOC a signed CAEP session-established event | Only Keycloak is watched (not Entra sign-in logs or Samba logons). Closing the case ends the watch, and a failed reading is recorded but is not shown on the case and does not block closure. Detection time includes the 30-second reading interval; refresh-token events are not saved by this lab's Keycloak, so reuse of an old refresh token is not watched |
 | Forged or replayed leaver signals mislead the SOC | Security Event Tokens signed with ES256, explicit `secevent+jwt` type, exact issuer and audience, unique `jti`; the poll endpoint needs the receiver's bearer token and is rate limited | The receiver must verify; signals name only issuer and account ID |
 | HR signing secret is stolen | The secret lives only in server configuration and can be rotated (several `v1` signatures are accepted). Its holder can contain in-scope workers but cannot grant, read, attest or close | Residual: containment by a forged event is a denial of service; restoring access goes through normal approved requests |
 | Containment route used for other admin writes | Private edge host allows only POST `.../users/{uuid}/logout` and GET `.../users/{uuid}/sessions` in the workforce realm; exact UUID paths | Connector rejects non-UUID subjects, redirects and foreign session records; all other paths and methods return 404 |

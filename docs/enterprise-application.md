@@ -20,10 +20,10 @@ the application does not delete a mailbox or remove a license automatically.
 
 The local system can actually contain its enrolled workforce identity and
 sponsored automation, including ending the identity's Keycloak sessions so apps
-registered for back-channel logout sign the person out. An optional Samba
-AD-compatible directory adds a tenth required task: disable the explicitly
-enrolled account and remove mapped group memberships through verified LDAPS with
-object-specific delegated permissions.
+registered for back-channel logout sign the person out. An optional Active
+Directory-compatible directory (Samba) adds a tenth required task: disable the
+explicitly enrolled account and remove mapped group memberships through
+verified LDAPS with object-specific delegated permissions.
 New sign-ins and new Kerberos tickets are refused afterwards; connections and
 tickets already held keep working until they close or expire, and the case says
 when that is. Samba results do not establish Microsoft interoperability. An opt-in
