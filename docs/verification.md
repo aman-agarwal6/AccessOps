@@ -49,8 +49,9 @@ failures; the latest results are:
 | Console in a real browser | Passed, with one-time codes |
 | Backend and integrations, host test settings | 371 passed, 1 skipped |
 
-The demo's evidence index lists 48 recorded runs: 35 passed and 13 failed
-attempts kept beside their fixes.
+At v0.3.0 the demo's evidence index listed 48 recorded runs: 35 passed and 13
+failed attempts kept on record. The v0.4.0 Entra run brings it to 49 (36
+passed, 13 failed).
 
 ### CI, deployment and signed release (5 October 2026)
 
@@ -115,12 +116,13 @@ software TOTP secret held in the lab's protected login file.
 Local runs on 5 October 2026 (UTC). `Test-KeyRotation.ps1` rotates the RS256
 signing key of both realms on the running lab, through a temporary Keycloak
 admin that is deleted at the end (the identity database is backed up first).
-It covers a planned rotation and a leaked key.
+It covers a planned rotation in both realms and a leaked key in the workforce
+realm only.
 
 | Check | Actual result | Scope |
 | --- | --- | --- |
 | Rotation drill (`key-rotation.json`) | 13 passed in 2 min 39 s | New keys published as passive, then a 65 s wait (one key-cache lifetime plus margin), then made the signing keys: Atlas accepted the first token signed by the new key on the first try; the previous key's token stayed valid locally and by introspection while passive; operator sign-in with a one-time code worked; Keycloak's back-channel logout, signed with the new operators key, ended the AccessOps session within 0.3 s. Every previous RS256 key was then removed |
-| Leaked-key rehearsal | Passed | A key the drill generated was published (as a stolen key would be) and an Atlas token forged with it. Both Atlas's local check and Keycloak's introspection accepted the forgery while the key was published. After removal, introspection refused it at once and Atlas's local check 60 s later |
+| Leaked-key rehearsal (workforce realm) | Passed | A key the drill generated was published (as a stolen key would be) and an Atlas token forged with it. Both Atlas's local check and Keycloak's introspection accepted the forgery while the key was published. After removal, introspection refused it at once and Atlas's local check 60 s later |
 | Full `Test-Lab.ps1` on the rotated keys | All passed | Policy 32, protocols 18, OIDC 14, offboarding 11, departure cases 18, sessions 22, HR intake 10, leaver assurance 7, host HTTPS 5 |
 | Integration boundaries | 34 passed in the boundary tests | Includes a removed key ceasing to be trusted once the cache lifetime passes |
 
@@ -250,21 +252,31 @@ second, so it is an upper bound):
 
 ### Leaver assurance and signed SOC signals
 
-Local runs on 5 October 2026 (UTC). For 24 hours after a departure, the worker
-reads the account's Keycloak sign-in events every 30 seconds through a new
-read-only events client. A successful sign-in or code exchange after the
-effective time adds a required "Investigate sign-in after departure" task that
-blocks closure until the owner records an investigation. Containment and any
-such sign-in also become signed Security Event Tokens (RISC account-disabled,
-CAEP session-revoked and session-established) that a SOC receiver collects by
-polling. SignalBridge's receiver is being built separately against
-[the leaver signals contract](../contracts/leaver-signals.md); this suite acted
-as the receiver.
+Local runs on 5 October 2026 (UTC). From containment until the case closes, for
+up to 24 hours after a departure, the worker reads the account's Keycloak
+sign-in events every 30 seconds through a new read-only events client. A
+successful sign-in or code exchange after the effective time adds a required
+"Investigate sign-in after departure" task that blocks closure until the owner
+records an investigation. Containment and any such sign-in also become signed
+Security Event Tokens (RISC account-disabled, CAEP session-revoked and
+session-established) that a SOC receiver collects by polling. In the runs below
+this suite acted as the receiver, except where noted.
+
+SignalBridge, built separately against
+[the leaver signals contract](../contracts/leaver-signals.md), polled the
+running lab in two rounds on 5 October and verified, stored and acknowledged
+all 38 signed events (32, then 6). Round one's sign-in signals opened 3
+critical cases that the tests caused: at the time, the HR intake test backdated
+each departure by 5 seconds, so the worker's own sign-in just before it counted
+as after departure. That test no longer backdates. In the second round a
+contained test account was re-enabled and used, and SignalBridge opened a
+critical access-after-departure case.
 
 | Check | Actual result | Scope |
 | --- | --- | --- |
 | Leaver assurance, live | 7 passed | Containment signals arrived signed, verified against the published key and were shown on the case as delivered once acknowledged; a refused sign-in by the disabled account was counted and recorded on the Keycloak task with no access recorded; after the account was re-enabled outside AccessOps, the leaver's sign-in was detected, signalled and blocked the case 32 s later (mostly the 30-second reading interval); containing again ended it, and the owner's investigation statement unblocked the case |
 | Leaver assurance with `--external-receiver` | 7 passed | Same journey, leaving its signals queued for SignalBridge's receiver and checking them on the case; detection 33 s after the sign-in |
+| Leaver assurance for SignalBridge (`leaver-assurance-signalbridge.json`, started 04:35 UTC) | 7 passed | Same journey, its signals left queued. SignalBridge then polled the 6 signed events, stored and acknowledged all 6 and opened one case ([receipt](https://github.com/aman-agarwal6/signalbridge/blob/main/docs/evidence/20261005-accessops-leaver-poll-931402fb1ee44209b58c60063f63150f.json)) |
 | Existing live suites on the new worker loop | Protocols 18, OIDC 11, offboarding 11, departure cases 18, sessions 19, HR intake 10 passed | Written to a separate folder |
 | Host HTTPS boundary | 5 passed | |
 | Console in a real browser | Passed | The PR #9 journey |

@@ -85,7 +85,7 @@ export const provenance: Record<
     label: "Provider observation",
     icon: Radar,
     meaning:
-      "Read back from the connected lab's real Keycloak or directory after the change.",
+      "Read back from the connected lab's real Keycloak, directory or Microsoft Entra test tenant after the change.",
   },
   imported: {
     label: "Imported snapshot",

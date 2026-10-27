@@ -1,6 +1,6 @@
 # Keeping AccessOps available without a paid service
 
-The recruiter demo is a static GitHub Pages build. It needs no running backend,
+The public demo is a static GitHub Pages build. It needs no running backend,
 database, model endpoint, scheduled keep-alive or credit card. The connected lab
 runs on your own computer and can be stopped when it is not being demonstrated.
 Its credentials and database stay outside the public repository.
@@ -10,9 +10,9 @@ The workflows use standard `ubuntu-latest` runners, which are
 [free for public repositories](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Artifact/cache storage still has [separate limits](https://docs.github.com/en/actions/reference/limits).
 Test artifacts expire after seven days and release workflow artifacts after
-fourteen; small verified release files are copied to a GitHub Release for the
-portfolio handoff. Do not enable larger runners, paid storage or external APIs
-to maintain the demo. Provider terms can change; the static build remains portable.
+fourteen; small verified release files are copied to a GitHub Release. Do not
+enable larger runners, paid storage or external APIs to maintain the demo.
+Provider terms can change; the static build remains portable.
 
 ## Automated security checks
 
@@ -61,6 +61,5 @@ under `.local/` private and back up any lab state you intend to retain before
 changing database versions. Never use the disposable test runner against the
 connected database.
 
-The demo is deliberately independent of the local lab. A powered-off workstation
-does not break the recruiter link. The deterministic assistant works without
-an LLM; adding a model is a separate implementation and evaluation task.
+The demo is deliberately independent of the local lab: it keeps working when the
+lab computer is off. The review assistant is deterministic and needs no LLM.

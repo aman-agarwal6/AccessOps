@@ -3,7 +3,7 @@
 Evidence has three origins: browser simulation (no external effect), local
 verification (actual test execution on a workstation), and CI verification
 (actual clean workflow execution). A report describes its test scope. It is not
-automatically evidence that Keycloak was contacted or a model was evaluated.
+by itself evidence that Keycloak or any other provider was contacted.
 
 `tools/evidence.py` converts an actual JUnit report into an allowlisted archive,
 retaining passed, failed and skipped cases. It records revision, dirty state,
@@ -30,9 +30,9 @@ from fixed, sanitized JSON/JUnit report paths. It retains failures, dates and
 limitations; source file hashes do not invent a Git revision or signature.
 
 The release SBOM catalogs the locked Python runtime and npm dependency inventory.
-It does not claim to catalog every operating-system package inside base images or
-the separately installed optional model weights. Image digests are recorded in
-the runtime lock; their layer scans are a separate verification scope.
+It does not catalog operating-system packages inside base images. Image digests
+are recorded in the runtime lock; their layer scans are a separate verification
+scope.
 
 Fetch trust roots independently with GitHub CLI on a trusted online machine.
 Pin the expected repository, workflow and source ref from the release you chose,

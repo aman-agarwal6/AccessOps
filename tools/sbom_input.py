@@ -15,6 +15,4 @@ for source, destination in INPUTS.items():
     target = TARGET / destination
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(ROOT / source, target)
-print(
-    "Application runtime locks staged; OS/container layers and optional model weights are outside this SBOM."
-)
+print("Application runtime locks staged; OS/container layers are outside this SBOM.")

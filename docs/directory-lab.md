@@ -1,10 +1,10 @@
 # Actual local directory departure cases
 
-The optional free lab adds real Samba AD-compatible directory behavior to the
-authenticated AccessOps case workflow. It does not establish Microsoft Active
-Directory interoperability. Cases without a trusted directory enrollment keep
-the existing nine-task workflow; an enrolled case has a required tenth directory
-task backed by actual provider observations.
+The optional free lab adds real Active Directory-compatible (Samba) directory
+behavior to the authenticated AccessOps case workflow. It does not establish
+Microsoft Active Directory interoperability. Cases without a trusted directory
+enrollment keep the existing nine-task workflow; an enrolled case has a required
+tenth directory task backed by actual provider observations.
 
 Complete the ordinary [connected setup](../infra/README.md) first. Docker Desktop
 and the documented local Python environment are sufficient; no cloud tenant,
@@ -15,16 +15,16 @@ From the AccessOps repository in PowerShell:
 # Fresh clone: use the credential-free bundled standalone lab source.
 ./scripts/Test-ADCase.ps1
 
-# This workspace's explicitly handed-over existing running directory:
-./scripts/Test-ADCase.ps1 -LabRoot ../accessops-ad-lab
+# A directory already running from another folder: pass that folder.
+./scripts/Test-ADCase.ps1 -LabRoot <path-to-lab>
 ```
 
 The default standalone source is `infra/ad-lab/`. Setup inspects the existing
 `accessops-adlab` Compose project origin before startup or credential generation.
 If that origin differs, it refuses the default path and requires the explicit
 existing `-LabRoot`; it never starts a second copy over an existing domain using
-fresh secrets. The original handed-over source and running domain remain intact.
-The copied source allowlist contains no `.local/`, output, database, or keys.
+fresh secrets. The copied source allowlist contains no `.local/`, output,
+database, or keys.
 
 The test prepares only uniquely named synthetic users/groups in two dedicated
 fixture/canary OUs, then connects backend/worker through the opt-in
@@ -115,25 +115,25 @@ base digest is pinned but signed repository package resolution can change on
 rebuild. Certificates expire after one year; automatic renewal is not implemented.
 Back up the directory volume/private credentials and perform a deliberate renewal
 with the public CA mount updated; never disable validation for expired certificates.
-The handed-over CA originally omitted CA key usage, which Python 3.13 strict
-verification rejected. The reviewed `scripts/ad_correct_ca.py` server-local helper
-reissues only the public CA certificate with its same key/subject/SKI and critical
-keyCertSign/cRLSign, preserving the prior certificate privately and the leaf
-certificate/domain/credentials. The bundled fresh bootstrap includes that extension.
-This repair does not weaken verification or export a private key. It is a narrow
+The bundled bootstrap issues the lab CA with critical keyCertSign/cRLSign key
+usage, which Python 3.13 strict verification requires. For a lab created before
+that fix, the reviewed `scripts/ad_correct_ca.py` server-local helper reissues
+only the public CA certificate with the same key, subject and SKI, preserving the
+prior certificate privately and the leaf certificate, domain and credentials. It
+does not weaken verification or export a private key. It is a narrow
 compatibility correction, not an automatic renewal service.
 
-For that specific legacy certificate correction, review the helper first and run
-it inside the explicitly selected DC from the repository root; fresh bundled labs
-already include the extension and do not need this repair. Use PowerShell 7 for
-this one-off command (Windows PowerShell 5.1 would strip its inner quotes):
+For that older-lab correction, review the helper first and run it inside that
+lab's DC container from the repository root; fresh bundled labs do not need it.
+Use PowerShell 7 for this one-off command (Windows PowerShell 5.1 would strip
+its inner quotes):
 
 ```powershell
 Get-Content -LiteralPath ./scripts/ad_correct_ca.py -Raw |
-    docker compose -f ../accessops-ad-lab/compose.yml exec -T dc /usr/bin/python3 -c 'import sys; exec(compile(sys.stdin.read(), "reviewed-ad-certificate-helper", "exec"))'
+    docker compose -f <lab-root>/compose.yml exec -T dc /usr/bin/python3 -c 'import sys; exec(compile(sys.stdin.read(), "reviewed-ad-certificate-helper", "exec"))'
 ```
 
-Select the exact authorized lab's Compose file. The helper validates unchanged
+Point `-f` at that lab's Compose file. The helper validates unchanged
 public key, subject, SKI and leaf and strict chain verification before replacing
 the certificate. It preserves the old certificate inside the DC's private TLS
 directory. Its JSON output contains public certificate digests and check results,
