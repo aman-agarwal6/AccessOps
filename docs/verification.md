@@ -7,6 +7,18 @@ employer or production identity provider or GitHub organization was contacted;
 Microsoft Entra was used only in the lab's own free test tenant with synthetic
 users. Local reports are unsigned; signed CI evidence is listed separately.
 
+## Authlib 1.9.1 (27 October 2026, late evening)
+
+The scheduled OSV scan flagged seven advisories in Authlib 1.8.0, the library
+behind operator sign-in; 1.9.0 and 1.9.1 fix them. 1.9.0 also tightens client-side
+key, audience and nonce checks, so I reran sign-in on the lab with 1.9.1.
+
+| Check | Result | Scope |
+| --- | --- | --- |
+| Backend and integrations, host test settings | 427 passed, 1 skipped | No Authlib deprecation warnings when run with them as errors |
+| OIDC sign-in and access lifecycle (23:52 UTC) | 14 passed | Code + PKCE sessions with a one-time code, wrong code and password-only requests refused, approval and SCIM grant and revoke |
+| Console in real Firefox | Passed | Sign-in through the console's redirect flow, containment and independent closure |
+
 ## Sign-in watch and closure fixes (27 October 2026, evening)
 
 The rerun below exposed a closure race, and a code audit found three more gaps

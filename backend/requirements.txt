@@ -1,6 +1,6 @@
 Django==5.2.17
 djangorestframework==3.18.2
-Authlib==1.8.0
+Authlib==1.9.1
 requests==2.34.2
 psycopg[binary]==3.3.6
 httpx==0.28.1
