@@ -5,6 +5,9 @@
 *.pem
 *.key
 *.crt
+*.pfx
+*.p12
+*.cer
 *.sqlite3
 __pycache__/
 .pytest_cache/
