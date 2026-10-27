@@ -126,6 +126,6 @@ describe("queue and evidence presentation", () => {
     expect(contain.tasks.map((task) => task.id)).toContain(
       "post-departure-access",
     );
-    expect(isNative("post-departure-access")).toBe(false);
+    expect(isNative(flagged, "post-departure-access")).toBe(false);
   });
 });

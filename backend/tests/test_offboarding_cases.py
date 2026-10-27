@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from core import audit
 from core.models import (
+    ActivityCheck,
     ADEnrollment,
     AuditEvent,
     Grant,
@@ -71,7 +72,14 @@ def report(value=False, at=None):
     }
 
 
-def complete_case(org, client, **extra):
+def record_reading(case, at=None, status="observed", **fields):
+    """A synthetic sign-in watch reading, not a Keycloak measurement."""
+    return ActivityCheck.objects.create(
+        case=case, checked_at=at or timezone.now(), status=status, **fields
+    )
+
+
+def complete_case(org, client, watched=True, **extra):
     case = create_case(org, client, **extra)
     assert post(client, f"{PREFIX}/{case.pk}/contain").status_code == 200
     case.refresh_from_db()
@@ -103,6 +111,9 @@ def complete_case(org, client, **extra):
                 },
             )
             assert response.status_code == 200, response.data
+    if watched:
+        # A current, clean sign-in reading; leaver tests run the watch themselves.
+        record_reading(case)
     case.refresh_from_db()
     return case
 

@@ -18,9 +18,19 @@ type Snapshot = {
     id: string;
     hrEventId: string;
     status: string;
+    blockers: string[];
     tasks: { id: string; status: string; evidenceKind: string }[];
+    watch?: { status: string };
   }[];
 };
+/** Watch states that block closure until the worker's next reading. */
+const WATCH_WAITING = [
+  "not_configured",
+  "pending",
+  "unavailable",
+  "stale",
+  "finishing",
+];
 
 let passwords: Record<string, string>;
 let authenticators: Record<string, string>;
@@ -275,6 +285,24 @@ test("operators close a real departure case through the redesigned console", asy
         .click();
       await expect(dialog).toHaveCount(0);
     }
+    // Closure waits for a current sign-in check, which the worker takes every
+    // 30 seconds; the case may briefly show that wait before it is reviewable.
+    // Only the watch is waited for, so any other blocker fails at the heading.
+    await waitFor(
+      async () => {
+        const item = (await snapshot(page)).offboardingCases.find(
+          (entry) => entry.id === caseId,
+        );
+        return item?.watch && !WATCH_WAITING.includes(item.watch.status)
+          ? item
+          : undefined;
+      },
+      "the first sign-in check after departure",
+      90,
+    );
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+    await expect(page.getByText("Sign-in watch:")).toBeVisible();
     await expect(nextStep(page).getByRole("heading")).toHaveText(
       "Ready for independent review",
     );
@@ -324,6 +352,7 @@ test("operators close a real departure case through the redesigned console", asy
     expect(packet.origin).toBe("connected_case");
     expect(packet.case.status).toBe("closed");
     expect(packet.case.closureBasis).toBe("reviewed_evidence");
+    expect(packet.watchAtClosure.status).toBe("watching");
     expect(packet.limitations.length).toBeGreaterThan(0);
     await reviewer.screenshot({ path: `${reports}/console-live-closed.png` });
     await signOut(reviewer);

@@ -5,7 +5,11 @@ import type {
   Run,
   Snapshot,
 } from "./domain";
-import type { NewCase, OffboardingCase } from "./offboarding";
+import {
+  WATCH_STATUSES,
+  type NewCase,
+  type OffboardingCase,
+} from "./offboarding";
 
 export const CONNECTED = import.meta.env.VITE_ACCESSOPS_MODE === "connected";
 export type Session = {
@@ -43,6 +47,27 @@ const directoryBinding = (value: unknown) =>
     value.groupGuids.length <= 10 &&
     value.groupGuids.every(guid) &&
     new Set(value.groupGuids).size === value.groupGuids.length);
+const entraBinding = (value: unknown) =>
+  value === undefined ||
+  (object(value) &&
+    guid(value.tenantId) &&
+    guid(value.userId) &&
+    Array.isArray(value.groupIds) &&
+    value.groupIds.length <= 10 &&
+    value.groupIds.every(guid) &&
+    new Set(value.groupIds).size === value.groupIds.length);
+const count = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 0;
+const caseWatch = (value: unknown) =>
+  value === undefined ||
+  (object(value) &&
+    (WATCH_STATUSES as readonly string[]).includes(String(value.status)) &&
+    dateText(value.windowEndsAt) &&
+    (value.lastReadAt == null || dateText(value.lastReadAt)) &&
+    (value.lastAttemptAt == null || dateText(value.lastAttemptAt)) &&
+    (value.refused == null || count(value.refused)) &&
+    count(value.successes) &&
+    count(value.afterClosure));
 
 export function parseSnapshot(value: unknown): Snapshot {
   if (!object(value))
@@ -84,6 +109,8 @@ export function parseSnapshot(value: unknown): Snapshot {
           boundedText(item.title, 240) &&
           boundedText(item.identityId, 128) &&
           directoryBinding(item.adBinding) &&
+          entraBinding(item.entraBinding) &&
+          caseWatch(item.watch) &&
           Number.isSafeInteger(item.revision) &&
           Number(item.revision) >= 1 &&
           ["open", "in_progress", "blocked", "closed"].includes(

@@ -87,6 +87,17 @@ def current_case(http, case_id):
     return next(item for item in snapshot(http)["offboardingCases"] if item["id"] == case_id)
 
 
+def settled(http, case_id, seconds=90):
+    """The case once nothing blocks closure, or as it stands after the bound.
+    Closure waits for a current sign-in reading, which the worker takes every 30 s."""
+    deadline = time.monotonic() + seconds
+    while True:
+        case = current_case(http, case_id)
+        if not case["blockers"] or time.monotonic() >= deadline:
+            return case
+        time.sleep(1)
+
+
 def read_packet(http, path):
     response = http.get(APP + path + "/packet")
     if response.status_code != 200:
@@ -136,6 +147,7 @@ def main():
             "integrations/keycloak.py",
             "integrations/transport.py",
             "backend/core/offboarding.py",
+            "backend/core/assurance.py",
         ]
         + BACKEND_FILES
         + FIXTURE_NAMES,
@@ -482,6 +494,7 @@ def main():
                             "summary": "Offline fixture scope excludes this external platform. No tenant operation or session/credential revocation was measured; this is a synthetic owner statement for administrative review only.",
                         },
                     )["result"]
+            case = settled(alice, case_id)
             if case["blockers"] or not all(
                 item["evidenceKind"] == "owner_attestation"
                 for item in case["tasks"]
@@ -511,6 +524,15 @@ def main():
                 or not draft["limitations"]
             ):
                 raise AssertionError("Draft packet evidence limits missing")
+        with report.case("a packet loaded before the next sign-in reading still closes after it"):
+            # The watch reads every 30 s; its read time stays outside the packet hash,
+            # so a reviewer's packet must survive a reading that changes no finding.
+            loaded = draft["case"]["watch"]["lastReadAt"]
+            deadline = time.monotonic() + 60
+            while current_case(bob, case_id)["watch"]["lastReadAt"] == loaded:
+                if time.monotonic() >= deadline:
+                    raise AssertionError("No new sign-in reading within 60 s")
+                time.sleep(1)
         with report.case(
             "independent reviewer closes exact current evidence into a persisted administrative packet"
         ):
@@ -529,6 +551,8 @@ def main():
                 or not packet["limitations"]
             ):
                 raise AssertionError("Closed case packet unavailable")
+            if (packet.get("watchAtClosure") or {}).get("status") != "watching":
+                raise AssertionError("Closure did not record a current sign-in watch")
             frozen_digest = packet_digest(packet)
         with report.case(
             "closed case rejects later import and attestation while its packet remains immutable"

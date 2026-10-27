@@ -141,12 +141,20 @@ def test_reconcile_counts_sessions_and_contained_accounts_must_have_none(
     assert result == {"drift": drift, "observed": {"active": active, "sessions": count}}
 
 
-def events_connector(records, status=200):
+def events_connector(records, status=200, filtered=True):
     seen = []
 
     def handle(request):
         seen.append(request)
-        return httpx.Response(status, json=records)
+        body = records
+        if filtered and isinstance(records, list):
+            # Keycloak filters by type and returns at most max events.
+            other = set(SIGN_IN_SUCCESS + SIGN_IN_REFUSED) - set(
+                request.url.params.get_list("type")
+            )
+            body = [item for item in records if item.get("type") not in other]
+            body = body[: int(request.url.params["max"])]
+        return httpx.Response(status, json=body)
 
     connector = KeycloakConnector(
         issuer=ISSUER, http=httpx.Client(transport=httpx.MockTransport(handle))
@@ -172,9 +180,14 @@ def test_sign_in_events_use_the_private_route_and_drop_addresses():
         [record(), record(time=500), record(type="LOGIN_ERROR", error="user_disabled")]
     )
     events = connector.sign_in_events(UID, 1_000)
-    assert str(seen[0].url).split("?", 1)[0] == EVENTS_URL
-    assert seen[0].url.params["user"] == UID and seen[0].url.params["dateFrom"] == "1000"
-    assert set(seen[0].url.params.get_list("type")) == set(SIGN_IN_SUCCESS + SIGN_IN_REFUSED)
+    for request in seen:
+        assert str(request.url).split("?", 1)[0] == EVENTS_URL
+        assert request.url.params["user"] == UID and request.url.params["dateFrom"] == "1000"
+    # Successes and refusals are read separately.
+    assert [set(request.url.params.get_list("type")) for request in seen] == [
+        set(SIGN_IN_SUCCESS),
+        set(SIGN_IN_REFUSED),
+    ]
     assert events == [
         {"time": 2_000, "type": "LOGIN", "clientId": "atlas-app", "error": ""},
         {"time": 2_000, "type": "LOGIN_ERROR", "clientId": "atlas-app", "error": "user_disabled"},
@@ -182,10 +195,21 @@ def test_sign_in_events_use_the_private_route_and_drop_addresses():
     assert "ipAddress" not in str(events)
 
 
+def test_a_flood_of_refused_attempts_never_hides_a_success():
+    # Refusals need only the username; they are counted up to the limit, a lower bound.
+    connector, _ = events_connector(
+        [record(type="LOGIN_ERROR", time=1_000 + n) for n in range(250)] + [record(time=9_000)]
+    )
+    events = connector.sign_in_events(UID, 0)
+    assert sum(item["type"] == "LOGIN_ERROR" for item in events) == 200
+    assert [item["time"] for item in events if item["type"] == "LOGIN"] == [9_000]
+
+
 @pytest.mark.parametrize(
     "records",
     [
         [record(userId="someone-else")],
+        [record(userId="someone-else", type="LOGIN_ERROR")],
         [record(type="UPDATE_PASSWORD")],
         [record(time="2000")],
         [record()] * 201,
@@ -194,6 +218,12 @@ def test_sign_in_events_use_the_private_route_and_drop_addresses():
 )
 def test_incomplete_or_foreign_event_reads_stay_unknown(records):
     connector, _ = events_connector(records)
+    with pytest.raises(ConnectorError):
+        connector.sign_in_events(UID, 0)
+
+
+def test_an_event_of_the_other_kind_is_never_counted_as_this_one():
+    connector, _ = events_connector([record(type="LOGIN_ERROR")], filtered=False)
     with pytest.raises(ConnectorError):
         connector.sign_in_events(UID, 0)
 

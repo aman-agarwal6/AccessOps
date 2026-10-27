@@ -74,18 +74,28 @@ class KeycloakConnector:
 
     def sign_in_events(self, user_id, since_ms, limit=200):
         """Sign-in and token events for one account at or after since_ms, oldest
-        first. Only time, type, client and error are kept; a reading that may be
-        incomplete stays unknown."""
+        first. Only time, type, client and error are kept. Successes and refusals
+        are read separately: a reading that may miss a success stays unknown, while
+        refusals, which anyone knowing the username can cause, are kept up to limit
+        (a lower bound), so a flood of them never hides a success."""
         user_uuid(user_id)
         if type(since_ms) is not int or since_ms < 0:
             raise ConnectorError("Invalid event window")
+        successes, more = self._sign_in_events(user_id, since_ms, SIGN_IN_SUCCESS, limit)
+        if more:
+            raise ConnectorError("Event observation incomplete")
+        refused, _ = self._sign_in_events(user_id, since_ms, SIGN_IN_REFUSED, limit)
+        return sorted(successes + refused, key=lambda event: event["time"])
+
+    def _sign_in_events(self, user_id, since_ms, kinds, limit):
+        """At most limit events of these kinds, and whether Keycloak holds more."""
         params = [
             ("user", user_id),
             ("dateFrom", str(since_ms)),
             ("direction", "asc"),
             ("first", "0"),
             ("max", str(limit + 1)),
-        ] + [("type", kind) for kind in SIGN_IN_SUCCESS + SIGN_IN_REFUSED]
+        ] + [("type", kind) for kind in kinds]
         try:
             response = self.http.get(
                 EVENTS_URL,
@@ -96,14 +106,14 @@ class KeycloakConnector:
             if response.status_code != 200 or str(response.url).split("?", 1)[0] != EVENTS_URL:
                 raise ConnectorError("Event observation unavailable")
             records = json_response(response, limit=262144)
-            if not isinstance(records, list) or len(records) > limit:
+            if not isinstance(records, list) or len(records) > limit + 1:
                 raise ConnectorError("Event observation incomplete")
             events = []
-            for record in records:
+            for record in records[:limit]:
                 if (
                     not isinstance(record, dict)
                     or record.get("userId") != user_id
-                    or record.get("type") not in SIGN_IN_SUCCESS + SIGN_IN_REFUSED
+                    or record.get("type") not in kinds
                     or type(record.get("time")) is not int
                     or not isinstance(record.get("clientId") or "", str)
                     or not isinstance(record.get("error") or "", str)
@@ -118,7 +128,7 @@ class KeycloakConnector:
                             "error": (record.get("error") or "")[:64],
                         }
                     )
-            return events
+            return events, len(records) > limit
         except (httpx.HTTPError, IntegrationError):
             raise ConnectorError("Event observation unavailable") from None
 

@@ -25,6 +25,8 @@ POST /auth/backchannel-logout: verified OIDC logout token only.
 POST /api/v1/hr-events: signed HR leaver event, no session (see below).
 POST /api/v1/ssf/poll, GET /api/v1/ssf/jwks, GET /.well-known/ssf-configuration:
 signed leaver signals for a SOC receiver; see [leaver signals](leaver-signals.md).
+/api/v1/offboarding-cases: departure cases (`offboardingCases` in the snapshot),
+their closure packets and the unhashed sign-in `watch`; see [departure cases](offboarding.md).
 
 Mutations return {result:<domain object>, snapshot?:<snapshot>}.
 Errors: {error:{code,message}} with correct non-2xx status; never credentials.

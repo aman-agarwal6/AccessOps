@@ -1,5 +1,6 @@
 """Departure case work: separate local effects, snapshots and owner statements."""
 
+import copy
 import re
 from datetime import timedelta
 from uuid import UUID
@@ -14,7 +15,15 @@ from rest_framework.response import Response
 
 from . import audit
 from . import services as svc
-from .assurance import POST_DEPARTURE_TASK, latest_reading, post_departure_successes
+from .assurance import (
+    BLOCKERS,
+    MISSED,
+    POST_DEPARTURE_TASK,
+    latest_reading,
+    post_departure_successes,
+    successes_read,
+    watch_state,
+)
 from .errors import DomainError
 from .models import (
     ADEnrollment,
@@ -544,9 +553,12 @@ def ad_job_reading(case, now, latest, event):
 
 
 def assess(case):
-    if case.closed_at:
-        return case.closed_packet["case"]
     now = timezone.now()
+    read = successes_read(case)
+    watch = watch_state(case, now, read)
+    if case.closed_at:
+        # A copy with the live watch added; the stored packet stays as reviewed.
+        return {**copy.deepcopy(case.closed_packet["case"]), "watch": watch}
     imports = list(case.platform_imports.order_by("-imported_at"))
     readings = {}
     for item in imports:
@@ -573,7 +585,7 @@ def assess(case):
     directory_at = ad_reading(case, now) if case.ad_binding else None
     entra_at = entra_reading(case, now) if case.entra_binding else None
     tasks, blockers = [], []
-    successes = post_departure_successes(case)
+    successes = [item for item, _ in read]
     reading = latest_reading(case)
     for key, platform, boundary, title in (
         *TASKS,
@@ -601,11 +613,20 @@ def assess(case):
             )
         elif key == "keycloak-directory" and provider_at:
             summary = "Fresh Keycloak readings observed the workforce account disabled with no active sessions, and known managed grant memberships absent. Keycloak rejects tokens issued before containment and sent back-channel logout to registered apps; credentials and unknown access paths are separate."
-            if reading and not successes:
+            # No read time or count here, so the hashed packet changes only when a
+            # finding does, never per refused attempt; the count is in the watch.
+            if reading and not successes and watch["status"] != "missed":
+                refused = case.activity_checks.filter(status="observed", refused__gt=0).exists()
                 summary += (
                     " Since the departure, Keycloak recorded no successful sign-in or token use"
-                    f" and refused {reading.refused} attempt(s) (read {reading.checked_at.isoformat()})."
+                    + (
+                        "; it refused at least one attempt, counted in the sign-in watch."
+                        if refused
+                        else " and no refused attempt."
+                    )
                 )
+            if watch["status"] == "missed":
+                summary += " " + MISSED
             task.update(
                 status="observed",
                 evidenceKind="provider_observation",
@@ -686,6 +707,8 @@ def assess(case):
         if task["status"] == "pending" and key != POST_DEPARTURE_TASK[0]:
             blockers.append(title + ": evidence is missing, incomplete or stale.")
         tasks.append(task)
+    if watch["status"] in BLOCKERS:
+        blockers.append(BLOCKERS[watch["status"]])
     if case.effective_at > now:
         blockers.insert(0, "The HR departure is not effective yet.")
     # Positive observations captured after an owner statement reopen that platform.
@@ -757,6 +780,8 @@ def assess(case):
         }
         for event in case.security_events.order_by("created_at")[:50]
     ]
+    # Read times change every 30 seconds; the watch's blockers are in the hash.
+    dto["watch"] = watch
     return dto
 
 
@@ -960,11 +985,14 @@ def close(actor, case, data):
         revision=case.revision + 1,
     )
     dto.pop("packetHash")
+    # The watch continues after closure; the packet records where it stood.
+    watch = dto.pop("watch")
     packet = {
         "schemaVersion": 1,
         "origin": "connected_case",
         "reviewedInputHash": data["packetHash"],
         "case": dto,
+        "watchAtClosure": watch,
         "limitations": LIMITATIONS,
     }
     dto["packetHash"] = audit.digest(packet)

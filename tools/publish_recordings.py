@@ -20,6 +20,16 @@ CONNECTED = {
     "oidc-business": "OIDC login and protected access lifecycle",
     "offboarding": "Connected offboarding and unbacked access",
     "cases": "Authenticated enterprise departure cases — mixed evidence",
+    "cases-watchfix": "Departure cases after the sign-in watch fix (full lab suite)",
+    "cases-reading-race-1": "Departure cases after the watch fix: packet kept across a reading, run 1",
+    "cases-reading-race-2": "Departure cases after the watch fix: packet kept across a reading, run 2",
+    "policy-watchfix": "OPA authorization rules after the sign-in watch fix",
+    "protocols-watchfix": "Identity and authorization protocols after the sign-in watch fix",
+    "oidc-business-watchfix": "OIDC login and protected access lifecycle after the sign-in watch fix",
+    "offboarding-watchfix": "Connected offboarding after the sign-in watch fix",
+    "sessions-watchfix": "Workforce session revocation after the sign-in watch fix",
+    "hr-intake-watchfix": "Signed HR leaver intake after the sign-in watch fix",
+    "host-health-watchfix": "Verified host HTTPS boundary after the sign-in watch fix",
     "cases-attempt-1": "Initial case adapter check — failed attempt retained",
     "cases-attempt-2": "Initial membership-removal check — failed attempt retained",
     "cases-attempt-3": "Owner self-closure assertion — failed attempt retained",
@@ -41,6 +51,7 @@ CONNECTED = {
     "hr-intake-attempt-1": "Initial HR intake run — failed attempt retained",
     "hr-intake-attempt-2": "Second HR intake run — failed attempt retained",
     "leaver-assurance": "Leaver assurance and signed SOC signals",
+    "leaver-assurance-watchfix": "Leaver assurance after the sign-in watch fix, including after closure",
     "leaver-assurance-attempt-1": "Initial leaver assurance run — failed attempt retained",
     "key-rotation": "Live signing-key rotation and leaked-key drill",
     "entra-departure": "Live Microsoft Entra departure through Microsoft Graph",
@@ -90,6 +101,13 @@ JUNIT = {
         "Operator console in real Firefox — closure refused, failure retained",
         "Historical failed attempt: the reviewer's close was refused because the case's packet changed while the dialog was open. The later retry passed unchanged.",
     ),
+    **{
+        f"console-live-watchfix-{n}.xml": (
+            f"Operator console in real Firefox after the sign-in watch fix, run {n} of 3",
+            "Actual Firefox automation against the running lab with one-time codes: sign in, contain and independently close a departure case. Browser evidence, not a provider observation by itself.",
+        )
+        for n in (1, 2, 3)
+    },
     "connected-renderer-tests.xml": (
         "Connected console rendering of a recorded lab snapshot",
         "Actual browser rendering of a sanitized snapshot recorded from the lab, served through intercepted read endpoints. Checks DTO compatibility, labels, layout and accessibility; it is not authentication or provider evidence.",

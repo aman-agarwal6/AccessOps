@@ -9,6 +9,13 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 
+@pytest.fixture(autouse=True)
+def events_client(settings):
+    # Nonfunctional placeholder: the sign-in watch counts as configured, and
+    # tests pass their own reader, so nothing contacts Keycloak.
+    settings.EVENTS_CLIENT_SECRET = "synthetic-events-client-" + "e" * 16
+
+
 @pytest.fixture
 def org(db, monkeypatch):
     call_command("seed_demo", verbosity=0)

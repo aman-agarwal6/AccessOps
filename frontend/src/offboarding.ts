@@ -18,6 +18,33 @@ export type DirectoryBinding = {
   userGuid: string;
   groupGuids: string[];
 };
+/** A server-enrolled Entra user and groups, by object ID; never browser input. */
+export type EntraBinding = {
+  tenantId: string;
+  userId: string;
+  groupIds: string[];
+};
+export const WATCH_STATUSES = [
+  "not_started",
+  "not_configured",
+  "pending",
+  "watching",
+  "unavailable",
+  "stale",
+  "finishing",
+  "complete",
+  "missed",
+] as const;
+/** Keycloak sign-in watch for the day after departure; outside the packet hash. */
+export type CaseWatch = {
+  status: (typeof WATCH_STATUSES)[number];
+  windowEndsAt: string;
+  lastReadAt: string | null;
+  lastAttemptAt: string | null;
+  refused: number | null;
+  successes: number;
+  afterClosure: number;
+};
 export type OffboardingTask = {
   id: string;
   platform: Platform;
@@ -73,6 +100,7 @@ export type OffboardingCase = {
   intakeSourceId?: string;
   bindings: Binding[];
   adBinding?: DirectoryBinding;
+  entraBinding?: EntraBinding;
   tasks: OffboardingTask[];
   imports: PlatformImport[];
   blockers: string[];
@@ -81,6 +109,8 @@ export type OffboardingCase = {
   closedById?: string;
   closureBasis?: "reviewed_evidence";
   evidenceLimitations: string[];
+  /** Connected lab only; the browser simulation has no sign-in watch. */
+  watch?: CaseWatch;
   /** Browser-only assessment input; never sent as a connected mutation. */
   simulatedReadings?: (Observation & { importHash?: string })[];
 };
@@ -944,7 +974,8 @@ export async function attestSimulatedTask(
   const task = item.tasks.find((entry) => entry.id === id);
   if (
     !task ||
-    ["local-containment", "keycloak-directory", "ad-directory"].includes(id)
+    ["local-containment", "keycloak-directory", "ad-directory"].includes(id) ||
+    (id === "entra-directory" && item.entraBinding)
   )
     throw new DomainError(
       "Local and provider observation tasks cannot be manually attested.",

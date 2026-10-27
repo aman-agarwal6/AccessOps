@@ -84,7 +84,7 @@ and immutable ID; tokens carry no names, emails or IP addresses.
 | --- | --- | --- |
 | `https://schemas.openid.net/secevent/risc/event-type/account-disabled` | Containment verified | Keycloak reported the account disabled at `event_timestamp` |
 | `https://schemas.openid.net/secevent/caep/event-type/session-revoked` | Containment verified | Keycloak listed no session for the account (`initiating_entity: policy`) |
-| `https://schemas.openid.net/secevent/caep/event-type/session-established` | A sign-in after departure was read | Keycloak recorded a successful sign-in or token use at `event_timestamp` |
+| `https://schemas.openid.net/secevent/caep/event-type/session-established` | A sign-in after departure was read (watched for the day after departure, before or after the case closes) | Keycloak recorded a successful sign-in or token use at `event_timestamp` |
 
 ## Suggested detection
 
@@ -94,7 +94,10 @@ is access after departure and deserves a high-severity case. Also treat a
 subject as departed from its `account-disabled` event: any authentication by
 that `iss` and `sub` in the receiver's own telemetry after that
 `event_timestamp` is access after departure too. AccessOps already blocks
-closure of the departure until its owner records an investigation.
+closure of the departure until its owner records an investigation. If the case
+is already closed, AccessOps records `departure.access_after_closure` and shows
+the count on the case (`watch.afterClosure`) but does not reopen it, so the
+receiver's own case is the only open follow-up.
 
 ## Producing test signals
 
