@@ -98,14 +98,17 @@ def test_logout_supports_sid_without_exp_or_sub(signing):
         {"nonce": "forbidden"},
         {"events": {}},
         {"sid": None},
-        {"iat": int(time.time()) - 300},
-        {"iat": int(time.time()) + 60},
-        {"exp": int(time.time()) - 60},
+        # Times are taken when the test runs: a future issue time computed at
+        # collection is no longer in the future once the suite takes a minute.
+        lambda: {"iat": int(time.time()) - 300},
+        lambda: {"iat": int(time.time()) + 60},
+        lambda: {"exp": int(time.time()) - 60},
         {"iss": ISSUER},
         {"aud": "accessops-api"},
     ],
 )
 def test_logout_invalid_events_denied(signing, change):
+    change = change() if callable(change) else change
     with pytest.raises(TokenValidationError):
         security.verify_logout_token(logout(signing[0], **change))
 
