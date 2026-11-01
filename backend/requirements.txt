@@ -1,5 +1,5 @@
 Django==5.2.17
-djangorestframework==3.18.2
+djangorestframework==3.18.3
 Authlib==1.9.1
 requests==2.34.2
 psycopg[binary]==3.3.6
